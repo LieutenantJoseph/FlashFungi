@@ -43,6 +43,7 @@ class SimplePipeline {
   constructor() {
     this.processedCount = 0;
     this.savedCount = 0;
+    this.dnaCount = 0; // Track DNA specimens separately
   }
 
   async delay(ms) {
@@ -53,7 +54,7 @@ class SimplePipeline {
     console.log('🔍 Fetching Arizona mushroom observations...');
     
     const params = new URLSearchParams({
-      place_id: 40, // Arizona
+      place_id: 6, // Arizona (FIXED)
       taxon_id: 47170, // Fungi
       quality_grade: 'research',
       photos: 'true',
@@ -108,12 +109,89 @@ class SimplePipeline {
     ) || /its[\s:]+\d+%/.test(allText);
   }
 
-  async generateHints(specimen) {
-  const dnaStatus = specimen.dna_sequenced ? 
-    'This specimen has been DNA sequenced for accurate identification.' : 
-    'This is a research-grade community identification.';
+  // MOVED INSIDE CLASS
+  extractFamily(taxon) {
+    // Try to extract family from taxon hierarchy
+    if (taxon.rank === 'family') return taxon.name;
     
-  const prompt = `Create 4 educational hints for identifying this mushroom:
+    if (taxon.ancestors) {
+      const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
+      if (family) return family.name;
+    }
+    
+    // Fallback to common fungal families based on genus
+    const genus = taxon.name.split(' ')[0].toLowerCase();
+    const familyMap = {
+      'agaricus': 'Agaricaceae',
+      'boletus': 'Boletaceae', 
+      'cantharellus': 'Cantharellaceae',
+      'amanita': 'Amanitaceae',
+      'pleurotus': 'Pleurotaceae',
+      'shiitake': 'Omphalotaceae',
+      'oyster': 'Pleurotaceae'
+    };
+    
+    return familyMap[genus] || 'Fungi';
+  }
+
+  // MOVED INSIDE CLASS
+  extractHabitat(observation) {
+    let habitat = '';
+    
+    if (observation.description) {
+      habitat += observation.description + ' ';
+    }
+    
+    if (observation.ofvs) {
+      const habitatFields = observation.ofvs
+        .filter(field => 
+          field.name.toLowerCase().includes('habitat') ||
+          field.name.toLowerCase().includes('substrate') ||
+          field.name.toLowerCase().includes('host') ||
+          field.name.toLowerCase().includes('growing')
+        )
+        .map(field => `${field.name}: ${field.value}`)
+        .join(', ');
+      
+      habitat += habitatFields;
+    }
+    
+    return habitat.trim() || 'Not specified';
+  }
+
+  // MOVED INSIDE CLASS
+  calculateQualityScore(observation, hasDNA) {
+    let score = 0.5; // Base score
+    
+    // Research grade bonus
+    if (observation.quality_grade === 'research') score += 0.2;
+    
+    // DNA sequence major bonus
+    if (hasDNA) score += 0.3;
+    
+    // Photo quality bonus
+    if (observation.photos) {
+      if (observation.photos.length >= 5) score += 0.1;
+      else if (observation.photos.length >= 3) score += 0.05;
+    }
+    
+    // Community agreement bonus
+    if (observation.num_identification_agreements >= 3) score += 0.1;
+    else if (observation.num_identification_agreements >= 2) score += 0.05;
+    
+    // Recent observation bonus
+    const daysSince = (Date.now() - new Date(observation.observed_on)) / (1000 * 60 * 60 * 24);
+    if (daysSince <= 365) score += 0.05;
+    
+    return Math.min(score, 1.0);
+  }
+
+  async generateHints(specimen) {
+    const dnaStatus = specimen.dna_sequenced ? 
+      'This specimen has been DNA sequenced for accurate identification.' : 
+      'This is a research-grade community identification.';
+      
+    const prompt = `Create 4 educational hints for identifying this mushroom:
 
 Species: ${specimen.species_name}
 Family: ${specimen.family}
@@ -182,7 +260,6 @@ Make the hints educational and specific to help with identification.`;
       const savedSpecimen = await specimenResponse.json();
       const specimenId = savedSpecimen[0].id;
 
-      // Save photos and hints (simplified for this test)
       console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
       return specimenId;
 
@@ -193,139 +270,68 @@ Make the hints educational and specific to help with identification.`;
   }
 
   async processObservation(obs) {
-  console.log(`\n🔬 Processing: ${obs.taxon.name} (${obs.id})`);
-  
-  try {
-    const detailed = await this.getObservationDetails(obs.id);
+    console.log(`\n🔬 Processing: ${obs.taxon.name} (${obs.id})`);
     
-    // Check photo requirements first
-    if (!detailed.photos || detailed.photos.length < 3) {
-      console.log('   ⏭️  Insufficient photos (need at least 3)');
+    try {
+      const detailed = await this.getObservationDetails(obs.id);
+      
+      // Check photo requirements first
+      if (!detailed.photos || detailed.photos.length < 3) {
+        console.log('   ⏭️  Insufficient photos (need at least 3)');
+        return null;
+      }
+
+      console.log(`   📸 Good photos available (${detailed.photos.length} photos)`);
+
+      // Check for DNA sequence
+      const hasDNA = this.hasDNASequence(detailed);
+      
+      if (hasDNA) {
+        console.log('   🧬 DNA sequence found! (High priority)');
+        this.dnaCount++; // TRACK DNA COUNT
+      } else {
+        console.log('   📋 Research grade - no DNA sequence (Standard priority)');
+      }
+
+      // Create specimen data
+      const specimen = {
+        species_name: detailed.taxon.name,
+        genus: detailed.taxon.name.split(' ')[0],
+        family: this.extractFamily(detailed.taxon) || 'Fungi',
+        common_name: detailed.taxon.preferred_common_name,
+        inaturalist_id: detailed.id.toString(),
+        location: detailed.place_guess || 'Arizona, USA',
+        habitat: this.extractHabitat(detailed),
+        dna_sequenced: hasDNA,
+        status: 'pending',
+        quality_score: this.calculateQualityScore(detailed, hasDNA)
+      };
+
+      console.log('   🤖 Generating AI hints...');
+      const hints = await this.generateHints(specimen);
+
+      console.log('   💾 Saving to database...');
+      await this.saveToDatabase(specimen, [], hints);
+      
+      const priority = hasDNA ? 'HIGH PRIORITY (DNA)' : 'STANDARD (Research Grade)';
+      console.log(`   ✅ SUCCESS: Saved ${specimen.species_name} - ${priority}`);
+      
+      return specimen;
+
+    } catch (error) {
+      console.log(`   ❌ Error processing: ${error.message}`);
       return null;
     }
-
-    console.log(`   📸 Good photos available (${detailed.photos.length} photos)`);
-
-    // Check for DNA sequence
-    const hasDNA = this.hasDNASequence(detailed);
-    
-    if (hasDNA) {
-      console.log('   🧬 DNA sequence found! (High priority)');
-    } else {
-      console.log('   📋 Research grade - no DNA sequence (Standard priority)');
-    }
-
-    // Create specimen data
-    const specimen = {
-      species_name: detailed.taxon.name,
-      genus: detailed.taxon.name.split(' ')[0],
-      family: this.extractFamily(detailed.taxon) || 'Fungi',
-      common_name: detailed.taxon.preferred_common_name,
-      inaturalist_id: detailed.id.toString(),
-      location: detailed.place_guess || 'Arizona, USA',
-      habitat: this.extractHabitat(detailed),
-      dna_sequenced: hasDNA,
-      status: 'pending',
-      quality_score: this.calculateQualityScore(detailed, hasDNA)
-    };
-
-    console.log('   🤖 Generating AI hints...');
-    const hints = await this.generateHints(specimen);
-
-    console.log('   💾 Saving to database...');
-    await this.saveToDatabase(specimen, [], hints);
-    
-    const priority = hasDNA ? 'HIGH PRIORITY (DNA)' : 'STANDARD (Research Grade)';
-    console.log(`   ✅ SUCCESS: Saved ${specimen.species_name} - ${priority}`);
-    
-    return specimen;
-
-  } catch (error) {
-    console.log(`   ❌ Error processing: ${error.message}`);
-    return null;
   }
-}
 
-extractFamily(taxon) {
-  // Try to extract family from taxon hierarchy
-  if (taxon.rank === 'family') return taxon.name;
-  
-  if (taxon.ancestors) {
-    const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
-    if (family) return family.name;
-  }
-  
-  // Fallback to common fungal families based on genus
-  const genus = taxon.name.split(' ')[0].toLowerCase();
-  const familyMap = {
-    'agaricus': 'Agaricaceae',
-    'boletus': 'Boletaceae', 
-    'cantharellus': 'Cantharellaceae',
-    'amanita': 'Amanitaceae',
-    'pleurotus': 'Pleurotaceae',
-    'shiitake': 'Omphalotaceae',
-    'oyster': 'Pleurotaceae'
-  };
-  
-  return familyMap[genus] || 'Fungi';
-}
-
-extractHabitat(observation) {
-  let habitat = '';
-  
-  if (observation.description) {
-    habitat += observation.description + ' ';
-  }
-  
-  if (observation.ofvs) {
-    const habitatFields = observation.ofvs
-      .filter(field => 
-        field.name.toLowerCase().includes('habitat') ||
-        field.name.toLowerCase().includes('substrate') ||
-        field.name.toLowerCase().includes('host') ||
-        field.name.toLowerCase().includes('growing')
-      )
-      .map(field => `${field.name}: ${field.value}`)
-      .join(', ');
-    
-    habitat += habitatFields;
-  }
-  
-  return habitat.trim() || 'Not specified';
-}
-
-calculateQualityScore(observation, hasDNA) {
-  let score = 0.5; // Base score
-  
-  // Research grade bonus
-  if (observation.quality_grade === 'research') score += 0.2;
-  
-  // DNA sequence major bonus
-  if (hasDNA) score += 0.3;
-  
-  // Photo quality bonus
-  if (observation.photos) {
-    if (observation.photos.length >= 5) score += 0.1;
-    else if (observation.photos.length >= 3) score += 0.05;
-  }
-  
-  // Community agreement bonus
-  if (observation.num_identification_agreements >= 3) score += 0.1;
-  else if (observation.num_identification_agreements >= 2) score += 0.05;
-  
-  // Recent observation bonus
-  const daysSince = (Date.now() - new Date(observation.observed_on)) / (1000 * 60 * 60 * 24);
-  if (daysSince <= 365) score += 0.05;
-  
-  return Math.min(score, 1.0);
-}
-  
   async run() {
     console.log('🚀 Starting simplified pipeline...');
     
     try {
-    const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
-    const observations = await this.fetchObservations(limit);
+      const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
+      console.log(`📊 Processing limit: ${limit} observations`);
+      
+      const observations = await this.fetchObservations(limit);
       
       for (const obs of observations) {
         const result = await this.processObservation(obs);
@@ -333,18 +339,14 @@ calculateQualityScore(observation, hasDNA) {
         
         if (result) {
           this.savedCount++;
-          console.log(`   ✅ SUCCESS: Saved ${result.species_name}`);
         }
       }
       
       console.log(`\n🎉 Pipeline complete!`);
       console.log(`📊 Processed: ${this.processedCount} observations`);
       console.log(`💾 Saved: ${this.savedCount} specimens total`);
-
-      // Add breakdown logging
-      const dnaCount = this.savedCount; // You might want to track this separately
-      console.log(`   🧬 DNA-verified: ${dnaCount} specimens`);
-      console.log(`   📋 Research-grade: ${this.savedCount - dnaCount} specimens`);
+      console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
+      console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
       console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
       
     } catch (error) {
