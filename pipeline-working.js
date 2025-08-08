@@ -49,7 +49,7 @@ class SimplePipeline {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async fetchObservations(limit = 500) {
+  async fetchObservations(limit = 50) {
     console.log('🔍 Fetching Arizona mushroom observations...');
     
     const params = new URLSearchParams({
@@ -234,7 +234,8 @@ Return exactly 4 hints in this format:
     console.log('🚀 Starting simplified pipeline...');
     
     try {
-      const observations = await this.fetchObservations(15);
+    const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
+    const observations = await this.fetchObservations(limit);
       
       for (const obs of observations) {
         const result = await this.processObservation(obs);
