@@ -49,7 +49,7 @@ class SimplePipeline {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async fetchObservations(limit = 200) {
+  async fetchObservations(limit = github.event.inputs.limit) {
     console.log('🔍 Fetching Arizona mushroom observations...');
     
     const params = new URLSearchParams({
