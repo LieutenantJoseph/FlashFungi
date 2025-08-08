@@ -54,7 +54,7 @@ class SimplePipeline {
     console.log('🔍 Fetching Arizona mushroom observations...');
     
     const params = new URLSearchParams({
-      place_id: 6, // Arizona (FIXED)
+      place_id: 40, // Arizona (FIXED)
       taxon_id: 47170, // Fungi
       quality_grade: 'research',
       photos: 'true',
