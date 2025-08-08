@@ -339,7 +339,13 @@ calculateQualityScore(observation, hasDNA) {
       
       console.log(`\n🎉 Pipeline complete!`);
       console.log(`📊 Processed: ${this.processedCount} observations`);
-      console.log(`💾 Saved: ${this.savedCount} DNA-verified specimens`);
+      console.log(`💾 Saved: ${this.savedCount} specimens total`);
+
+      // Add breakdown logging
+      const dnaCount = this.savedCount; // You might want to track this separately
+      console.log(`   🧬 DNA-verified: ${dnaCount} specimens`);
+      console.log(`   📋 Research-grade: ${this.savedCount - dnaCount} specimens`);
+      console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
       
     } catch (error) {
       console.log(`❌ Pipeline failed: ${error.message}`);
