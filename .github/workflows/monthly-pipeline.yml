@@ -1,0 +1,48 @@
+name: Monthly Mushroom Data Pipeline
+
+on:
+  # Run on the 1st of each month at 2 AM UTC
+  schedule:
+    - cron: '0 2 1 * *'
+  
+  # Allow manual runs for testing
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Number of observations to process'
+        required: false
+        default: '50'
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install dependencies
+      run: |
+        npm install openai node-fetch
+    
+    - name: Run pipeline
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        LIMIT: ${{ github.event.inputs.limit || '50' }}
+      run: |
+        echo "🚀 Starting monthly pipeline..."
+        echo "📊 Processing up to $LIMIT observations"
+        node pipeline-working.js
+    
+    - name: Check results
+      env:
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      run: |
+        echo "📊 Checking pipeline results..."
+        node check-results.js
