@@ -416,7 +416,7 @@ class DataPipeline {
     
     const searchParams = {
       // Geographic constraints
-      place_id: 6, // Arizona place ID in iNaturalist
+      place_id: 40, // Arizona place ID in iNaturalist
       
       // Taxonomic constraints
       taxon_id: 47170, // Fungi kingdom
