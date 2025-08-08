@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona Mushroom Study - Admin</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="admin-root">
+        <div style="padding: 20px; text-align: center;">
+            <h1>Admin Portal Loading...</h1>
+            <p>Arizona Mushroom Study Admin</p>
+        </div>
+    </div>
+    <script type="text/babel">
+        const AdminPortal = () => {
+            return (
+                <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-4xl mx-auto">
+                        <header className="text-center mb-8">
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                                🛡️ Admin Portal
+                            </h1>
+                            <p className="text-gray-600">Arizona Mushroom Study Administration</p>
+                        </header>
+                        
+                        <div className="bg-white rounded-xl shadow-sm p-6 text-center">
+                            <h2 className="text-xl font-semibold mb-4">Coming Soon</h2>
+                            <p className="text-gray-600 mb-4">
+                                The admin portal for reviewing specimens and managing hints is under development.
+                            </p>
+                            <div className="text-4xl mb-4">🔬</div>
+                            <p className="text-sm text-gray-500">
+                                Check your Supabase database directly for now to view specimens.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        ReactDOM.render(<AdminPortal />, document.getElementById('admin-root'));
+    </script>
+</body>
+</html>
