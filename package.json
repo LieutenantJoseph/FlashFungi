@@ -1,0 +1,18 @@
+{
+  "name": "arizona-mushroom-pipeline",
+  "version": "1.0.0",
+  "description": "Data pipeline for Arizona Mushroom Study",
+  "main": "pipeline-working.js",
+  "type": "module",
+  "scripts": {
+    "start": "node pipeline-working.js",
+    "pipeline": "node pipeline-working.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "openai": "^5.12.1"
+  },
+  "keywords": ["mushroom", "inaturalist", "openai", "supabase"],
+  "author": "",
+  "license": "ISC"
+}
