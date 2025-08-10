@@ -1,14 +1,20 @@
 {
-  "builds": [
-    {
-      "src": "docs/**/*",
-      "use": "@vercel/static"
+  "functions": {
+    "api/admin.js": {
+      "runtime": "@vercel/node"
     }
-  ],
+  },
   "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
     {
       "src": "/(.*)",
       "dest": "/docs/$1"
     }
-  ]
+  ],
+  "env": {
+    "SUPABASE_SERVICE_KEY": "@supabase_service_key"
+  }
 }

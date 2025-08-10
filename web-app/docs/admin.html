@@ -31,7 +31,7 @@
 
             const loadData = async () => {
                 try {
-                    // Load specimens
+                    // Load specimens (read-only, anon key is fine)
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
@@ -63,30 +63,34 @@
 
             const updateSpecimenStatus = async (specimenId, status, notes = '') => {
                 try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
+                    console.log('Updating specimen:', { specimenId, status, notes });
+                    
+                    // Use our serverless API endpoint instead of direct Supabase call
+                    const response = await fetch('/api/admin', {
                         method: 'PATCH',
                         headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            status: status,
-                            admin_notes: notes,
-                            approved_at: status === 'approved' ? new Date().toISOString() : null
+                            specimenId,
+                            status,
+                            notes
                         })
                     });
 
+                    const result = await response.json();
+
                     if (response.ok) {
-                        alert(`Specimen ${status} successfully!`);
+                        alert(result.message || `Specimen ${status} successfully!`);
                         loadData(); // Reload data
                         setSelectedSpecimen(null);
                     } else {
-                        alert('Error updating specimen status');
+                        console.error('API Error:', result);
+                        alert(`Error: ${result.error || 'Failed to update specimen'}`);
                     }
                 } catch (error) {
                     console.error('Error updating specimen:', error);
-                    alert('Error updating specimen');
+                    alert(`Error: ${error.message}`);
                 }
             };
 
@@ -131,6 +135,7 @@
             );
         }
 
+        // Keep all the other components exactly the same (LoadingScreen, AdminHeader, etc.)
         function LoadingScreen() {
             return (
                 <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -317,7 +322,7 @@
                                         <h3 className="font-semibold text-lg">{specimen.species_name}</h3>
                                         <p className="text-gray-600">{specimen.location}</p>
                                         <p className="text-sm text-gray-500">
-                                            Approved: {new Date(specimen.approved_at).toLocaleDateString()}
+                                            Approved: {specimen.approved_at ? new Date(specimen.approved_at).toLocaleDateString() : 'Unknown'}
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -400,7 +405,7 @@
                                 <strong>iNat ID:</strong> {specimen.inaturalist_id}
                             </div>
                             <div className="text-sm">
-                                <strong>Quality:</strong> {(specimen.quality_score * 100).toFixed(0)}%
+                                <strong>Quality:</strong> {((specimen.quality_score || 0) * 100).toFixed(0)}%
                             </div>
                         </div>
 
@@ -414,15 +419,6 @@
 
         function SpecimenReviewModal({ specimen, onClose, onApprove, onReject }) {
             const [notes, setNotes] = useState('');
-            const [action, setAction] = useState('');
-
-            const handleSubmit = () => {
-                if (action === 'approve') {
-                    onApprove(notes);
-                } else if (action === 'reject') {
-                    onReject(notes);
-                }
-            };
 
             return (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -464,7 +460,7 @@
                                             </a>
                                         </div>
                                         <div><strong>DNA Verified:</strong> {specimen.dna_sequenced ? 'Yes' : 'No'}</div>
-                                        <div><strong>Quality Score:</strong> {(specimen.quality_score * 100).toFixed(0)}%</div>
+                                        <div><strong>Quality Score:</strong> {((specimen.quality_score || 0) * 100).toFixed(0)}%</div>
                                     </div>
                                 </div>
                             </div>
@@ -503,14 +499,14 @@
                             {/* Action Buttons */}
                             <div className="flex gap-4 pt-4 border-t">
                                 <button 
-                                    onClick={() => { setAction('approve'); handleSubmit(); }}
+                                    onClick={() => onApprove(notes)}
                                     className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
                                 >
                                     ✅ Approve Specimen
                                 </button>
                                 
                                 <button 
-                                    onClick={() => { setAction('reject'); handleSubmit(); }}
+                                    onClick={() => onReject(notes)}
                                     className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
                                 >
                                     ❌ Reject Specimen
