@@ -1,23 +1,29 @@
 const { useState, useEffect } = React;
 
+// Configuration
+const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+const INATURALIST_API = 'https://api.inaturalist.org/v1';
+
 // Main App Component
 function App() {
     const [currentView, setCurrentView] = useState('home');
     const [specimens, setSpecimens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
+    const [specimenPhotos, setSpecimenPhotos] = useState({});
 
     useEffect(() => {
         loadSpecimens();
-        // Simulate user login for now
         setUser({ id: 'demo-user', name: 'Demo User' });
     }, []);
 
     const loadSpecimens = async () => {
         try {
-            const response = await fetch('https://oxgedcncrettasrbmwsl.supabase.co/rest/v1/specimens?status=eq.approved&select=*', {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?status=eq.approved&select=*`, {
                 headers: {
-                    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg'
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
             const data = await response.json();
@@ -29,12 +35,52 @@ function App() {
         }
     };
 
+    const loadSpecimenPhotos = async (inaturalistId) => {
+        if (specimenPhotos[inaturalistId]) {
+            return specimenPhotos[inaturalistId];
+        }
+
+        try {
+            console.log(`📸 Loading photos for specimen: ${inaturalistId}`);
+            const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
+            const data = await response.json();
+            
+            if (data.results && data.results[0] && data.results[0].photos) {
+                const photos = data.results[0].photos.map(photo => ({
+                    id: photo.id,
+                    url: photo.url,
+                    medium_url: photo.url.replace('square', 'medium'),
+                    large_url: photo.url.replace('square', 'large'),
+                    attribution: photo.attribution || 'iNaturalist user'
+                }));
+                
+                setSpecimenPhotos(prev => ({
+                    ...prev,
+                    [inaturalistId]: photos
+                }));
+                
+                return photos;
+            }
+        } catch (error) {
+            console.error('Error loading photos:', error);
+        }
+        
+        return [];
+    };
+
     if (loading) {
         return <LoadingScreen />;
     }
 
     if (currentView === 'quick-study') {
-        return <QuickStudy specimens={specimens} onBack={() => setCurrentView('home')} />;
+        return (
+            <QuickStudy 
+                specimens={specimens} 
+                onBack={() => setCurrentView('home')} 
+                loadSpecimenPhotos={loadSpecimenPhotos}
+                specimenPhotos={specimenPhotos}
+            />
+        );
     }
 
     if (currentView === 'focused-study') {
@@ -79,7 +125,6 @@ function HomePage({ specimens, user, onStudyModeSelect }) {
             </header>
 
             <main className="max-w-6xl mx-auto px-4 py-8">
-                {/* Welcome Section */}
                 <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white p-6 mb-8">
                     <h2 className="text-2xl font-bold mb-2">Welcome, {user?.name || 'Mycologist'}! 🍄</h2>
                     <p className="opacity-90 mb-4">Ready to improve your mushroom identification skills?</p>
@@ -230,16 +275,38 @@ function StudyModeCard({ mode, onClick, disabled }) {
     );
 }
 
-// Quick Study Component
-function QuickStudy({ specimens, onBack }) {
+// Enhanced Quick Study Component with Photo Integration
+function QuickStudy({ specimens, onBack, loadSpecimenPhotos, specimenPhotos }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [userAnswer, setUserAnswer] = useState('');
     const [showAnswer, setShowAnswer] = useState(false);
     const [score, setScore] = useState({ correct: 0, total: 0 });
     const [hintsUsed, setHintsUsed] = useState(0);
+    const [showHints, setShowHints] = useState(false);
+    const [photosLoaded, setPhotosLoaded] = useState(false);
+    const [selectedPhoto, setSelectedPhoto] = useState(null);
 
     const studySpecimens = specimens.filter(s => s.status === 'approved').slice(0, 10);
     const currentSpecimen = studySpecimens[currentIndex];
+    const currentPhotos = currentSpecimen ? specimenPhotos[currentSpecimen.inaturalist_id] || [] : [];
+
+    useEffect(() => {
+        if (currentSpecimen && !specimenPhotos[currentSpecimen.inaturalist_id]) {
+            setPhotosLoaded(false);
+            loadSpecimenPhotos(currentSpecimen.inaturalist_id).then(() => {
+                setPhotosLoaded(true);
+            });
+        } else {
+            setPhotosLoaded(true);
+        }
+    }, [currentSpecimen, loadSpecimenPhotos, specimenPhotos]);
+
+    const hints = [
+        { level: 1, text: `This mushroom belongs to the family ${currentSpecimen?.family}.` },
+        { level: 2, text: `The genus is ${currentSpecimen?.genus}.` },
+        { level: 3, text: `Found in: ${currentSpecimen?.habitat?.substring(0, 100)}...` },
+        { level: 4, text: currentSpecimen?.dna_sequenced ? 'This specimen has been DNA verified.' : 'This is a research-grade community identification.' }
+    ];
 
     const handleSubmit = () => {
         const isCorrect = userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase());
@@ -256,10 +323,18 @@ function QuickStudy({ specimens, onBack }) {
             setUserAnswer('');
             setShowAnswer(false);
             setHintsUsed(0);
+            setShowHints(false);
+            setSelectedPhoto(null);
         } else {
-            // Show final results
             alert(`Quick Study Complete!\nScore: ${score.correct}/${score.total} (${Math.round(score.correct/score.total*100)}%)`);
             onBack();
+        }
+    };
+
+    const useHint = () => {
+        if (hintsUsed < 4) {
+            setHintsUsed(prev => prev + 1);
+            setShowHints(true);
         }
     };
 
@@ -285,7 +360,7 @@ function QuickStudy({ specimens, onBack }) {
         <div className="min-h-screen bg-gray-50">
             {/* Header */}
             <div className="bg-white border-b shadow-sm">
-                <div className="max-w-4xl mx-auto px-4 py-4">
+                <div className="max-w-6xl mx-auto px-4 py-4">
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4">
                             <button 
@@ -309,6 +384,11 @@ function QuickStudy({ specimens, onBack }) {
                                 </div>
                                 <div className="text-xs text-gray-500">Accuracy</div>
                             </div>
+                            {currentSpecimen.dna_sequenced && (
+                                <div className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">
+                                    🧬 DNA Verified
+                                </div>
+                            )}
                         </div>
                     </div>
                     
@@ -325,31 +405,78 @@ function QuickStudy({ specimens, onBack }) {
             </div>
 
             {/* Study Interface */}
-            <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="max-w-6xl mx-auto px-4 py-6">
                 <div className="grid lg:grid-cols-2 gap-6">
-                    {/* Specimen Info */}
+                    {/* Photo Gallery and Specimen Info */}
                     <div className="bg-white rounded-xl shadow-sm p-6">
                         <div className="mb-4">
                             <h3 className="text-lg font-semibold mb-2">Specimen Information</h3>
                             <div className="space-y-1 text-sm">
                                 <p><strong>Location:</strong> {currentSpecimen.location}</p>
-                                <p><strong>Habitat:</strong> {currentSpecimen.habitat}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                    <div className={`w-2 h-2 rounded-full ${currentSpecimen.dna_sequenced ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                                    <span className="text-xs font-medium">
-                                        {currentSpecimen.dna_sequenced ? 'DNA Verified' : 'Research Grade'}
-                                    </span>
-                                </div>
+                                <p><strong>Habitat:</strong> {currentSpecimen.habitat?.substring(0, 100)}...</p>
+                                <p><strong>Quality Score:</strong> {((currentSpecimen.quality_score || 0) * 100).toFixed(0)}%</p>
                             </div>
                         </div>
 
-                        {/* Placeholder for Photos */}
-                        <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center mb-4">
-                            <div className="text-center text-gray-500">
-                                <div className="text-4xl mb-2">📸</div>
-                                <p className="text-sm">Photos coming soon</p>
-                                <p className="text-xs">Will show multiple angles</p>
-                            </div>
+                        {/* Photo Gallery */}
+                        <div className="mb-4">
+                            <h4 className="font-medium mb-2">Photos</h4>
+                            {!photosLoaded ? (
+                                <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
+                                    <div className="text-center text-gray-500">
+                                        <div className="text-4xl mb-2">⏳</div>
+                                        <p className="text-sm">Loading photos...</p>
+                                    </div>
+                                </div>
+                            ) : currentPhotos.length > 0 ? (
+                                <div className="space-y-3">
+                                    {/* Main Photo Display */}
+                                    <div className="relative">
+                                        <img
+                                            src={currentPhotos[0].medium_url}
+                                            alt="Main specimen view"
+                                            className="w-full h-64 object-cover rounded-lg cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                                            onClick={() => setSelectedPhoto(currentPhotos[0])}
+                                        />
+                                        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                            Click to enlarge
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Thumbnail Gallery */}
+                                    {currentPhotos.length > 1 && (
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {currentPhotos.slice(1, 5).map((photo, index) => (
+                                                <img
+                                                    key={photo.id}
+                                                    src={photo.url}
+                                                    alt={`View ${index + 2}`}
+                                                    className="w-full h-16 object-cover rounded cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                                                    onClick={() => setSelectedPhoto(photo)}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <p className="text-xs text-gray-500 text-center">
+                                        📸 {currentPhotos.length} photos available
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="bg-gray-100 rounded-lg h-64 flex items-center justify-center">
+                                    <div className="text-center text-gray-500">
+                                        <div className="text-4xl mb-2">📸</div>
+                                        <p className="text-sm">No photos available</p>
+                                        <a 
+                                            href={`https://www.inaturalist.org/observations/${currentSpecimen.inaturalist_id}`}
+                                            target="_blank"
+                                            className="text-blue-500 hover:text-blue-700 text-xs"
+                                        >
+                                            View on iNaturalist ↗
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -373,17 +500,37 @@ function QuickStudy({ specimens, onBack }) {
                                     />
                                 </div>
                                 
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={!userAnswer.trim()}
-                                    className="w-full bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                >
-                                    Submit Answer
-                                </button>
-                                
-                                <div className="text-center text-sm text-gray-500">
-                                    💡 Hints available after submitting
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleSubmit}
+                                        disabled={!userAnswer.trim()}
+                                        className="flex-1 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        Submit Answer
+                                    </button>
+                                    
+                                    <button
+                                        onClick={useHint}
+                                        disabled={hintsUsed >= 4}
+                                        className="bg-yellow-500 text-white px-4 py-3 rounded-lg hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        💡 Hint ({hintsUsed}/4)
+                                    </button>
                                 </div>
+
+                                {/* Hints Display */}
+                                {showHints && hintsUsed > 0 && (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <h4 className="font-medium text-yellow-800 mb-2">Hints Used:</h4>
+                                        <div className="space-y-2">
+                                            {hints.slice(0, hintsUsed).map((hint, index) => (
+                                                <div key={index} className="text-sm text-yellow-700">
+                                                    <strong>Level {hint.level}:</strong> {hint.text}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -412,6 +559,9 @@ function QuickStudy({ specimens, onBack }) {
                                         <p><strong>Common Name:</strong> {currentSpecimen.common_name || 'Unknown'}</p>
                                         <p><strong>Family:</strong> {currentSpecimen.family}</p>
                                         <p><strong>Your Answer:</strong> {userAnswer}</p>
+                                        {hintsUsed > 0 && (
+                                            <p><strong>Hints Used:</strong> {hintsUsed}/4</p>
+                                        )}
                                     </div>
                                 </div>
                                 
@@ -426,18 +576,47 @@ function QuickStudy({ specimens, onBack }) {
                     </div>
                 </div>
             </div>
+
+            {/* Photo Modal */}
+            {selectedPhoto && (
+                <div 
+                    className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"
+                    onClick={() => setSelectedPhoto(null)}
+                >
+                    <div className="max-w-4xl max-h-full">
+                        <img
+                            src={selectedPhoto.large_url}
+                            alt="Full size specimen view"
+                            className="max-w-full max-h-full object-contain rounded-lg"
+                        />
+                        <div className="text-center mt-4">
+                            <p className="text-white text-sm">{selectedPhoto.attribution}</p>
+                            <p className="text-gray-300 text-xs mt-1">Click anywhere to close</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-// Focused Study Component (Simplified for now)
+// Focused Study Component (Enhanced placeholder)
 function FocusedStudy({ specimens, onBack }) {
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center">
+            <div className="text-center max-w-md">
                 <div className="text-6xl mb-4">🎯</div>
                 <h2 className="text-2xl font-bold mb-2">Focused Study</h2>
                 <p className="text-gray-600 mb-6">Customizable study sessions coming soon!</p>
+                <div className="bg-white rounded-lg p-4 mb-6 text-left">
+                    <h3 className="font-semibold mb-2">Coming Features:</h3>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                        <li>• Filter by family or genus</li>
+                        <li>• Adjust difficulty level</li>
+                        <li>• Focus on DNA-verified specimens</li>
+                        <li>• Custom session length</li>
+                    </ul>
+                </div>
                 <button 
                     onClick={onBack}
                     className="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600"
@@ -449,14 +628,23 @@ function FocusedStudy({ specimens, onBack }) {
     );
 }
 
-// Marathon Study Component (Simplified for now)
+// Marathon Study Component (Enhanced placeholder)
 function MarathonStudy({ specimens, onBack }) {
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="text-center">
+            <div className="text-center max-w-md">
                 <div className="text-6xl mb-4">♾️</div>
                 <h2 className="text-2xl font-bold mb-2">Marathon Mode</h2>
                 <p className="text-gray-600 mb-6">Unlimited study sessions coming soon!</p>
+                <div className="bg-white rounded-lg p-4 mb-6 text-left">
+                    <h3 className="font-semibold mb-2">Coming Features:</h3>
+                    <ul className="text-sm text-gray-600 space-y-1">
+                        <li>• Unlimited questions</li>
+                        <li>• Spaced repetition algorithm</li>
+                        <li>• Performance tracking</li>
+                        <li>• Leaderboards</li>
+                    </ul>
+                </div>
                 <button 
                     onClick={onBack}
                     className="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
@@ -467,6 +655,3 @@ function MarathonStudy({ specimens, onBack }) {
         </div>
     );
 }
-
-// Render the app
-ReactDOM.render(<App />, document.getElementById('root'));

@@ -17,12 +17,14 @@
         // Configuration
         const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+        const INATURALIST_API = 'https://api.inaturalist.org/v1';
         
         function AdminPortal() {
             const [currentView, setCurrentView] = useState('dashboard');
             const [specimens, setSpecimens] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedSpecimen, setSelectedSpecimen] = useState(null);
+            const [specimenPhotos, setSpecimenPhotos] = useState({});
             const [stats, setStats] = useState({});
 
             useEffect(() => {
@@ -31,7 +33,7 @@
 
             const loadData = async () => {
                 try {
-                    // Load specimens (read-only, anon key is fine)
+                    // Load specimens
                     const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
                         headers: {
                             'apikey': SUPABASE_ANON_KEY,
@@ -61,11 +63,44 @@
                 }
             };
 
+            const loadSpecimenPhotos = async (inaturalistId) => {
+                if (specimenPhotos[inaturalistId]) {
+                    return specimenPhotos[inaturalistId];
+                }
+
+                try {
+                    console.log(`📸 Loading photos for iNaturalist ID: ${inaturalistId}`);
+                    const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
+                    const data = await response.json();
+                    
+                    if (data.results && data.results[0] && data.results[0].photos) {
+                        const photos = data.results[0].photos.map(photo => ({
+                            id: photo.id,
+                            url: photo.url,
+                            medium_url: photo.url.replace('square', 'medium'),
+                            large_url: photo.url.replace('square', 'large'),
+                            attribution: photo.attribution || 'iNaturalist user'
+                        }));
+                        
+                        setSpecimenPhotos(prev => ({
+                            ...prev,
+                            [inaturalistId]: photos
+                        }));
+                        
+                        console.log(`✅ Loaded ${photos.length} photos`);
+                        return photos;
+                    }
+                } catch (error) {
+                    console.error('Error loading photos:', error);
+                }
+                
+                return [];
+            };
+
             const updateSpecimenStatus = async (specimenId, status, notes = '') => {
                 try {
                     console.log('Updating specimen:', { specimenId, status, notes });
                     
-                    // Use our serverless API endpoint instead of direct Supabase call
                     const response = await fetch('/api/admin', {
                         method: 'PATCH',
                         headers: {
@@ -82,7 +117,7 @@
 
                     if (response.ok) {
                         alert(result.message || `Specimen ${status} successfully!`);
-                        loadData(); // Reload data
+                        loadData();
                         setSelectedSpecimen(null);
                     } else {
                         console.error('API Error:', result);
@@ -109,6 +144,7 @@
                             <ReviewQueue 
                                 specimens={specimens.filter(s => s.status === 'pending')} 
                                 onSelectSpecimen={setSelectedSpecimen}
+                                loadSpecimenPhotos={loadSpecimenPhotos}
                             />
                         )}
                         {currentView === 'approved' && (
@@ -126,16 +162,17 @@
                     {selectedSpecimen && (
                         <SpecimenReviewModal 
                             specimen={selectedSpecimen}
+                            photos={specimenPhotos[selectedSpecimen.inaturalist_id] || []}
                             onClose={() => setSelectedSpecimen(null)}
                             onApprove={(notes) => updateSpecimenStatus(selectedSpecimen.id, 'approved', notes)}
                             onReject={(notes) => updateSpecimenStatus(selectedSpecimen.id, 'rejected', notes)}
+                            loadPhotos={() => loadSpecimenPhotos(selectedSpecimen.inaturalist_id)}
                         />
                     )}
                 </div>
             );
         }
 
-        // Keep all the other components exactly the same (LoadingScreen, AdminHeader, etc.)
         function LoadingScreen() {
             return (
                 <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -220,7 +257,6 @@
 
             return (
                 <div className="space-y-6">
-                    {/* Stats Grid */}
                     <div className="grid md:grid-cols-4 gap-6">
                         <StatCard title="Total Specimens" value={stats.total} color="text-blue-600" />
                         <StatCard title="Pending Review" value={stats.pending} color="text-orange-600" />
@@ -228,7 +264,6 @@
                         <StatCard title="DNA Verified" value={stats.dnaVerified} color="text-purple-600" />
                     </div>
 
-                    {/* Quick Actions */}
                     <div className="bg-white rounded-xl p-6 shadow-sm">
                         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                         <div className="grid md:grid-cols-3 gap-4">
@@ -253,7 +288,6 @@
                         </div>
                     </div>
 
-                    {/* Recent Specimens */}
                     <div className="bg-white rounded-xl p-6 shadow-sm">
                         <h3 className="text-lg font-semibold mb-4">Recent Specimens</h3>
                         <div className="space-y-3">
@@ -275,7 +309,7 @@
             );
         }
 
-        function ReviewQueue({ specimens, onSelectSpecimen }) {
+        function ReviewQueue({ specimens, onSelectSpecimen, loadSpecimenPhotos }) {
             if (specimens.length === 0) {
                 return (
                     <div className="text-center py-12">
@@ -298,7 +332,10 @@
                             <SpecimenCard 
                                 key={specimen.id} 
                                 specimen={specimen} 
-                                onSelect={() => onSelectSpecimen(specimen)}
+                                onSelect={() => {
+                                    onSelectSpecimen(specimen);
+                                    loadSpecimenPhotos(specimen.inaturalist_id);
+                                }}
                             />
                         ))}
                     </div>
@@ -417,12 +454,20 @@
             );
         }
 
-        function SpecimenReviewModal({ specimen, onClose, onApprove, onReject }) {
+        function SpecimenReviewModal({ specimen, photos, onClose, onApprove, onReject, loadPhotos }) {
             const [notes, setNotes] = useState('');
+            const [photosLoaded, setPhotosLoaded] = useState(false);
+            const [selectedPhoto, setSelectedPhoto] = useState(null);
+
+            useEffect(() => {
+                if (!photosLoaded) {
+                    loadPhotos().then(() => setPhotosLoaded(true));
+                }
+            }, [loadPhotos, photosLoaded]);
 
             return (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                    <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b">
                             <div className="flex justify-between items-center">
                                 <h2 className="text-xl font-bold">Review: {specimen.species_name}</h2>
@@ -433,6 +478,56 @@
                         </div>
 
                         <div className="p-6 space-y-6">
+                            {/* Photo Gallery */}
+                            <div>
+                                <h3 className="font-semibold mb-3">Photos from iNaturalist</h3>
+                                {!photosLoaded ? (
+                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
+                                        <div className="text-4xl mb-2">⏳</div>
+                                        <p className="text-gray-600">Loading photos...</p>
+                                    </div>
+                                ) : photos.length > 0 ? (
+                                    <div className="space-y-4">
+                                        <div className="grid md:grid-cols-4 gap-4">
+                                            {photos.map((photo, index) => (
+                                                <div 
+                                                    key={photo.id} 
+                                                    className="relative cursor-pointer group"
+                                                    onClick={() => setSelectedPhoto(photo)}
+                                                >
+                                                    <img
+                                                        src={photo.medium_url}
+                                                        alt={`View ${index + 1}`}
+                                                        className="w-full h-32 object-cover rounded-lg group-hover:ring-2 group-hover:ring-blue-500 transition-all"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-lg transition-all" />
+                                                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                                        Photo {index + 1}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="text-sm text-gray-500">
+                                            📸 {photos.length} photos available • Click to enlarge
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
+                                        <div className="text-4xl mb-2">📸</div>
+                                        <p className="text-gray-600">No photos found for this observation</p>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            <a 
+                                                href={`https://www.inaturalist.org/observations/${specimen.inaturalist_id}`}
+                                                target="_blank"
+                                                className="text-blue-500 hover:text-blue-700"
+                                            >
+                                                View on iNaturalist ↗
+                                            </a>
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Specimen Details */}
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div>
@@ -462,25 +557,6 @@
                                         <div><strong>DNA Verified:</strong> {specimen.dna_sequenced ? 'Yes' : 'No'}</div>
                                         <div><strong>Quality Score:</strong> {((specimen.quality_score || 0) * 100).toFixed(0)}%</div>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* Photos Placeholder */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Photos</h3>
-                                <div className="bg-gray-100 rounded-lg p-8 text-center">
-                                    <div className="text-4xl mb-2">📸</div>
-                                    <p className="text-gray-600">Photo integration coming soon</p>
-                                    <p className="text-sm text-gray-500">
-                                        View photos at: 
-                                        <a 
-                                            href={`https://www.inaturalist.org/observations/${specimen.inaturalist_id}`}
-                                            target="_blank"
-                                            className="text-blue-500 hover:text-blue-700 ml-1"
-                                        >
-                                            iNaturalist observation ↗
-                                        </a>
-                                    </p>
                                 </div>
                             </div>
 
@@ -521,6 +597,26 @@
                             </div>
                         </div>
                     </div>
+
+                    {/* Photo Modal */}
+                    {selectedPhoto && (
+                        <div 
+                            className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-60"
+                            onClick={() => setSelectedPhoto(null)}
+                        >
+                            <div className="max-w-4xl max-h-full">
+                                <img
+                                    src={selectedPhoto.large_url}
+                                    alt="Full size view"
+                                    className="max-w-full max-h-full object-contain rounded-lg"
+                                />
+                                <div className="text-center mt-4">
+                                    <p className="text-white text-sm">{selectedPhoto.attribution}</p>
+                                    <p className="text-gray-300 text-xs mt-1">Click anywhere to close</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
