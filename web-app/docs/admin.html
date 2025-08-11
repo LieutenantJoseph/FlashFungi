@@ -36,6 +36,7 @@
             const [stats, setStats] = useState({});
             const [selectedSpecimen, setSelectedSpecimen] = useState(null);
             const [specimenPhotos, setSpecimenPhotos] = useState({});
+            const [taxonomyCache, setTaxonomyCache] = useState({});
 
             useEffect(() => {
                 console.log('🔄 useEffect triggered');
@@ -79,6 +80,79 @@
                 }
             };
 
+            // NEW: Load taxonomy information from iNaturalist
+            const loadTaxonomyInfo = async (speciesName) => {
+                if (taxonomyCache[speciesName]) {
+                    return taxonomyCache[speciesName];
+                }
+
+                try {
+                    console.log(`🌿 Loading taxonomy for: ${speciesName}`);
+                    
+                    // Search for the species on iNaturalist
+                    const searchResponse = await fetch(`${INATURALIST_API}/taxa?q=${encodeURIComponent(speciesName)}&rank=species&is_active=true`);
+                    const searchData = await searchResponse.json();
+                    
+                    if (searchData.results && searchData.results.length > 0) {
+                        const taxon = searchData.results[0];
+                        
+                        // Get detailed taxonomy with ancestors
+                        const detailResponse = await fetch(`${INATURALIST_API}/taxa/${taxon.id}`);
+                        const detailData = await detailResponse.json();
+                        
+                        if (detailData.results && detailData.results[0]) {
+                            const detailedTaxon = detailData.results[0];
+                            
+                            // Extract taxonomic hierarchy
+                            const taxonomy = {
+                                species: detailedTaxon.name,
+                                genus: extractTaxonByRank(detailedTaxon, 'genus'),
+                                family: extractTaxonByRank(detailedTaxon, 'family'),
+                                order: extractTaxonByRank(detailedTaxon, 'order'),
+                                class: extractTaxonByRank(detailedTaxon, 'class'),
+                                phylum: extractTaxonByRank(detailedTaxon, 'phylum'),
+                                kingdom: extractTaxonByRank(detailedTaxon, 'kingdom'),
+                                common_name: detailedTaxon.preferred_common_name,
+                                full_hierarchy: detailedTaxon.ancestors || []
+                            };
+                            
+                            // Cache the result
+                            setTaxonomyCache(prev => ({
+                                ...prev,
+                                [speciesName]: taxonomy
+                            }));
+                            
+                            console.log(`✅ Loaded taxonomy for ${speciesName}:`, taxonomy);
+                            return taxonomy;
+                        }
+                    }
+                    
+                    console.log(`⚠️ No taxonomy found for ${speciesName}`);
+                    return null;
+                } catch (error) {
+                    console.error('Error loading taxonomy:', error);
+                    return null;
+                }
+            };
+
+            // Helper function to extract taxon by rank
+            const extractTaxonByRank = (taxon, targetRank) => {
+                // Check if the taxon itself is the target rank
+                if (taxon.rank === targetRank) {
+                    return taxon.name;
+                }
+                
+                // Check ancestors
+                if (taxon.ancestors) {
+                    const ancestor = taxon.ancestors.find(a => a.rank === targetRank);
+                    if (ancestor) {
+                        return ancestor.name;
+                    }
+                }
+                
+                return null;
+            };
+
             const loadSpecimenPhotos = async (inaturalistId) => {
                 if (specimenPhotos[inaturalistId]) {
                     return specimenPhotos[inaturalistId];
@@ -113,6 +187,36 @@
                 return [];
             };
 
+            // NEW: Update specimen with accurate taxonomy
+            const updateSpecimenTaxonomy = async (specimenId, taxonomy) => {
+                if (!taxonomy) return;
+
+                try {
+                    const updateData = {
+                        genus: taxonomy.genus || 'Unknown',
+                        family: taxonomy.family || 'Fungi',
+                        common_name: taxonomy.common_name || null
+                    };
+
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (response.ok) {
+                        console.log(`✅ Updated taxonomy for specimen ${specimenId}`);
+                        loadData(); // Refresh data
+                    }
+                } catch (error) {
+                    console.error('Error updating specimen taxonomy:', error);
+                }
+            };
+
             const updateSpecimenStatus = async (specimenId, status, notes = '', selectedPhotoIds = []) => {
                 try {
                     console.log(`Updating specimen ${specimenId} to ${status}`);
@@ -145,7 +249,6 @@
                 }
             };
 
-            // NEW: Delete specimen (instead of rejecting)
             const deleteSpecimen = async (specimenId, speciesName) => {
                 if (!confirm(`Are you sure you want to delete the specimen "${speciesName}"? This action cannot be undone.`)) {
                     return;
@@ -195,6 +298,7 @@
                         onSelectSpecimen: (specimen) => {
                             setSelectedSpecimen(specimen);
                             loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
                         }
                     }),
                     currentView === 'approved' && React.createElement(ApprovedSpecimens, { 
@@ -202,6 +306,7 @@
                         onSelectSpecimen: (specimen) => {
                             setSelectedSpecimen(specimen);
                             loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
                         }
                     }),
                     currentView === 'all' && React.createElement(AllSpecimens, { 
@@ -209,17 +314,20 @@
                         onSelectSpecimen: (specimen) => {
                             setSelectedSpecimen(specimen);
                             loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
                         }
                     })
                 ),
                 
-                // Review Modal
+                // Review Modal with Taxonomy
                 selectedSpecimen && React.createElement(SpecimenReviewModal, {
                     specimen: selectedSpecimen,
                     photos: specimenPhotos[selectedSpecimen.inaturalist_id] || [],
+                    taxonomy: taxonomyCache[selectedSpecimen.species_name] || null,
                     onClose: () => setSelectedSpecimen(null),
                     onApprove: (notes, selectedPhotoIds) => updateSpecimenStatus(selectedSpecimen.id, 'approved', notes, selectedPhotoIds),
                     onDelete: () => deleteSpecimen(selectedSpecimen.id, selectedSpecimen.species_name),
+                    onUpdateTaxonomy: (taxonomy) => updateSpecimenTaxonomy(selectedSpecimen.id, taxonomy),
                     loadPhotos: () => loadSpecimenPhotos(selectedSpecimen.inaturalist_id)
                 })
             );
@@ -475,8 +583,8 @@
             );
         }
 
-        // NEW: Comprehensive Specimen Review Modal
-        function SpecimenReviewModal({ specimen, photos, onClose, onApprove, onDelete, loadPhotos }) {
+        // Enhanced Specimen Review Modal with Taxonomy
+        function SpecimenReviewModal({ specimen, photos, taxonomy, onClose, onApprove, onDelete, onUpdateTaxonomy, loadPhotos }) {
             const [notes, setNotes] = useState(specimen.admin_notes || '');
             const [photosLoaded, setPhotosLoaded] = useState(false);
             const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -500,7 +608,7 @@
             };
 
             return React.createElement('div', {
-                className: 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50'
+                className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'
             },
                 React.createElement('div', {
                     className: 'bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto'
@@ -520,6 +628,56 @@
 
                     // Content
                     React.createElement('div', { className: 'p-6 space-y-6' },
+                        // Taxonomy Section with iNaturalist Data
+                        taxonomy && React.createElement('div', { className: 'bg-blue-50 rounded-lg p-4' },
+                            React.createElement('div', { className: 'flex justify-between items-start mb-3' },
+                                React.createElement('h3', { className: 'font-semibold text-blue-800' }, '🌿 iNaturalist Taxonomy'),
+                                taxonomy.family !== specimen.family && React.createElement('button', {
+                                    onClick: () => onUpdateTaxonomy(taxonomy),
+                                    className: 'bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600'
+                                }, 'Update Database')
+                            ),
+                            React.createElement('div', { className: 'grid md:grid-cols-2 gap-4 text-sm' },
+                                React.createElement('div', null,
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Kingdom: '), taxonomy.kingdom || 'Unknown'
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Phylum: '), taxonomy.phylum || 'Unknown'
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Class: '), taxonomy.class || 'Unknown'
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Order: '), taxonomy.order || 'Unknown'
+                                    )
+                                ),
+                                React.createElement('div', null,
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Family: '), 
+                                        React.createElement('span', { 
+                                            className: taxonomy.family !== specimen.family ? 'text-red-600 font-bold' : 'text-green-600'
+                                        }, taxonomy.family || 'Unknown')
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Genus: '), taxonomy.genus || 'Unknown'
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Species: '), taxonomy.species || 'Unknown'
+                                    ),
+                                    React.createElement('div', { className: 'mb-2' },
+                                        React.createElement('strong', null, 'Common: '), taxonomy.common_name || 'None'
+                                    )
+                                )
+                            ),
+                            taxonomy.family !== specimen.family && React.createElement('div', { 
+                                className: 'mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-sm text-yellow-800'
+                            },
+                                React.createElement('strong', null, 'Note: '), 
+                                `Database shows family as "${specimen.family}" but iNaturalist shows "${taxonomy.family}". Click "Update Database" to use iNaturalist taxonomy.`
+                            )
+                        ),
+
                         // Photo Selection
                         React.createElement('div', null,
                             React.createElement('h3', { className: 'font-semibold mb-3' }, 'Photos'),
@@ -556,7 +714,7 @@
                                                     })
                                                 ),
                                                 React.createElement('div', {
-                                                    className: 'absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2'
+                                                    className: 'absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-2'
                                                 },
                                                     `Photo ${index + 1}`,
                                                     selectedPhotoIds.includes(photo.id) && 
@@ -591,6 +749,228 @@
                         // Specimen Details
                         React.createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
                             React.createElement('div', null,
-                                React.createElement('h3', { className: 'font-semibold mb-3' }, 'Taxonomy'),
+                                React.createElement('h3', { className: 'font-semibold mb-3' }, 'Database Taxonomy'),
                                 React.createElement('div', { className: 'space-y-2 text-sm' },
-                                    React.createElement('div
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Species: '), specimen.species_name
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Common Name: '), specimen.common_name || 'None'
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Genus: '), specimen.genus
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Family: '), specimen.family
+                                    )
+                                )
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('h3', { className: 'font-semibold mb-3' }, 'Collection Info'),
+                                React.createElement('div', { className: 'space-y-2 text-sm' },
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Location: '), specimen.location
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Habitat: '), specimen.habitat
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'iNaturalist ID: '),
+                                        React.createElement('a', {
+                                            href: `https://www.inaturalist.org/observations/${specimen.inaturalist_id}`,
+                                            target: '_blank',
+                                            className: 'text-blue-500 hover:text-blue-700'
+                                        }, `${specimen.inaturalist_id} ↗`)
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'DNA Verified: '), 
+                                        specimen.dna_sequenced ? 'Yes' : 'No'
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Quality Score: '), 
+                                        `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
+                                    ),
+                                    React.createElement('div', null,
+                                        React.createElement('strong', null, 'Status: '), 
+                                        React.createElement(StatusBadge, { status: specimen.status })
+                                    ),
+                                    specimen.approved_at && React.createElement('div', null,
+                                        React.createElement('strong', null, 'Approved: '), 
+                                        new Date(specimen.approved_at).toLocaleDateString()
+                                    )
+                                )
+                            )
+                        ),
+
+                        // Admin Notes
+                        React.createElement('div', null,
+                            React.createElement('h3', { className: 'font-semibold mb-3' }, 'Admin Notes'),
+                            React.createElement('textarea', {
+                                value: notes,
+                                onChange: (e) => setNotes(e.target.value),
+                                placeholder: 'Add notes about this specimen...',
+                                className: 'w-full p-3 border rounded-lg resize-none',
+                                rows: 3
+                            })
+                        ),
+
+                        // Action Buttons
+                        React.createElement('div', { className: 'flex gap-4 pt-4 border-t' },
+                            specimen.status === 'pending' ? [
+                                React.createElement('button', {
+                                    key: 'approve',
+                                    onClick: () => onApprove(notes, selectedPhotoIds),
+                                    disabled: selectedPhotoIds.length === 0,
+                                    className: 'bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2'
+                                }, '✅ Approve Specimen'),
+                                React.createElement('button', {
+                                    key: 'delete',
+                                    onClick: onDelete,
+                                    className: 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2'
+                                }, '🗑️ Delete Specimen')
+                            ] : [
+                                React.createElement('button', {
+                                    key: 'update',
+                                    onClick: () => {
+                                        onApprove(notes, selectedPhotoIds);
+                                    },
+                                    className: 'bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2'
+                                }, '💾 Update Notes'),
+                                React.createElement('button', {
+                                    key: 'delete-approved',
+                                    onClick: onDelete,
+                                    className: 'bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2'
+                                }, '🗑️ Delete Specimen')
+                            ],
+                            React.createElement('button', {
+                                onClick: onClose,
+                                className: 'bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors'
+                            }, 'Close')
+                        )
+                    ),
+
+                    // Photo Modal
+                    selectedPhoto && React.createElement('div', {
+                        className: 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-60',
+                        onClick: () => setSelectedPhoto(null)
+                    },
+                        React.createElement('div', { className: 'max-w-4xl max-h-full' },
+                            React.createElement('img', {
+                                src: selectedPhoto.large_url,
+                                alt: 'Full size view',
+                                className: 'max-w-full max-h-full object-contain rounded-lg'
+                            }),
+                            React.createElement('div', { className: 'text-center mt-4' },
+                                React.createElement('p', { className: 'text-white text-sm' }, selectedPhoto.attribution),
+                                React.createElement('p', { className: 'text-gray-300 text-xs mt-1' }, 'Click anywhere to close')
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        // Reusable Specimen Card Component
+        function SpecimenCard({ specimen, onReview, showReviewButton, reviewButtonText = 'Review' }) {
+            return React.createElement('div', {
+                className: 'bg-white rounded-xl shadow-sm p-6'
+            },
+                React.createElement('div', { className: 'flex justify-between items-start mb-4' },
+                    React.createElement('div', null,
+                        React.createElement('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
+                        React.createElement('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
+                        React.createElement('p', { className: 'text-sm text-gray-500' }, specimen.location)
+                    ),
+                    React.createElement('div', { className: 'flex items-center gap-2' },
+                        React.createElement(StatusBadge, { status: specimen.status }),
+                        specimen.dna_sequenced && React.createElement('span', {
+                            className: 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium'
+                        }, 'DNA Verified'),
+                        showReviewButton && React.createElement('button', {
+                            onClick: onReview,
+                            className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+                        }, reviewButtonText)
+                    )
+                ),
+                React.createElement('div', { className: 'grid md:grid-cols-4 gap-2 mb-4' },
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Family: '), specimen.family
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Habitat: '), 
+                        specimen.habitat && specimen.habitat.length > 50 ? 
+                            specimen.habitat.substring(0, 50) + '...' : 
+                            specimen.habitat || 'Not specified'
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'iNat ID: '), specimen.inaturalist_id
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Quality: '), 
+                        `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
+                    )
+                ),
+                React.createElement('div', { className: 'text-xs text-gray-500' },
+                    'Added: ', new Date(specimen.created_at).toLocaleDateString(),
+                    specimen.approved_at && React.createElement('span', null, 
+                        ' • Approved: ', new Date(specimen.approved_at).toLocaleDateString()
+                    )
+                )
+            );
+        }
+
+        function StatCard({ title, value, color }) {
+            return React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('div', null,
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, title),
+                        React.createElement('p', { className: `text-2xl font-bold ${color}` }, value || 0)
+                    )
+                )
+            );
+        }
+
+        function QuickActionCard({ title, description, icon, color }) {
+            return React.createElement('div', { className: `${color} border rounded-lg p-4 cursor-pointer transition-colors` },
+                React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('div', { className: 'text-2xl' }, icon),
+                    React.createElement('div', null,
+                        React.createElement('h4', { className: 'font-medium' }, title),
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, description)
+                    )
+                )
+            );
+        }
+
+        function StatusBadge({ status }) {
+            const statusConfig = {
+                pending: { color: 'bg-orange-100 text-orange-800', label: 'Pending Review' },
+                approved: { color: 'bg-green-100 text-green-800', label: 'Approved' }
+            };
+
+            const config = statusConfig[status] || statusConfig.pending;
+
+            return React.createElement('span', {
+                className: `px-3 py-1 rounded-full text-sm font-medium ${config.color}`
+            }, config.label);
+        }
+
+        // Render the app
+        try {
+            console.log('🎬 About to render AdminPortal...');
+            const root = ReactDOM.createRoot(document.getElementById('admin-root'));
+            root.render(React.createElement(AdminPortal));
+            console.log('✅ AdminPortal rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering AdminPortal:', error);
+            document.getElementById('admin-root').innerHTML = `
+                <div style="padding: 20px; color: red; text-align: center;">
+                    <h1>Rendering Error</h1>
+                    <p>Error: ${error.message}</p>
+                    <p>Check the console for details.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
