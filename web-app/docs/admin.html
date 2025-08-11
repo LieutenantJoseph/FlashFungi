@@ -1,721 +1,379 @@
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Genus</label>
-                                        <input
-                                            type="text"
-                                            value={editData.genus}
-                                            onChange={(e) => setEditData({...editData, genus: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Family</label>
-                                        <input
-                                            type="text"
-                                            value={editData.family}
-                                            onChange={(e) => setEditData({...editData, family: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Common Name</label>
-                                        <input
-                                            type="text"
-                                            value={editData.common_name}
-                                            onChange={(e) => setEditData({...editData, common_name: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                            placeholder="Optional"
-                                        />
-                                    </div>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Location</label>
-                                        <input
-                                            type="text"
-                                            value={editData.location}
-                                            onChange={(e) => setEditData({...editData, location: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Habitat</label>
-                                        <textarea
-                                            value={editData.habitat}
-                                            onChange={(e) => setEditData({...editData, habitat: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                            rows={3}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="flex items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                checked={editData.dna_sequenced}
-                                                onChange={(e) => setEditData({...editData, dna_sequenced: e.target.checked})}
-                                            />
-                                            <span className="text-sm font-medium">DNA Sequenced</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona Mushroom Study - Admin Portal</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="admin-root">
+        <div style="padding: 20px; text-align: center;">
+            <h1>Loading Admin Portal...</h1>
+            <p>If this message persists, there may be a JavaScript error.</p>
+        </div>
+    </div>
 
-                            {/* Admin Notes */}
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Admin Notes</label>
-                                <textarea
-                                    value={editData.admin_notes}
-                                    onChange={(e) => setEditData({...editData, admin_notes: e.target.value})}
-                                    className="w-full p-2 border rounded"
-                                    rows={3}
-                                    placeholder="Internal notes..."
-                                />
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-4 pt-4 border-t">
-                                <button 
-                                    onClick={handleSave}
-                                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    Save Changes
-                                </button>
-                                <button 
-                                    onClick={onClose}
-                                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
+    <script type="text/babel">
+        console.log('🔥 Admin portal script starting...');
+        
+        // Check React availability
+        if (typeof React === 'undefined') {
+            console.error('❌ React not available');
+            document.getElementById('admin-root').innerHTML = '<div style="padding: 20px; color: red;"><h1>Error: React not loaded</h1></div>';
+        } else {
+            console.log('✅ React available');
         }
 
-        function Dashboard({ stats, specimens, speciesHints }) {
-            const recentSpecimens = specimens.slice(0, 5);
-            const speciesWithHints = new Set(speciesHints.map(h => h.species_name));
-            const uniqueSpecies = new Set(specimens.map(s => s.species_name));
-            const hintsCompleteness = uniqueSpecies.size > 0 ? Math.round((speciesWithHints.size / uniqueSpecies.size) * 100) : 0;
+        const { useState, useEffect } = React;
+        
+        // Configuration
+        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
 
-            return (
-                <div className="space-y-6">
-                    <div className="grid md:grid-cols-5 gap-6">
-                        <StatCard title="Total Specimens" value={stats.total} color="text-blue-600" />
-                        <StatCard title="Pending Review" value={stats.pending} color="text-orange-600" />
-                        <StatCard title="Approved" value={stats.approved} color="text-green-600" />
-                        <StatCard title="DNA Verified" value={stats.dnaVerified} color="text-purple-600" />
-                        <StatCard title="Hints Coverage" value={`${hintsCompleteness}%`} color="text-indigo-600" />
-                    </div>
-
-                    <div className="bg-white rounded-xl p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-                        <div className="grid md:grid-cols-4 gap-4">
-                            <QuickActionCard 
-                                title="Review Pending"
-                                description={`${stats.pending} specimens need attention`}
-                                icon="⏳"
-                                color="bg-orange-50 hover:bg-orange-100 border-orange-200"
-                            />
-                            <QuickActionCard 
-                                title="Manage Species Hints"
-                                description="Edit hints and AI sources"
-                                icon="🧬"
-                                color="bg-indigo-50 hover:bg-indigo-100 border-indigo-200"
-                            />
-                            <QuickActionCard 
-                                title="View Approved"
-                                description={`${stats.approved} specimens ready`}
-                                icon="✅"
-                                color="bg-green-50 hover:bg-green-100 border-green-200"
-                            />
-                            <QuickActionCard 
-                                title="Manage All Specimens"
-                                description="Edit, delete, and organize"
-                                icon="🔧"
-                                color="bg-blue-50 hover:bg-blue-100 border-blue-200"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-6 shadow-sm">
-                        <h3 className="text-lg font-semibold mb-4">Recent Specimens</h3>
-                        <div className="space-y-3">
-                            {recentSpecimens.map(specimen => (
-                                <div key={specimen.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                    <div>
-                                        <h4 className="font-medium">{specimen.species_name}</h4>
-                                        <p className="text-sm text-gray-600">{specimen.location}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <StatusBadge status={specimen.status} />
-                                        {specimen.dna_sequenced && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">DNA</span>}
-                                        {speciesWithHints.has(specimen.species_name) && 
-                                            <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Hints</span>
-                                        }
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function SpeciesManagement({ speciesHints, specimens, onSelectSpecies, generateAIHints, saveSpeciesHints }) {
-            const [filter, setFilter] = useState('all');
+        function AdminPortal() {
+            console.log('🏗️ AdminPortal component rendering');
             
-            const allSpecies = [...new Set(specimens.map(s => s.species_name))].sort();
-            const speciesWithHints = new Set(speciesHints.map(h => h.species_name));
-            
-            const filteredSpecies = allSpecies.filter(species => {
-                if (filter === 'with-hints') return speciesWithHints.has(species);
-                if (filter === 'missing-hints') return !speciesWithHints.has(species);
-                return true;
-            });
-
-            const handleGenerateHints = async (speciesName) => {
-                try {
-                    const result = await generateAIHints(speciesName);
-                    if (result.success && !result.error) {
-                        const specimen = specimens.find(s => s.species_name === speciesName);
-                        const hintsData = {
-                            species_name: speciesName,
-                            genus: specimen ? specimen.genus : speciesName.split(' ')[0],
-                            family: specimen ? specimen.family : 'Unknown',
-                            hints: result.hints,
-                            source_quality: result.source_quality,
-                            ai_confidence: result.confidence,
-                            admin_reviewed: false
-                        };
-                        
-                        const saved = await saveSpeciesHints(hintsData);
-                        if (saved) {
-                            alert('Hints generated and saved successfully!');
-                        } else {
-                            alert('Failed to save hints');
-                        }
-                    } else {
-                        alert('Error generating hints: ' + (result.error || 'Unknown error'));
-                    }
-                } catch (error) {
-                    alert('Error: ' + error.message);
-                }
-            };
-
-            return (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">Species Hints Management</h2>
-                        <div className="flex gap-2">
-                            <select 
-                                value={filter} 
-                                onChange={(e) => setFilter(e.target.value)}
-                                className="px-3 py-1 border rounded"
-                            >
-                                <option value="all">All Species ({allSpecies.length})</option>
-                                <option value="with-hints">With Hints ({speciesWithHints.size})</option>
-                                <option value="missing-hints">Missing Hints ({allSpecies.length - speciesWithHints.size})</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4">
-                        {filteredSpecies.map(species => {
-                            const hints = speciesHints.find(h => h.species_name === species);
-                            const specimenCount = specimens.filter(s => s.species_name === species).length;
-                            const approvedCount = specimens.filter(s => s.species_name === species && s.status === 'approved').length;
-                            
-                            return (
-                                <div key={species} className="bg-white rounded-xl p-4 shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <h3 className="font-semibold text-lg">{species}</h3>
-                                            <p className="text-sm text-gray-600">
-                                                {specimenCount} specimens ({approvedCount} approved)
-                                            </p>
-                                            {hints && (
-                                                <div className="mt-2">
-                                                    <p className="text-xs text-gray-500">
-                                                        Hints: {hints.hints?.length || 0} • 
-                                                        Source: {hints.source_quality || 'Unknown'} • 
-                                                        Updated: {new Date(hints.updated_at || hints.created_at).toLocaleDateString()}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-2">
-                                            {hints ? (
-                                                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                                                    ✓ Has Hints
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs">
-                                                        ⚠ Missing Hints
-                                                    </span>
-                                                    <button
-                                                        onClick={() => handleGenerateHints(species)}
-                                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                                                    >
-                                                        Generate Hints
-                                                    </button>
-                                                </>
-                                            )}
-                                            <button
-                                                onClick={() => onSelectSpecies(species)}
-                                                className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                                            >
-                                                {hints ? 'Edit Hints' : 'Create Hints'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-
-        function ApprovedSpecimens({ specimens, speciesHints, onEditSpecimen, onDeleteSpecimen, loadSpecimenPhotos }) {
-            return (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">Approved Specimens</h2>
-                        <p className="text-gray-600">{specimens.length} approved</p>
-                    </div>
-
-                    <div className="grid gap-4">
-                        {specimens.map(specimen => {
-                            const hasHints = speciesHints.find(h => h.species_name === specimen.species_name);
-                            
-                            return (
-                                <div key={specimen.id} className="bg-white rounded-xl p-4 shadow-sm">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-semibold text-lg">{specimen.species_name}</h3>
-                                            <p className="text-gray-600">{specimen.location}</p>
-                                            <p className="text-sm text-gray-500">
-                                                Approved: {specimen.approved_at ? new Date(specimen.approved_at).toLocaleDateString() : 'Unknown'}
-                                            </p>
-                                            <p className="text-sm text-gray-500">
-                                                iNaturalist: <a 
-                                                    href={`https://www.inaturalist.org/observations/${specimen.inaturalist_id}`}
-                                                    target="_blank"
-                                                    className="text-blue-500 hover:text-blue-700"
-                                                >
-                                                    {specimen.inaturalist_id}
-                                                </a>
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <StatusBadge status={specimen.status} />
-                                            {specimen.dna_sequenced && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">DNA</span>}
-                                            {hasHints && <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded">Hints</span>}
-                                            <button
-                                                onClick={() => {
-                                                    onEditSpecimen(specimen);
-                                                    loadSpecimenPhotos(specimen.inaturalist_id);
-                                                }}
-                                                className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => onDeleteSpecimen(specimen.id)}
-                                                className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-
-        function SpecimenReviewModal({ specimen, photos, speciesHints, onClose, onApprove, onReject, loadPhotos }) {
-            const [notes, setNotes] = useState('');
-            const [photosLoaded, setPhotosLoaded] = useState(false);
-            const [selectedPhoto, setSelectedPhoto] = useState(null);
-            const [selectedPhotoIds, setSelectedPhotoIds] = useState([]);
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [specimens, setSpecimens] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [stats, setStats] = useState({});
 
             useEffect(() => {
-                if (!photosLoaded) {
-                    loadPhotos().then((loadedPhotos) => {
-                        setPhotosLoaded(true);
-                        setSelectedPhotoIds(loadedPhotos.map(p => p.id));
-                    });
-                }
-            }, [loadPhotos, photosLoaded]);
+                console.log('🔄 useEffect triggered');
+                loadData();
+            }, []);
 
-            const togglePhotoSelection = (photoId) => {
-                setSelectedPhotoIds(prev => 
-                    prev.includes(photoId) 
-                        ? prev.filter(id => id !== photoId)
-                        : [...prev, photoId]
-                );
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 border-b">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-bold">Review: {specimen.species_name}</h2>
-                                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            {/* Hints Status */}
-                            <div className="bg-gray-50 rounded-lg p-4">
-                                <h3 className="font-semibold mb-2">Species Hints Status</h3>
-                                {speciesHints ? (
-                                    <p className="text-sm text-green-600">
-                                        ✓ This species has {speciesHints.hints?.length || 0} hints available
-                                    </p>
-                                ) : (
-                                    <p className="text-sm text-orange-600">
-                                        ⚠ No hints found for this species
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Photo Selection */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Photo Selection</h3>
-                                {!photosLoaded ? (
-                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
-                                        <p className="text-gray-600">Loading photos...</p>
-                                    </div>
-                                ) : photos.length > 0 ? (
-                                    <div className="grid md:grid-cols-3 gap-4">
-                                        {photos.map((photo, index) => (
-                                            <div 
-                                                key={photo.id} 
-                                                className={`relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
-                                                    selectedPhotoIds.includes(photo.id) 
-                                                        ? 'border-green-500 bg-green-50' 
-                                                        : 'border-gray-200 hover:border-gray-400'
-                                                }`}
-                                                onClick={() => togglePhotoSelection(photo.id)}
-                                            >
-                                                <img
-                                                    src={photo.medium_url}
-                                                    alt={`Photo ${index + 1}`}
-                                                    className="w-full h-32 object-cover"
-                                                />
-                                                <div className="absolute top-2 right-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedPhotoIds.includes(photo.id)}
-                                                        onChange={() => togglePhotoSelection(photo.id)}
-                                                        className="w-4 h-4"
-                                                    />
-                                                </div>
-                                                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2">
-                                                    Photo {index + 1}
-                                                    {selectedPhotoIds.includes(photo.id) && <span className="ml-2">✓</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
-                                        <p className="text-gray-600">No photos found</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Specimen Details */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div>
-                                    <h3 className="font-semibold mb-3">Taxonomy</h3>
-                                    <div className="space-y-2 text-sm">
-                                        <div><strong>Species:</strong> {specimen.species_name}</div>
-                                        <div><strong>Common Name:</strong> {specimen.common_name || 'None'}</div>
-                                        <div><strong>Genus:</strong> {specimen.genus}</div>
-                                        <div><strong>Family:</strong> {specimen.family}</div>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <h3 className="font-semibold mb-3">Collection Info</h3>
-                                    <div className="space-y-2 text-sm">
-                                        <div><strong>Location:</strong> {specimen.location}</div>
-                                        <div><strong>Habitat:</strong> {specimen.habitat}</div>
-                                        <div><strong>DNA Verified:</strong> {specimen.dna_sequenced ? 'Yes' : 'No'}</div>
-                                        <div><strong>Quality Score:</strong> {((specimen.quality_score || 0) * 100).toFixed(0)}%</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Admin Notes */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Admin Notes</h3>
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    placeholder="Add notes about this review decision..."
-                                    className="w-full p-3 border rounded-lg resize-none"
-                                    rows={3}
-                                />
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-4 pt-4 border-t">
-                                <button 
-                                    onClick={() => onApprove(notes, selectedPhotoIds)}
-                                    disabled={selectedPhotoIds.length === 0}
-                                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    ✅ Approve Specimen
-                                </button>
-                                
-                                <button 
-                                    onClick={() => onReject(notes)}
-                                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2"
-                                >
-                                    ❌ Reject Specimen
-                                </button>
-                                
-                                <button 
-                                    onClick={onClose}
-                                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Photo Modal */}
-                        {selectedPhoto && (
-                            <div 
-                                className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-60"
-                                onClick={() => setSelectedPhoto(null)}
-                            >
-                                <div className="max-w-4xl max-h-full">
-                                    <img
-                                        src={selectedPhoto.large_url}
-                                        alt="Full size view"
-                                        className="max-w-full max-h-full object-contain rounded-lg"
-                                    />
-                                    <div className="text-center mt-4">
-                                        <p className="text-white text-sm">{selectedPhoto.attribution}</p>
-                                        <p className="text-gray-300 text-xs mt-1">Click anywhere to close</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        function SpeciesHintsModal({ species, hints, onClose, generateAIHints, saveSpeciesHints }) {
-            const [editableHints, setEditableHints] = useState(hints?.hints || []);
-            const [referenceUrl, setReferenceUrl] = useState(hints?.reference_url || '');
-            const [isGenerating, setIsGenerating] = useState(false);
-            const [hasChanges, setHasChanges] = useState(false);
-
-            const handleAddHint = () => {
-                setEditableHints([...editableHints, { type: 'morphological', level: 1, text: '' }]);
-                setHasChanges(true);
-            };
-
-            const handleUpdateHint = (index, field, value) => {
-                const updated = [...editableHints];
-                updated[index] = { ...updated[index], [field]: value };
-                setEditableHints(updated);
-                setHasChanges(true);
-            };
-
-            const handleRemoveHint = (index) => {
-                setEditableHints(editableHints.filter((_, i) => i !== index));
-                setHasChanges(true);
-            };
-
-            const handleGenerateHints = async () => {
-                setIsGenerating(true);
+            const loadData = async () => {
                 try {
-                    const result = await generateAIHints(species, referenceUrl || null);
-                    if (result.success && !result.error) {
-                        setEditableHints(result.hints);
-                        setReferenceUrl(result.reference_url || referenceUrl);
-                        setHasChanges(true);
-                    } else {
-                        alert('Error generating hints: ' + (result.error || 'Unknown error'));
+                    console.log('📊 Loading specimens data...');
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                     }
+                    
+                    const data = await response.json();
+                    console.log(`✅ Loaded ${data.length} specimens`);
+                    setSpecimens(data || []);
+
+                    // Calculate stats
+                    const pending = data.filter(s => s.status === 'pending').length;
+                    const approved = data.filter(s => s.status === 'approved').length;
+                    const dnaVerified = data.filter(s => s.dna_sequenced).length;
+                    
+                    setStats({
+                        total: data.length,
+                        pending,
+                        approved,
+                        rejected: data.filter(s => s.status === 'rejected').length,
+                        dnaVerified
+                    });
+
                 } catch (error) {
-                    alert('Failed to generate hints: ' + error.message);
+                    console.error('❌ Error loading data:', error);
                 } finally {
-                    setIsGenerating(false);
+                    setLoading(false);
                 }
             };
 
-            const handleSave = async () => {
-                const hintsData = {
-                    species_name: species,
-                    genus: species.split(' ')[0],
-                    family: 'Unknown', // You can enhance this
-                    hints: editableHints,
-                    reference_url: referenceUrl,
-                    admin_reviewed: true,
-                    source_quality: 'manual'
-                };
+            if (loading) {
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gray-50 flex items-center justify-center'
+                }, 
+                    React.createElement('div', { className: 'text-center' },
+                        React.createElement('div', { className: 'text-6xl mb-4' }, '🛡️'),
+                        React.createElement('h1', { className: 'text-2xl font-bold text-gray-800 mb-2' }, 'Admin Portal'),
+                        React.createElement('p', { className: 'text-gray-600' }, 'Loading data...')
+                    )
+                );
+            }
 
-                const success = await saveSpeciesHints(hintsData);
-                if (success) {
-                    alert('Hints saved successfully!');
-                    onClose();
-                } else {
-                    alert('Failed to save hints');
-                }
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 border-b">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-bold">Species Hints: {species}</h2>
-                                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            {/* Reference URL Section */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Reference Source</h3>
-                                <div className="flex gap-2">
-                                    <input
-                                        type="url"
-                                        value={referenceUrl}
-                                        onChange={(e) => {
-                                            setReferenceUrl(e.target.value);
-                                            setHasChanges(true);
-                                        }}
-                                        placeholder="https://example.com/taxonomic-description"
-                                        className="flex-1 p-2 border rounded"
-                                    />
-                                    <button
-                                        onClick={handleGenerateHints}
-                                        disabled={isGenerating}
-                                        className="bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-4 py-2 rounded transition-colors"
-                                    >
-                                        {isGenerating ? 'Generating...' : 'Generate AI Hints'}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Hints Editor */}
-                            <div>
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="font-semibold">Identification Hints</h3>
-                                    <button
-                                        onClick={handleAddHint}
-                                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                        + Add Hint
-                                    </button>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {editableHints.map((hint, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex gap-4">
-                                                    <select
-                                                        value={hint.level}
-                                                        onChange={(e) => handleUpdateHint(index, 'level', parseInt(e.target.value))}
-                                                        className="px-3 py-1 border rounded"
-                                                    >
-                                                        <option value={1}>Level 1 (Easy)</option>
-                                                        <option value={2}>Level 2 (Medium)</option>
-                                                        <option value={3}>Level 3 (Hard)</option>
-                                                        <option value={4}>Level 4 (Expert)</option>
-                                                    </select>
-                                                </div>
-                                                <button
-                                                    onClick={() => handleRemoveHint(index)}
-                                                    className="text-red-500 hover:text-red-700 text-sm"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                            <textarea
-                                                value={hint.text}
-                                                onChange={(e) => handleUpdateHint(index, 'text', e.target.value)}
-                                                placeholder="Enter hint text..."
-                                                className="w-full p-3 border rounded resize-none"
-                                                rows={3}
-                                            />
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {editableHints.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500">
-                                        <p>No hints yet. Add some hints or generate them with AI.</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-4 pt-4 border-t">
-                                <button 
-                                    onClick={handleSave}
-                                    disabled={!hasChanges}
-                                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    Save Hints
-                                </button>
-                                
-                                <button 
-                                    onClick={onClose}
-                                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            return React.createElement('div', { className: 'min-h-screen bg-gray-50' },
+                React.createElement(AdminHeader, { stats }),
+                React.createElement(AdminNavigation, { currentView, setCurrentView }),
+                React.createElement('main', { className: 'max-w-7xl mx-auto px-4 py-8' },
+                    currentView === 'dashboard' && React.createElement(Dashboard, { stats, specimens }),
+                    currentView === 'review' && React.createElement(ReviewQueue, { specimens: specimens.filter(s => s.status === 'pending') }),
+                    currentView === 'approved' && React.createElement(ApprovedSpecimens, { specimens: specimens.filter(s => s.status === 'approved') }),
+                    currentView === 'all' && React.createElement(AllSpecimens, { specimens })
+                )
             );
         }
 
-        // Helper Components
+        function AdminHeader({ stats }) {
+            return React.createElement('div', { className: 'bg-slate-800 text-white' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-4' },
+                    React.createElement('div', { className: 'flex justify-between items-center' },
+                        React.createElement('div', { className: 'flex items-center gap-3' },
+                            React.createElement('div', { className: 'text-3xl' }, '🛡️'),
+                            React.createElement('div', null,
+                                React.createElement('h1', { className: 'text-xl font-bold' }, 'Admin Portal'),
+                                React.createElement('p', { className: 'text-slate-300 text-sm' }, 'Arizona Mushroom Study')
+                            )
+                        ),
+                        React.createElement('div', { className: 'flex items-center gap-6' },
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-orange-400' }, stats.pending || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Pending')
+                            ),
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, stats.approved || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Approved')
+                            ),
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-blue-400' }, stats.dnaVerified || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'DNA Verified')
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function AdminNavigation({ currentView, setCurrentView }) {
+            const navItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'review', label: 'Review Queue', icon: '⏳' },
+                { id: 'approved', label: 'Approved', icon: '✅' },
+                { id: 'all', label: 'All Specimens', icon: '🔧' }
+            ];
+
+            return React.createElement('div', { className: 'bg-white border-b shadow-sm' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4' },
+                    React.createElement('div', { className: 'flex gap-6' },
+                        ...navItems.map(item =>
+                            React.createElement('button', {
+                                key: item.id,
+                                onClick: () => setCurrentView(item.id),
+                                className: `flex items-center gap-2 px-4 py-4 border-b-2 transition-colors ${
+                                    currentView === item.id 
+                                        ? 'border-green-500 text-green-600' 
+                                        : 'border-transparent text-gray-600 hover:text-gray-800'
+                                }`
+                            },
+                                React.createElement('span', null, item.icon),
+                                item.label
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function Dashboard({ stats, specimens }) {
+            const recentSpecimens = specimens.slice(0, 5);
+
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'grid md:grid-cols-4 gap-6' },
+                    React.createElement(StatCard, { title: 'Total Specimens', value: stats.total, color: 'text-blue-600' }),
+                    React.createElement(StatCard, { title: 'Pending Review', value: stats.pending, color: 'text-orange-600' }),
+                    React.createElement(StatCard, { title: 'Approved', value: stats.approved, color: 'text-green-600' }),
+                    React.createElement(StatCard, { title: 'DNA Verified', value: stats.dnaVerified, color: 'text-purple-600' })
+                ),
+                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Recent Specimens'),
+                    React.createElement('div', { className: 'space-y-3' },
+                        ...recentSpecimens.map(specimen =>
+                            React.createElement('div', {
+                                key: specimen.id,
+                                className: 'flex items-center justify-between p-3 bg-gray-50 rounded-lg'
+                            },
+                                React.createElement('div', null,
+                                    React.createElement('h4', { className: 'font-medium' }, specimen.species_name),
+                                    React.createElement('p', { className: 'text-sm text-gray-600' }, specimen.location)
+                                ),
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    React.createElement(StatusBadge, { status: specimen.status }),
+                                    specimen.dna_sequenced && React.createElement('span', {
+                                        className: 'text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'
+                                    }, 'DNA')
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function ReviewQueue({ specimens }) {
+            if (specimens.length === 0) {
+                return React.createElement('div', { className: 'text-center py-12' },
+                    React.createElement('div', { className: 'text-6xl mb-4' }, '🎉'),
+                    React.createElement('h3', { className: 'text-2xl font-bold mb-2' }, 'All Caught Up!'),
+                    React.createElement('p', { className: 'text-gray-600' }, 'No specimens pending review.')
+                );
+            }
+
+            return React.createElement('div', { className: 'space-y-4' },
+                React.createElement('div', { className: 'flex justify-between items-center' },
+                    React.createElement('h2', { className: 'text-2xl font-bold' }, 'Review Queue'),
+                    React.createElement('p', { className: 'text-gray-600' }, `${specimens.length} specimens pending`)
+                ),
+                React.createElement('div', { className: 'grid gap-6' },
+                    ...specimens.map(specimen =>
+                        React.createElement('div', {
+                            key: specimen.id,
+                            className: 'bg-white rounded-xl shadow-sm p-6'
+                        },
+                            React.createElement('div', { className: 'flex justify-between items-start mb-4' },
+                                React.createElement('div', null,
+                                    React.createElement('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
+                                    React.createElement('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
+                                    React.createElement('p', { className: 'text-sm text-gray-500' }, specimen.location)
+                                ),
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    React.createElement(StatusBadge, { status: specimen.status }),
+                                    specimen.dna_sequenced && React.createElement('span', {
+                                        className: 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium'
+                                    }, 'DNA Verified'),
+                                    React.createElement('button', {
+                                        className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors',
+                                        onClick: () => alert(`Review functionality for ${specimen.species_name} - Coming soon!`)
+                                    }, 'Review')
+                                )
+                            ),
+                            React.createElement('div', { className: 'grid md:grid-cols-4 gap-2 mb-4' },
+                                React.createElement('div', { className: 'text-sm' },
+                                    React.createElement('strong', null, 'Family: '), specimen.family
+                                ),
+                                React.createElement('div', { className: 'text-sm' },
+                                    React.createElement('strong', null, 'Habitat: '), 
+                                    specimen.habitat?.substring(0, 50) + (specimen.habitat?.length > 50 ? '...' : '')
+                                ),
+                                React.createElement('div', { className: 'text-sm' },
+                                    React.createElement('strong', null, 'iNat ID: '), specimen.inaturalist_id
+                                ),
+                                React.createElement('div', { className: 'text-sm' },
+                                    React.createElement('strong', null, 'Quality: '), 
+                                    `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
+                                )
+                            ),
+                            React.createElement('div', { className: 'text-xs text-gray-500' },
+                                'Added: ', new Date(specimen.created_at).toLocaleDateString()
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function ApprovedSpecimens({ specimens }) {
+            return React.createElement('div', { className: 'space-y-4' },
+                React.createElement('div', { className: 'flex justify-between items-center' },
+                    React.createElement('h2', { className: 'text-2xl font-bold' }, 'Approved Specimens'),
+                    React.createElement('p', { className: 'text-gray-600' }, `${specimens.length} approved`)
+                ),
+                React.createElement('div', { className: 'grid gap-4' },
+                    ...specimens.map(specimen =>
+                        React.createElement('div', {
+                            key: specimen.id,
+                            className: 'bg-white rounded-xl p-4 shadow-sm'
+                        },
+                            React.createElement('div', { className: 'flex justify-between items-start' },
+                                React.createElement('div', null,
+                                    React.createElement('h3', { className: 'font-semibold text-lg' }, specimen.species_name),
+                                    React.createElement('p', { className: 'text-gray-600' }, specimen.location),
+                                    React.createElement('p', { className: 'text-sm text-gray-500' },
+                                        'Approved: ', specimen.approved_at ? new Date(specimen.approved_at).toLocaleDateString() : 'Unknown'
+                                    )
+                                ),
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    React.createElement(StatusBadge, { status: specimen.status }),
+                                    specimen.dna_sequenced && React.createElement('span', {
+                                        className: 'text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'
+                                    }, 'DNA')
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function AllSpecimens({ specimens }) {
+            const [filter, setFilter] = useState('all');
+            
+            const filteredSpecimens = specimens.filter(specimen => {
+                return filter === 'all' || specimen.status === filter;
+            });
+
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'flex justify-between items-center' },
+                    React.createElement('h2', { className: 'text-2xl font-bold' }, 'All Specimens'),
+                    React.createElement('select', {
+                        value: filter,
+                        onChange: (e) => setFilter(e.target.value),
+                        className: 'px-3 py-1 border rounded'
+                    },
+                        React.createElement('option', { value: 'all' }, 'All Status'),
+                        React.createElement('option', { value: 'pending' }, 'Pending'),
+                        React.createElement('option', { value: 'approved' }, 'Approved'),
+                        React.createElement('option', { value: 'rejected' }, 'Rejected')
+                    )
+                ),
+                React.createElement('div', { className: 'bg-white rounded-lg shadow overflow-hidden' },
+                    React.createElement('table', { className: 'min-w-full' },
+                        React.createElement('thead', { className: 'bg-gray-50' },
+                            React.createElement('tr', null,
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Species'),
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Status'),
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Location'),
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'DNA'),
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Date')
+                            )
+                        ),
+                        React.createElement('tbody', { className: 'divide-y divide-gray-200' },
+                            ...filteredSpecimens.map(specimen =>
+                                React.createElement('tr', {
+                                    key: specimen.id,
+                                    className: 'hover:bg-gray-50'
+                                },
+                                    React.createElement('td', { className: 'px-6 py-4' },
+                                        React.createElement('div', null,
+                                            React.createElement('div', { className: 'font-medium' }, specimen.species_name),
+                                            React.createElement('div', { className: 'text-sm text-gray-500' }, specimen.family)
+                                        )
+                                    ),
+                                    React.createElement('td', { className: 'px-6 py-4' },
+                                        React.createElement(StatusBadge, { status: specimen.status })
+                                    ),
+                                    React.createElement('td', { className: 'px-6 py-4 text-sm' }, specimen.location),
+                                    React.createElement('td', { className: 'px-6 py-4' },
+                                        specimen.dna_sequenced 
+                                            ? React.createElement('span', { className: 'text-green-600' }, '✓ Yes')
+                                            : React.createElement('span', { className: 'text-gray-400' }, '✗ No')
+                                    ),
+                                    React.createElement('td', { className: 'px-6 py-4 text-sm' },
+                                        new Date(specimen.created_at).toLocaleDateString()
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    filteredSpecimens.length === 0 && React.createElement('div', {
+                        className: 'text-center py-8 text-gray-500'
+                    }, 'No specimens found matching your criteria.')
+                )
+            );
+        }
+
         function StatCard({ title, value, color }) {
-            return (
-                <div className="bg-white rounded-xl p-6 shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div>
-                            <p className="text-sm text-gray-600">{title}</p>
-                            <p className={`text-2xl font-bold ${color}`}>{value || 0}</p>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function QuickActionCard({ title, description, icon, color }) {
-            return (
-                <div className={`${color} border rounded-lg p-4 cursor-pointer transition-colors`}>
-                    <div className="flex items-center gap-3">
-                        <div className="text-2xl">{icon}</div>
-                        <div>
-                            <h4 className="font-medium">{title}</h4>
-                            <p className="text-sm text-gray-600">{description}</p>
-                        </div>
-                    </div>
-                </div>
+            return React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('div', null,
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, title),
+                        React.createElement('p', { className: `text-2xl font-bold ${color}` }, value || 0)
+                    )
+                )
             );
         }
 
@@ -728,711 +386,27 @@
 
             const config = statusConfig[status] || statusConfig.pending;
 
-            return (
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
-                    {config.label}
-                </span>
-            );
+            return React.createElement('span', {
+                className: `px-3 py-1 rounded-full text-sm font-medium ${config.color}`
+            }, config.label);
         }
 
-        function ReviewQueue({ specimens, speciesHints, onSelectSpecimen, loadSpecimenPhotos }) {
-            if (specimens.length === 0) {
-                return (
-                    <div className="text-center py-12">
-                        <div className="text-6xl mb-4">🎉</div>
-                        <h3 className="text-2xl font-bold mb-2">All Caught Up!</h3>
-                        <p className="text-gray-600">No specimens pending review.</p>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">Review Queue</h2>
-                        <p className="text-gray-600">{specimens.length} specimens pending</p>
-                    </div>
-
-                    <div className="grid gap-6">
-                        {specimens.map(specimen => {
-                            const hasHints = speciesHints.find(h => h.species_name === specimen.species_name);
-                            
-                            return (
-                                <div key={specimen.id} className="bg-white rounded-xl shadow-sm overflow-hidden">
-                                    <div className="p-6">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <h3 className="text-lg font-semibold">{specimen.species_name}</h3>
-                                                <p className="text-gray-600">{specimen.common_name || 'No common name'}</p>
-                                                <p className="text-sm text-gray-500">{specimen.location}</p>
-                                            </div>
-                                            
-                                            <div className="flex items-center gap-2">
-                                                <StatusBadge status={specimen.status} />
-                                                {specimen.dna_sequenced && (
-                                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
-                                                        DNA Verified
-                                                    </span>
-                                                )}
-                                                {hasHints && (
-                                                    <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs font-medium">
-                                                        Has Hints
-                                                    </span>
-                                                )}
-                                                <button
-                                                    onClick={() => {
-                                                        onSelectSpecimen(specimen);
-                                                        loadSpecimenPhotos(specimen.inaturalist_id);
-                                                    }}
-                                                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
-                                                >
-                                                    Review
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid md:grid-cols-4 gap-2 mb-4">
-                                            <div className="text-sm">
-                                                <strong>Family:</strong> {specimen.family}
-                                            </div>
-                                            <div className="text-sm">
-                                                <strong>Habitat:</strong> {specimen.habitat?.substring(0, 50)}...
-                                            </div>
-                                            <div className="text-sm">
-                                                <strong>iNat ID:</strong> {specimen.inaturalist_id}
-                                            </div>
-                                            <div className="text-sm">
-                                                <strong>Quality:</strong> {((specimen.quality_score || 0) * 100).toFixed(0)}%
-                                            </div>
-                                        </div>
-
-                                        <div className="text-xs text-gray-500">
-                                            Added: {new Date(specimen.created_at).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+        // Render the app
+        try {
+            console.log('🎬 About to render AdminPortal...');
+            const root = ReactDOM.createRoot(document.getElementById('admin-root'));
+            root.render(React.createElement(AdminPortal));
+            console.log('✅ AdminPortal rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering AdminPortal:', error);
+            document.getElementById('admin-root').innerHTML = `
+                <div style="padding: 20px; color: red; text-align: center;">
+                    <h1>Rendering Error</h1>
+                    <p>Error: ${error.message}</p>
+                    <p>Check the console for details.</p>
                 </div>
-            );
+            `;
         }
-
-        // Render the admin portal
-        ReactDOM.render(<AdminPortal />, document.getElementById('admin-root'));
     </script>
 </body>
-</html>.type}
-                                                        onChange={(e) => handleUpdateHint(index, 'type', e.target.value)}
-                                                        className="px-3 py-1 border rounded"
-                                                    >
-                                                        <option value="morphological">Morphological</option>
-                                                        <option value="comparative">Comparative</option>
-                                                        <option value="ecological">Ecological</option>
-                                                        <option value="taxonomic">Taxonomic</option>
-                                                    </select>
-                                                    <select
-                                                        value={hint<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona Mushroom Study - Admin Portal</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-    <div id="admin-root"></div>
-    <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
-        
-        // Configuration
-        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-        const INATURALIST_API = 'https://api.inaturalist.org/v1';
-        
-        function AdminPortal() {
-            const [currentView, setCurrentView] = useState('dashboard');
-            const [specimens, setSpecimens] = useState([]);
-            const [speciesHints, setSpeciesHints] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [selectedSpecimen, setSelectedSpecimen] = useState(null);
-            const [selectedSpecies, setSelectedSpecies] = useState(null);
-            const [editingSpecimen, setEditingSpecimen] = useState(null);
-            const [specimenPhotos, setSpecimenPhotos] = useState({});
-            const [stats, setStats] = useState({});
-
-            useEffect(() => {
-                loadData();
-            }, []);
-
-            const loadData = async () => {
-                try {
-                    // Load specimens
-                    const specimensResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    });
-                    const specimenData = await specimensResponse.json();
-                    setSpecimens(specimenData || []);
-
-                    // Load species hints
-                    try {
-                        const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*&order=created_at.desc`, {
-                            headers: {
-                                'apikey': SUPABASE_ANON_KEY,
-                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                            }
-                        });
-                        if (hintsResponse.ok) {
-                            const hintsData = await hintsResponse.json();
-                            setSpeciesHints(hintsData || []);
-                        } else {
-                            console.log('Species hints table may not exist yet');
-                            setSpeciesHints([]);
-                        }
-                    } catch (error) {
-                        console.log('Species hints not available:', error);
-                        setSpeciesHints([]);
-                    }
-
-                    // Calculate stats
-                    const pending = specimenData.filter(s => s.status === 'pending').length;
-                    const approved = specimenData.filter(s => s.status === 'approved').length;
-                    const dnaVerified = specimenData.filter(s => s.dna_sequenced).length;
-                    
-                    setStats({
-                        total: specimenData.length,
-                        pending,
-                        approved,
-                        rejected: specimenData.filter(s => s.status === 'rejected').length,
-                        dnaVerified
-                    });
-
-                } catch (error) {
-                    console.error('Error loading data:', error);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const loadSpecimenPhotos = async (inaturalistId) => {
-                if (specimenPhotos[inaturalistId]) {
-                    return specimenPhotos[inaturalistId];
-                }
-
-                try {
-                    const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
-                    const data = await response.json();
-                    
-                    if (data.results && data.results[0] && data.results[0].photos) {
-                        const photos = data.results[0].photos.map(photo => ({
-                            id: photo.id,
-                            url: photo.url,
-                            medium_url: photo.url.replace('square', 'medium'),
-                            large_url: photo.url.replace('square', 'large'),
-                            attribution: photo.attribution || 'iNaturalist user',
-                            selected: true
-                        }));
-                        
-                        setSpecimenPhotos(prev => ({
-                            ...prev,
-                            [inaturalistId]: photos
-                        }));
-                        
-                        return photos;
-                    }
-                } catch (error) {
-                    console.error('Error loading photos:', error);
-                }
-                
-                return [];
-            };
-
-            const generateAIHints = async (speciesName, referenceUrl = null) => {
-                try {
-                    console.log('Calling generate-hints API...');
-                    const response = await fetch('/api/generate-hints', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            species_name: speciesName,
-                            reference_url: referenceUrl
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`API responded with status ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    console.log('API Response:', result);
-                    return result;
-                } catch (error) {
-                    console.error('Error generating AI hints:', error);
-                    return { error: 'Failed to generate hints: ' + error.message };
-                }
-            };
-
-            const saveSpeciesHints = async (hintsData) => {
-                try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
-                        method: 'POST',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify(hintsData)
-                    });
-
-                    if (response.ok) {
-                        loadData(); // Refresh data
-                        return true;
-                    }
-                    return false;
-                } catch (error) {
-                    console.error('Error saving species hints:', error);
-                    return false;
-                }
-            };
-
-            const updateSpecimenStatus = async (specimenId, status, notes = '', selectedPhotoIds = []) => {
-                try {
-                    const response = await fetch('/api/admin', {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            specimenId,
-                            status,
-                            notes,
-                            selectedPhotoIds
-                        })
-                    });
-
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        alert(result.message || `Specimen ${status} successfully!`);
-                        loadData();
-                        setSelectedSpecimen(null);
-                    } else {
-                        alert(`Error: ${result.error || 'Failed to update specimen'}`);
-                    }
-                } catch (error) {
-                    console.error('Error updating specimen:', error);
-                    alert(`Error: ${error.message}`);
-                }
-            };
-
-            // NEW: Update specimen details
-            const updateSpecimenDetails = async (specimenId, updatedData) => {
-                try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updatedData)
-                    });
-
-                    if (response.ok) {
-                        alert('Specimen updated successfully!');
-                        loadData();
-                        setEditingSpecimen(null);
-                        return true;
-                    } else {
-                        alert('Failed to update specimen');
-                        return false;
-                    }
-                } catch (error) {
-                    console.error('Error updating specimen:', error);
-                    alert('Error updating specimen: ' + error.message);
-                    return false;
-                }
-            };
-
-            // NEW: Delete specimen
-            const deleteSpecimen = async (specimenId) => {
-                if (!confirm('Are you sure you want to delete this specimen? This action cannot be undone.')) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    });
-
-                    if (response.ok) {
-                        alert('Specimen deleted successfully!');
-                        loadData();
-                    } else {
-                        alert('Failed to delete specimen');
-                    }
-                } catch (error) {
-                    console.error('Error deleting specimen:', error);
-                    alert('Error deleting specimen: ' + error.message);
-                }
-            };
-
-            if (loading) {
-                return <LoadingScreen />;
-            }
-
-            return (
-                <div className="min-h-screen bg-gray-50">
-                    <AdminHeader stats={stats} />
-                    <AdminNavigation currentView={currentView} setCurrentView={setCurrentView} />
-                    
-                    <main className="max-w-7xl mx-auto px-4 py-8">
-                        {currentView === 'dashboard' && <Dashboard stats={stats} specimens={specimens} speciesHints={speciesHints} />}
-                        {currentView === 'review' && (
-                            <ReviewQueue 
-                                specimens={specimens.filter(s => s.status === 'pending')} 
-                                speciesHints={speciesHints}
-                                onSelectSpecimen={setSelectedSpecimen}
-                                loadSpecimenPhotos={loadSpecimenPhotos}
-                            />
-                        )}
-                        {currentView === 'species-management' && (
-                            <SpeciesManagement 
-                                speciesHints={speciesHints}
-                                specimens={specimens}
-                                onSelectSpecies={setSelectedSpecies}
-                                generateAIHints={generateAIHints}
-                                saveSpeciesHints={saveSpeciesHints}
-                            />
-                        )}
-                        {currentView === 'approved' && (
-                            <ApprovedSpecimens 
-                                specimens={specimens.filter(s => s.status === 'approved')} 
-                                speciesHints={speciesHints}
-                                onEditSpecimen={setEditingSpecimen}
-                                onDeleteSpecimen={deleteSpecimen}
-                                loadSpecimenPhotos={loadSpecimenPhotos}
-                            />
-                        )}
-                        {currentView === 'manage-specimens' && (
-                            <ManageSpecimens 
-                                specimens={specimens}
-                                speciesHints={speciesHints}
-                                onEditSpecimen={setEditingSpecimen}
-                                onDeleteSpecimen={deleteSpecimen}
-                                loadSpecimenPhotos={loadSpecimenPhotos}
-                            />
-                        )}
-                    </main>
-
-                    {selectedSpecimen && (
-                        <SpecimenReviewModal 
-                            specimen={selectedSpecimen}
-                            photos={specimenPhotos[selectedSpecimen.inaturalist_id] || []}
-                            speciesHints={speciesHints.find(h => h.species_name === selectedSpecimen.species_name)}
-                            onClose={() => setSelectedSpecimen(null)}
-                            onApprove={(notes, selectedPhotoIds) => updateSpecimenStatus(selectedSpecimen.id, 'approved', notes, selectedPhotoIds)}
-                            onReject={(notes) => updateSpecimenStatus(selectedSpecimen.id, 'rejected', notes)}
-                            loadPhotos={() => loadSpecimenPhotos(selectedSpecimen.inaturalist_id)}
-                            generateAIHints={generateAIHints}
-                            saveSpeciesHints={saveSpeciesHints}
-                        />
-                    )}
-
-                    {selectedSpecies && (
-                        <SpeciesHintsModal 
-                            species={selectedSpecies}
-                            hints={speciesHints.find(h => h.species_name === selectedSpecies)}
-                            onClose={() => setSelectedSpecies(null)}
-                            generateAIHints={generateAIHints}
-                            saveSpeciesHints={saveSpeciesHints}
-                        />
-                    )}
-
-                    {editingSpecimen && (
-                        <EditSpecimenModal 
-                            specimen={editingSpecimen}
-                            onClose={() => setEditingSpecimen(null)}
-                            onSave={updateSpecimenDetails}
-                            loadPhotos={() => loadSpecimenPhotos(editingSpecimen.inaturalist_id)}
-                            photos={specimenPhotos[editingSpecimen.inaturalist_id] || []}
-                        />
-                    )}
-                </div>
-            );
-        }
-
-        function LoadingScreen() {
-            return (
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                    <div className="text-center">
-                        <div className="text-6xl mb-4">🛡️</div>
-                        <h1 className="text-2xl font-bold text-gray-800 mb-2">Admin Portal</h1>
-                        <p className="text-gray-600">Loading data...</p>
-                    </div>
-                </div>
-            );
-        }
-
-        function AdminHeader({ stats }) {
-            return (
-                <div className="bg-slate-800 text-white">
-                    <div className="max-w-7xl mx-auto px-4 py-4">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="text-3xl">🛡️</div>
-                                <div>
-                                    <h1 className="text-xl font-bold">Enhanced Admin Portal</h1>
-                                    <p className="text-slate-300 text-sm">Arizona Mushroom Study</p>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-6">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-orange-400">{stats.pending || 0}</div>
-                                    <div className="text-xs text-slate-300">Pending Review</div>
-                                </div>
-                                
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-400">{stats.approved || 0}</div>
-                                    <div className="text-xs text-slate-300">Approved</div>
-                                </div>
-                                
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-400">{stats.dnaVerified || 0}</div>
-                                    <div className="text-xs text-slate-300">DNA Verified</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        function AdminNavigation({ currentView, setCurrentView }) {
-            const navItems = [
-                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-                { id: 'review', label: 'Review Queue', icon: '⏳' },
-                { id: 'species-management', label: 'Species Hints', icon: '🧬' },
-                { id: 'approved', label: 'Approved', icon: '✅' },
-                { id: 'manage-specimens', label: 'Manage All', icon: '🔧' }
-            ];
-
-            return (
-                <div className="bg-white border-b shadow-sm">
-                    <div className="max-w-7xl mx-auto px-4">
-                        <div className="flex gap-6">
-                            {navItems.map(item => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setCurrentView(item.id)}
-                                    className={`flex items-center gap-2 px-4 py-4 border-b-2 transition-colors ${
-                                        currentView === item.id 
-                                            ? 'border-green-500 text-green-600' 
-                                            : 'border-transparent text-gray-600 hover:text-gray-800'
-                                    }`}
-                                >
-                                    <span>{item.icon}</span>
-                                    {item.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        // NEW: Manage All Specimens Component
-        function ManageSpecimens({ specimens, speciesHints, onEditSpecimen, onDeleteSpecimen, loadSpecimenPhotos }) {
-            const [filter, setFilter] = useState('all');
-            const [searchTerm, setSearchTerm] = useState('');
-            
-            const filteredSpecimens = specimens.filter(specimen => {
-                const matchesFilter = filter === 'all' || specimen.status === filter;
-                const matchesSearch = specimen.species_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    specimen.location.toLowerCase().includes(searchTerm.toLowerCase());
-                return matchesFilter && matchesSearch;
-            });
-
-            return (
-                <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold">Manage All Specimens</h2>
-                        <div className="flex gap-4">
-                            <input
-                                type="text"
-                                placeholder="Search species or location..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="px-3 py-1 border rounded"
-                            />
-                            <select 
-                                value={filter} 
-                                onChange={(e) => setFilter(e.target.value)}
-                                className="px-3 py-1 border rounded"
-                            >
-                                <option value="all">All Status</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-lg shadow overflow-hidden">
-                        <table className="min-w-full">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Species</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">DNA</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date Added</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {filteredSpecimens.map(specimen => (
-                                    <tr key={specimen.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4">
-                                            <div>
-                                                <div className="font-medium">{specimen.species_name}</div>
-                                                <div className="text-sm text-gray-500">{specimen.family}</div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <StatusBadge status={specimen.status} />
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">{specimen.location}</td>
-                                        <td className="px-6 py-4">
-                                            {specimen.dna_sequenced ? (
-                                                <span className="text-green-600">✓ Yes</span>
-                                            ) : (
-                                                <span className="text-gray-400">✗ No</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm">
-                                            {new Date(specimen.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        onEditSpecimen(specimen);
-                                                        loadSpecimenPhotos(specimen.inaturalist_id);
-                                                    }}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => onDeleteSpecimen(specimen.id)}
-                                                    className="text-red-600 hover:text-red-800 text-sm"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        
-                        {filteredSpecimens.length === 0 && (
-                            <div className="text-center py-8 text-gray-500">
-                                No specimens found matching your criteria.
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        // NEW: Edit Specimen Modal
-        function EditSpecimenModal({ specimen, onClose, onSave, loadPhotos, photos }) {
-            const [editData, setEditData] = useState({
-                species_name: specimen.species_name,
-                genus: specimen.genus,
-                family: specimen.family,
-                common_name: specimen.common_name || '',
-                location: specimen.location,
-                habitat: specimen.habitat,
-                dna_sequenced: specimen.dna_sequenced,
-                admin_notes: specimen.admin_notes || ''
-            });
-            const [photosLoaded, setPhotosLoaded] = useState(false);
-
-            useEffect(() => {
-                if (!photosLoaded) {
-                    loadPhotos().then(() => setPhotosLoaded(true));
-                }
-            }, [loadPhotos, photosLoaded]);
-
-            const handleSave = async () => {
-                const success = await onSave(specimen.id, editData);
-                if (success) {
-                    onClose();
-                }
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                        <div className="p-6 border-b">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-xl font-bold">Edit Specimen: {specimen.species_name}</h2>
-                                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            {/* Photos Display */}
-                            <div>
-                                <h3 className="font-semibold mb-3">Photos</h3>
-                                {!photosLoaded ? (
-                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
-                                        <p className="text-gray-600">Loading photos...</p>
-                                    </div>
-                                ) : photos.length > 0 ? (
-                                    <div className="grid md:grid-cols-4 gap-4">
-                                        {photos.map((photo, index) => (
-                                            <img
-                                                key={photo.id}
-                                                src={photo.medium_url}
-                                                alt={`Photo ${index + 1}`}
-                                                className="w-full h-24 object-cover rounded border"
-                                            />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500">No photos available</p>
-                                )}
-                            </div>
-
-                            {/* Edit Form */}
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Species Name</label>
-                                        <input
-                                            type="text"
-                                            value={editData.species_name}
-                                            onChange={(e) => setEditData({...editData, species_name: e.target.value})}
-                                            className="w-full p-2 border rounded"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Genus
+</html>
