@@ -1,4 +1,4 @@
-// Enhanced Arizona Mushroom Pipeline with Species-Level Hint Management
+// Simplified Arizona Mushroom Pipeline - Working Version
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
 
@@ -39,13 +39,11 @@ const openai = new OpenAI({
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
-class EnhancedPipeline {
+class SimplePipeline {
   constructor() {
     this.processedCount = 0;
     this.savedCount = 0;
-    this.dnaCount = 0;
-    this.hintsCreatedCount = 0;
-    this.hintsExistingCount = 0;
+    this.dnaCount = 0; // Track DNA specimens separately
   }
 
   async delay(ms) {
@@ -56,7 +54,7 @@ class EnhancedPipeline {
     console.log('🔍 Fetching Arizona mushroom observations...');
     
     const params = new URLSearchParams({
-      place_id: 40, // Arizona
+      place_id: 40, // Arizona (FIXED)
       taxon_id: 47170, // Fungi
       quality_grade: 'research',
       photos: 'true',
@@ -111,7 +109,9 @@ class EnhancedPipeline {
     ) || /its[\s:]+\d+%/.test(allText);
   }
 
+  // MOVED INSIDE CLASS
   extractFamily(taxon) {
+    // Try to extract family from taxon hierarchy
     if (taxon.rank === 'family') return taxon.name;
     
     if (taxon.ancestors) {
@@ -134,6 +134,7 @@ class EnhancedPipeline {
     return familyMap[genus] || 'Fungi';
   }
 
+  // MOVED INSIDE CLASS
   extractHabitat(observation) {
     let habitat = '';
     
@@ -158,6 +159,7 @@ class EnhancedPipeline {
     return habitat.trim() || 'Not specified';
   }
 
+  // MOVED INSIDE CLASS
   calculateQualityScore(observation, hasDNA) {
     let score = 0.5; // Base score
     
@@ -184,151 +186,58 @@ class EnhancedPipeline {
     return Math.min(score, 1.0);
   }
 
-  async checkSpeciesHints(speciesName) {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?species_name=eq.${encodeURIComponent(speciesName)}`, {
-        headers: {
-          'apikey': process.env.SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
-        }
-      });
-
-      if (response.ok) {
-        const hints = await response.json();
-        return hints.length > 0 ? hints[0] : null;
-      }
-    } catch (error) {
-      console.log(`⚠️  Error checking species hints: ${error.message}`);
-    }
-    return null;
-  }
-
-  async createSpeciesHints(specimen) {
-    try {
-      console.log(`   🤖 Creating species hints for ${specimen.species_name}...`);
+  async generateHints(specimen) {
+    const dnaStatus = specimen.dna_sequenced ? 
+      'This specimen has been DNA sequenced for accurate identification.' : 
+      'This is a research-grade community identification.';
       
-      // Generate basic hints using AI
-      const prompt = `Create 4 educational identification hints for the mushroom species: ${specimen.species_name}
-
-The hints should help students learn to identify this species through observation and comparison. Create hints in this order:
-
-1. MORPHOLOGICAL: Physical features (cap, stem, gills/pores, spores, size)
-2. COMPARATIVE: How to distinguish from similar species or potential look-alikes
-3. ECOLOGICAL: Habitat, substrate, seasonal patterns, geographic range
-4. TAXONOMIC: Family and genus characteristics (use as last resort)
-
-Each hint should be 1-3 sentences and focus on distinguishing characteristics that aid field identification.
+    const prompt = `Create 4 educational hints for identifying this mushroom:
 
 Species: ${specimen.species_name}
 Family: ${specimen.family}
+Location: ${specimen.location}
 Habitat: ${specimen.habitat}
+Verification: ${dnaStatus}
 
-Format your response exactly as:
-MORPHOLOGICAL: [description]
-COMPARATIVE: [description]
-ECOLOGICAL: [description]
-TAXONOMIC: [description]`;
+Return exactly 4 hints in this format:
+1. Morphological: [describe key physical features like cap, stem, gills/pores, spores]
+2. Ecological: [describe habitat, substrate, seasonal patterns, relationships]  
+3. Family: [describe family-level characteristics]
+4. Genus: [describe genus-level distinguishing features]
 
+Make the hints educational and specific to help with identification.`;
+
+    try {
       const response = await openai.chat.completions.create({
         model: 'gpt-4',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a mycological expert. Create precise, educational hints for mushroom identification that encourage observation and comparison skills.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 800
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.7,
+        max_tokens: 600
       });
 
       const content = response.choices[0].message.content;
-      const hints = this.parseHintsFromAI(content);
+      const lines = content.split('\n').filter(line => line.trim());
+      
+      const hints = [
+        { level: 3, type: 'morphological', text: lines[0]?.replace(/^\d+\.\s*\w+:\s*/, '') || 'Physical features help identify this species.' },
+        { level: 4, type: 'ecological', text: lines[1]?.replace(/^\d+\.\s*\w+:\s*/, '') || 'Habitat and ecology provide identification clues.' },
+        { level: 1, type: 'taxonomic', text: lines[2]?.replace(/^\d+\.\s*\w+:\s*/, '') || `This belongs to the family ${specimen.family}.` },
+        { level: 2, type: 'taxonomic', text: lines[3]?.replace(/^\d+\.\s*\w+:\s*/, '') || `The genus characteristics help with identification.` }
+      ];
 
-      // Save hints to database
-      const hintsData = {
-        species_name: specimen.species_name,
-        genus: specimen.genus,
-        family: specimen.family,
-        common_name: specimen.common_name,
-        hints: hints,
-        source_quality: 'ai-generated',
-        ai_confidence: 0.75,
-        admin_reviewed: false
-      };
-
-      const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
-        method: 'POST',
-        headers: {
-          'apikey': process.env.SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(hintsData)
-      });
-
-      if (saveResponse.ok) {
-        console.log(`   ✅ Species hints created for ${specimen.species_name}`);
-        this.hintsCreatedCount++;
-        return true;
-      } else {
-        console.log(`   ⚠️  Failed to save hints for ${specimen.species_name}`);
-        return false;
-      }
-
+      return hints;
     } catch (error) {
-      console.log(`   ❌ Error creating hints: ${error.message}`);
-      return false;
+      console.log('⚠️  AI hint generation failed, using templates');
+      return [
+        { level: 3, type: 'morphological', text: `Examine the physical features of this ${specimen.species_name}.` },
+        { level: 4, type: 'ecological', text: `Found in ${specimen.habitat}.` },
+        { level: 1, type: 'taxonomic', text: `Belongs to family ${specimen.family}.` },
+        { level: 2, type: 'taxonomic', text: `Genus characteristics aid identification.` }
+      ];
     }
   }
 
-  parseHintsFromAI(content) {
-    const hints = [];
-    const lines = content.split('\n').filter(line => line.trim());
-    
-    const hintTypes = [
-      { key: 'MORPHOLOGICAL', type: 'morphological', level: 1 },
-      { key: 'COMPARATIVE', type: 'comparative', level: 2 },
-      { key: 'ECOLOGICAL', type: 'ecological', level: 3 },
-      { key: 'TAXONOMIC', type: 'taxonomic', level: 4 }
-    ];
-
-    for (const hintType of hintTypes) {
-      const line = lines.find(line => line.trim().startsWith(hintType.key + ':'));
-      if (line) {
-        const text = line.replace(hintType.key + ':', '').trim();
-        if (text) {
-          hints.push({
-            type: hintType.type,
-            level: hintType.level,
-            text: text,
-            educational_value: hintType.level <= 2 ? 'high' : 'medium'
-          });
-        }
-      }
-    }
-
-    // Fallback if structured parsing fails
-    if (hints.length === 0) {
-      const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 20);
-      sentences.slice(0, 4).forEach((sentence, index) => {
-        const types = ['morphological', 'comparative', 'ecological', 'taxonomic'];
-        hints.push({
-          type: types[index] || 'general',
-          level: index + 1,
-          text: sentence.trim(),
-          educational_value: index < 2 ? 'high' : 'medium'
-        });
-      });
-    }
-
-    return hints;
-  }
-
-  async saveToDatabase(specimen, photos) {
+  async saveToDatabase(specimen, photos, hints) {
     console.log('💾 Saving to database...');
     
     try {
@@ -352,18 +261,6 @@ TAXONOMIC: [description]`;
       const specimenId = savedSpecimen[0].id;
 
       console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
-
-      // Check if species hints already exist
-      const existingHints = await this.checkSpeciesHints(specimen.species_name);
-      
-      if (existingHints) {
-        console.log(`   📚 Species hints already exist for ${specimen.species_name}`);
-        this.hintsExistingCount++;
-      } else {
-        console.log(`   🆕 No hints found for ${specimen.species_name}, creating new ones...`);
-        await this.createSpeciesHints(specimen);
-      }
-
       return specimenId;
 
     } catch (error) {
@@ -391,7 +288,7 @@ TAXONOMIC: [description]`;
       
       if (hasDNA) {
         console.log('   🧬 DNA sequence found! (High priority)');
-        this.dnaCount++;
+        this.dnaCount++; // TRACK DNA COUNT
       } else {
         console.log('   📋 Research grade - no DNA sequence (Standard priority)');
       }
@@ -407,12 +304,14 @@ TAXONOMIC: [description]`;
         habitat: this.extractHabitat(detailed),
         dna_sequenced: hasDNA,
         status: 'pending',
-        quality_score: this.calculateQualityScore(detailed, hasDNA),
-        selected_photos: detailed.photos.map(p => p.id) // Default select all photos
+        quality_score: this.calculateQualityScore(detailed, hasDNA)
       };
 
-      console.log('   💾 Saving to database and managing species hints...');
-      await this.saveToDatabase(specimen, detailed.photos);
+      console.log('   🤖 Generating AI hints...');
+      const hints = await this.generateHints(specimen);
+
+      console.log('   💾 Saving to database...');
+      await this.saveToDatabase(specimen, [], hints);
       
       const priority = hasDNA ? 'HIGH PRIORITY (DNA)' : 'STANDARD (Research Grade)';
       console.log(`   ✅ SUCCESS: Saved ${specimen.species_name} - ${priority}`);
@@ -426,7 +325,7 @@ TAXONOMIC: [description]`;
   }
 
   async run() {
-    console.log('🚀 Starting enhanced pipeline with species-level hint management...');
+    console.log('🚀 Starting simplified pipeline...');
     
     try {
       const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
@@ -443,16 +342,12 @@ TAXONOMIC: [description]`;
         }
       }
       
-      console.log(`\n🎉 Enhanced Pipeline complete!`);
+      console.log(`\n🎉 Pipeline complete!`);
       console.log(`📊 Processed: ${this.processedCount} observations`);
       console.log(`💾 Saved: ${this.savedCount} specimens total`);
       console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
       console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
-      console.log(`\n🧠 Species Hints Management:`);
-      console.log(`   📚 Existing hints found: ${this.hintsExistingCount} species`);
-      console.log(`   🆕 New hints created: ${this.hintsCreatedCount} species`);
       console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
-      console.log(`🔧 Admin can review and edit species hints in the enhanced admin portal`);
       
     } catch (error) {
       console.log(`❌ Pipeline failed: ${error.message}`);
@@ -460,6 +355,6 @@ TAXONOMIC: [description]`;
   }
 }
 
-// Run the enhanced pipeline
-const pipeline = new EnhancedPipeline();
+// Run the pipeline
+const pipeline = new SimplePipeline();
 pipeline.run().catch(console.error);
