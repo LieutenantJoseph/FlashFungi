@@ -20,19 +20,12 @@
     <script type="text/babel">
         console.log('🔥 Admin portal script starting...');
         
-        // Check React availability
-        if (typeof React === 'undefined') {
-            console.error('❌ React not available');
-            document.getElementById('admin-root').innerHTML = '<div style="padding: 20px; color: red;"><h1>Error: React not loaded</h1></div>';
-        } else {
-            console.log('✅ React available');
-        }
-
         const { useState, useEffect } = React;
         
         // Configuration
         const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+        const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
         function AdminPortal() {
             console.log('🏗️ AdminPortal component rendering');
@@ -41,6 +34,8 @@
             const [specimens, setSpecimens] = useState([]);
             const [loading, setLoading] = useState(true);
             const [stats, setStats] = useState({});
+            const [selectedSpecimen, setSelectedSpecimen] = useState(null);
+            const [specimenPhotos, setSpecimenPhotos] = useState({});
 
             useEffect(() => {
                 console.log('🔄 useEffect triggered');
@@ -65,7 +60,7 @@
                     console.log(`✅ Loaded ${data.length} specimens`);
                     setSpecimens(data || []);
 
-                    // Calculate stats
+                    // Calculate stats (no rejected specimens)
                     const pending = data.filter(s => s.status === 'pending').length;
                     const approved = data.filter(s => s.status === 'approved').length;
                     const dnaVerified = data.filter(s => s.dna_sequenced).length;
@@ -74,7 +69,6 @@
                         total: data.length,
                         pending,
                         approved,
-                        rejected: data.filter(s => s.status === 'rejected').length,
                         dnaVerified
                     });
 
@@ -82,6 +76,100 @@
                     console.error('❌ Error loading data:', error);
                 } finally {
                     setLoading(false);
+                }
+            };
+
+            const loadSpecimenPhotos = async (inaturalistId) => {
+                if (specimenPhotos[inaturalistId]) {
+                    return specimenPhotos[inaturalistId];
+                }
+
+                try {
+                    console.log(`📸 Loading photos for specimen: ${inaturalistId}`);
+                    const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
+                    const data = await response.json();
+                    
+                    if (data.results && data.results[0] && data.results[0].photos) {
+                        const photos = data.results[0].photos.map(photo => ({
+                            id: photo.id,
+                            url: photo.url,
+                            medium_url: photo.url.replace('square', 'medium'),
+                            large_url: photo.url.replace('square', 'large'),
+                            attribution: photo.attribution || 'iNaturalist user'
+                        }));
+                        
+                        setSpecimenPhotos(prev => ({
+                            ...prev,
+                            [inaturalistId]: photos
+                        }));
+                        
+                        console.log(`✅ Loaded ${photos.length} photos`);
+                        return photos;
+                    }
+                } catch (error) {
+                    console.error('Error loading photos:', error);
+                }
+                
+                return [];
+            };
+
+            const updateSpecimenStatus = async (specimenId, status, notes = '', selectedPhotoIds = []) => {
+                try {
+                    console.log(`Updating specimen ${specimenId} to ${status}`);
+                    
+                    const response = await fetch('/api/admin', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            specimenId,
+                            status,
+                            notes,
+                            selectedPhotoIds
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(result.message || `Specimen ${status} successfully!`);
+                        loadData();
+                        setSelectedSpecimen(null);
+                    } else {
+                        alert(`Error: ${result.error || 'Failed to update specimen'}`);
+                    }
+                } catch (error) {
+                    console.error('Error updating specimen:', error);
+                    alert(`Error: ${error.message}`);
+                }
+            };
+
+            // NEW: Delete specimen (instead of rejecting)
+            const deleteSpecimen = async (specimenId, speciesName) => {
+                if (!confirm(`Are you sure you want to delete the specimen "${speciesName}"? This action cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        alert('Specimen deleted successfully!');
+                        loadData();
+                        setSelectedSpecimen(null);
+                    } else {
+                        alert('Failed to delete specimen');
+                    }
+                } catch (error) {
+                    console.error('Error deleting specimen:', error);
+                    alert('Error deleting specimen: ' + error.message);
                 }
             };
 
@@ -102,10 +190,38 @@
                 React.createElement(AdminNavigation, { currentView, setCurrentView }),
                 React.createElement('main', { className: 'max-w-7xl mx-auto px-4 py-8' },
                     currentView === 'dashboard' && React.createElement(Dashboard, { stats, specimens }),
-                    currentView === 'review' && React.createElement(ReviewQueue, { specimens: specimens.filter(s => s.status === 'pending') }),
-                    currentView === 'approved' && React.createElement(ApprovedSpecimens, { specimens: specimens.filter(s => s.status === 'approved') }),
-                    currentView === 'all' && React.createElement(AllSpecimens, { specimens })
-                )
+                    currentView === 'review' && React.createElement(ReviewQueue, { 
+                        specimens: specimens.filter(s => s.status === 'pending'),
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                        }
+                    }),
+                    currentView === 'approved' && React.createElement(ApprovedSpecimens, { 
+                        specimens: specimens.filter(s => s.status === 'approved'),
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                        }
+                    }),
+                    currentView === 'all' && React.createElement(AllSpecimens, { 
+                        specimens,
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                        }
+                    })
+                ),
+                
+                // Review Modal
+                selectedSpecimen && React.createElement(SpecimenReviewModal, {
+                    specimen: selectedSpecimen,
+                    photos: specimenPhotos[selectedSpecimen.inaturalist_id] || [],
+                    onClose: () => setSelectedSpecimen(null),
+                    onApprove: (notes, selectedPhotoIds) => updateSpecimenStatus(selectedSpecimen.id, 'approved', notes, selectedPhotoIds),
+                    onDelete: () => deleteSpecimen(selectedSpecimen.id, selectedSpecimen.species_name),
+                    loadPhotos: () => loadSpecimenPhotos(selectedSpecimen.inaturalist_id)
+                })
             );
         }
 
@@ -123,7 +239,7 @@
                         React.createElement('div', { className: 'flex items-center gap-6' },
                             React.createElement('div', { className: 'text-center' },
                                 React.createElement('div', { className: 'text-2xl font-bold text-orange-400' }, stats.pending || 0),
-                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Pending')
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Pending Review')
                             ),
                             React.createElement('div', { className: 'text-center' },
                                 React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, stats.approved || 0),
@@ -173,11 +289,33 @@
             const recentSpecimens = specimens.slice(0, 5);
 
             return React.createElement('div', { className: 'space-y-6' },
-                React.createElement('div', { className: 'grid md:grid-cols-4 gap-6' },
+                React.createElement('div', { className: 'grid md:grid-cols-3 gap-6' },
                     React.createElement(StatCard, { title: 'Total Specimens', value: stats.total, color: 'text-blue-600' }),
                     React.createElement(StatCard, { title: 'Pending Review', value: stats.pending, color: 'text-orange-600' }),
-                    React.createElement(StatCard, { title: 'Approved', value: stats.approved, color: 'text-green-600' }),
-                    React.createElement(StatCard, { title: 'DNA Verified', value: stats.dnaVerified, color: 'text-purple-600' })
+                    React.createElement(StatCard, { title: 'Approved & Ready', value: stats.approved, color: 'text-green-600' })
+                ),
+                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Quick Actions'),
+                    React.createElement('div', { className: 'grid md:grid-cols-3 gap-4' },
+                        React.createElement(QuickActionCard, { 
+                            title: 'Review Pending',
+                            description: `${stats.pending} specimens need attention`,
+                            icon: '⏳',
+                            color: 'bg-orange-50 hover:bg-orange-100 border-orange-200'
+                        }),
+                        React.createElement(QuickActionCard, { 
+                            title: 'Manage Approved',
+                            description: `${stats.approved} specimens ready for study`,
+                            icon: '✅',
+                            color: 'bg-green-50 hover:bg-green-100 border-green-200'
+                        }),
+                        React.createElement(QuickActionCard, { 
+                            title: 'View All Specimens',
+                            description: 'Search and organize database',
+                            icon: '🔧',
+                            color: 'bg-blue-50 hover:bg-blue-100 border-blue-200'
+                        })
+                    )
                 ),
                 React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
                     React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Recent Specimens'),
@@ -204,7 +342,7 @@
             );
         }
 
-        function ReviewQueue({ specimens }) {
+        function ReviewQueue({ specimens, onSelectSpecimen }) {
             if (specimens.length === 0) {
                 return React.createElement('div', { className: 'text-center py-12' },
                     React.createElement('div', { className: 'text-6xl mb-4' }, '🎉'),
@@ -220,104 +358,68 @@
                 ),
                 React.createElement('div', { className: 'grid gap-6' },
                     ...specimens.map(specimen =>
-                        React.createElement('div', {
+                        React.createElement(SpecimenCard, {
                             key: specimen.id,
-                            className: 'bg-white rounded-xl shadow-sm p-6'
-                        },
-                            React.createElement('div', { className: 'flex justify-between items-start mb-4' },
-                                React.createElement('div', null,
-                                    React.createElement('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
-                                    React.createElement('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
-                                    React.createElement('p', { className: 'text-sm text-gray-500' }, specimen.location)
-                                ),
-                                React.createElement('div', { className: 'flex items-center gap-2' },
-                                    React.createElement(StatusBadge, { status: specimen.status }),
-                                    specimen.dna_sequenced && React.createElement('span', {
-                                        className: 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium'
-                                    }, 'DNA Verified'),
-                                    React.createElement('button', {
-                                        className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors',
-                                        onClick: () => alert(`Review functionality for ${specimen.species_name} - Coming soon!`)
-                                    }, 'Review')
-                                )
-                            ),
-                            React.createElement('div', { className: 'grid md:grid-cols-4 gap-2 mb-4' },
-                                React.createElement('div', { className: 'text-sm' },
-                                    React.createElement('strong', null, 'Family: '), specimen.family
-                                ),
-                                React.createElement('div', { className: 'text-sm' },
-                                    React.createElement('strong', null, 'Habitat: '), 
-                                    specimen.habitat?.substring(0, 50) + (specimen.habitat?.length > 50 ? '...' : '')
-                                ),
-                                React.createElement('div', { className: 'text-sm' },
-                                    React.createElement('strong', null, 'iNat ID: '), specimen.inaturalist_id
-                                ),
-                                React.createElement('div', { className: 'text-sm' },
-                                    React.createElement('strong', null, 'Quality: '), 
-                                    `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
-                                )
-                            ),
-                            React.createElement('div', { className: 'text-xs text-gray-500' },
-                                'Added: ', new Date(specimen.created_at).toLocaleDateString()
-                            )
-                        )
+                            specimen,
+                            onReview: () => onSelectSpecimen(specimen),
+                            showReviewButton: true
+                        })
                     )
                 )
             );
         }
 
-        function ApprovedSpecimens({ specimens }) {
+        function ApprovedSpecimens({ specimens, onSelectSpecimen }) {
             return React.createElement('div', { className: 'space-y-4' },
                 React.createElement('div', { className: 'flex justify-between items-center' },
                     React.createElement('h2', { className: 'text-2xl font-bold' }, 'Approved Specimens'),
-                    React.createElement('p', { className: 'text-gray-600' }, `${specimens.length} approved`)
+                    React.createElement('p', { className: 'text-gray-600' }, `${specimens.length} approved and ready for study`)
                 ),
                 React.createElement('div', { className: 'grid gap-4' },
                     ...specimens.map(specimen =>
-                        React.createElement('div', {
+                        React.createElement(SpecimenCard, {
                             key: specimen.id,
-                            className: 'bg-white rounded-xl p-4 shadow-sm'
-                        },
-                            React.createElement('div', { className: 'flex justify-between items-start' },
-                                React.createElement('div', null,
-                                    React.createElement('h3', { className: 'font-semibold text-lg' }, specimen.species_name),
-                                    React.createElement('p', { className: 'text-gray-600' }, specimen.location),
-                                    React.createElement('p', { className: 'text-sm text-gray-500' },
-                                        'Approved: ', specimen.approved_at ? new Date(specimen.approved_at).toLocaleDateString() : 'Unknown'
-                                    )
-                                ),
-                                React.createElement('div', { className: 'flex items-center gap-2' },
-                                    React.createElement(StatusBadge, { status: specimen.status }),
-                                    specimen.dna_sequenced && React.createElement('span', {
-                                        className: 'text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'
-                                    }, 'DNA')
-                                )
-                            )
-                        )
+                            specimen,
+                            onReview: () => onSelectSpecimen(specimen),
+                            showReviewButton: true,
+                            reviewButtonText: 'Review Details'
+                        })
                     )
                 )
             );
         }
 
-        function AllSpecimens({ specimens }) {
+        function AllSpecimens({ specimens, onSelectSpecimen }) {
             const [filter, setFilter] = useState('all');
+            const [searchTerm, setSearchTerm] = useState('');
             
             const filteredSpecimens = specimens.filter(specimen => {
-                return filter === 'all' || specimen.status === filter;
+                const matchesFilter = filter === 'all' || specimen.status === filter;
+                const matchesSearch = specimen.species_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                   specimen.location.toLowerCase().includes(searchTerm.toLowerCase());
+                return matchesFilter && matchesSearch;
             });
 
             return React.createElement('div', { className: 'space-y-6' },
                 React.createElement('div', { className: 'flex justify-between items-center' },
                     React.createElement('h2', { className: 'text-2xl font-bold' }, 'All Specimens'),
-                    React.createElement('select', {
-                        value: filter,
-                        onChange: (e) => setFilter(e.target.value),
-                        className: 'px-3 py-1 border rounded'
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Status'),
-                        React.createElement('option', { value: 'pending' }, 'Pending'),
-                        React.createElement('option', { value: 'approved' }, 'Approved'),
-                        React.createElement('option', { value: 'rejected' }, 'Rejected')
+                    React.createElement('div', { className: 'flex gap-4' },
+                        React.createElement('input', {
+                            type: 'text',
+                            placeholder: 'Search species or location...',
+                            value: searchTerm,
+                            onChange: (e) => setSearchTerm(e.target.value),
+                            className: 'px-3 py-1 border rounded'
+                        }),
+                        React.createElement('select', {
+                            value: filter,
+                            onChange: (e) => setFilter(e.target.value),
+                            className: 'px-3 py-1 border rounded'
+                        },
+                            React.createElement('option', { value: 'all' }, 'All Status'),
+                            React.createElement('option', { value: 'pending' }, 'Pending'),
+                            React.createElement('option', { value: 'approved' }, 'Approved')
+                        )
                     )
                 ),
                 React.createElement('div', { className: 'bg-white rounded-lg shadow overflow-hidden' },
@@ -328,7 +430,8 @@
                                 React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Status'),
                                 React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Location'),
                                 React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'DNA'),
-                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Date')
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Date'),
+                                React.createElement('th', { className: 'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase' }, 'Actions')
                             )
                         ),
                         React.createElement('tbody', { className: 'divide-y divide-gray-200' },
@@ -354,6 +457,12 @@
                                     ),
                                     React.createElement('td', { className: 'px-6 py-4 text-sm' },
                                         new Date(specimen.created_at).toLocaleDateString()
+                                    ),
+                                    React.createElement('td', { className: 'px-6 py-4' },
+                                        React.createElement('button', {
+                                            onClick: () => onSelectSpecimen(specimen),
+                                            className: 'text-blue-600 hover:text-blue-800 text-sm font-medium'
+                                        }, 'Review')
                                     )
                                 )
                             )
@@ -366,47 +475,122 @@
             );
         }
 
-        function StatCard({ title, value, color }) {
-            return React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
-                React.createElement('div', { className: 'flex items-center gap-3' },
-                    React.createElement('div', null,
-                        React.createElement('p', { className: 'text-sm text-gray-600' }, title),
-                        React.createElement('p', { className: `text-2xl font-bold ${color}` }, value || 0)
-                    )
-                )
-            );
-        }
+        // NEW: Comprehensive Specimen Review Modal
+        function SpecimenReviewModal({ specimen, photos, onClose, onApprove, onDelete, loadPhotos }) {
+            const [notes, setNotes] = useState(specimen.admin_notes || '');
+            const [photosLoaded, setPhotosLoaded] = useState(false);
+            const [selectedPhoto, setSelectedPhoto] = useState(null);
+            const [selectedPhotoIds, setSelectedPhotoIds] = useState([]);
 
-        function StatusBadge({ status }) {
-            const statusConfig = {
-                pending: { color: 'bg-orange-100 text-orange-800', label: 'Pending' },
-                approved: { color: 'bg-green-100 text-green-800', label: 'Approved' },
-                rejected: { color: 'bg-red-100 text-red-800', label: 'Rejected' }
+            useEffect(() => {
+                if (!photosLoaded) {
+                    loadPhotos().then((loadedPhotos) => {
+                        setPhotosLoaded(true);
+                        setSelectedPhotoIds(loadedPhotos.map(p => p.id));
+                    });
+                }
+            }, [loadPhotos, photosLoaded]);
+
+            const togglePhotoSelection = (photoId) => {
+                setSelectedPhotoIds(prev => 
+                    prev.includes(photoId) 
+                        ? prev.filter(id => id !== photoId)
+                        : [...prev, photoId]
+                );
             };
 
-            const config = statusConfig[status] || statusConfig.pending;
+            return React.createElement('div', {
+                className: 'fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50'
+            },
+                React.createElement('div', {
+                    className: 'bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto'
+                },
+                    // Header
+                    React.createElement('div', { className: 'p-6 border-b' },
+                        React.createElement('div', { className: 'flex justify-between items-center' },
+                            React.createElement('h2', { className: 'text-xl font-bold' }, 
+                                `Review: ${specimen.species_name}`
+                            ),
+                            React.createElement('button', {
+                                onClick: onClose,
+                                className: 'text-gray-500 hover:text-gray-700 text-2xl'
+                            }, '×')
+                        )
+                    ),
 
-            return React.createElement('span', {
-                className: `px-3 py-1 rounded-full text-sm font-medium ${config.color}`
-            }, config.label);
-        }
+                    // Content
+                    React.createElement('div', { className: 'p-6 space-y-6' },
+                        // Photo Selection
+                        React.createElement('div', null,
+                            React.createElement('h3', { className: 'font-semibold mb-3' }, 'Photos'),
+                            !photosLoaded ? 
+                                React.createElement('div', {
+                                    className: 'bg-gray-100 rounded-lg p-8 text-center'
+                                },
+                                    React.createElement('p', { className: 'text-gray-600' }, 'Loading photos...')
+                                ) :
+                            photos.length > 0 ?
+                                React.createElement('div', null,
+                                    React.createElement('div', { className: 'grid md:grid-cols-3 gap-4 mb-4' },
+                                        ...photos.map((photo, index) =>
+                                            React.createElement('div', {
+                                                key: photo.id,
+                                                className: `relative border-2 rounded-lg overflow-hidden cursor-pointer transition-all ${
+                                                    selectedPhotoIds.includes(photo.id) 
+                                                        ? 'border-green-500 bg-green-50' 
+                                                        : 'border-gray-200 hover:border-gray-400'
+                                                }`,
+                                                onClick: () => togglePhotoSelection(photo.id)
+                                            },
+                                                React.createElement('img', {
+                                                    src: photo.medium_url,
+                                                    alt: `Photo ${index + 1}`,
+                                                    className: 'w-full h-32 object-cover'
+                                                }),
+                                                React.createElement('div', { className: 'absolute top-2 right-2' },
+                                                    React.createElement('input', {
+                                                        type: 'checkbox',
+                                                        checked: selectedPhotoIds.includes(photo.id),
+                                                        onChange: () => togglePhotoSelection(photo.id),
+                                                        className: 'w-4 h-4'
+                                                    })
+                                                ),
+                                                React.createElement('div', {
+                                                    className: 'absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-2'
+                                                },
+                                                    `Photo ${index + 1}`,
+                                                    selectedPhotoIds.includes(photo.id) && 
+                                                        React.createElement('span', { className: 'ml-2' }, '✓')
+                                                ),
+                                                React.createElement('button', {
+                                                    onClick: (e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedPhoto(photo);
+                                                    },
+                                                    className: 'absolute top-2 left-2 bg-blue-500 text-white text-xs px-2 py-1 rounded'
+                                                }, 'View')
+                                            )
+                                        )
+                                    ),
+                                    React.createElement('p', { className: 'text-sm text-gray-500' },
+                                        `📸 ${selectedPhotoIds.length} of ${photos.length} photos selected for study`
+                                    )
+                                ) :
+                                React.createElement('div', {
+                                    className: 'bg-gray-100 rounded-lg p-8 text-center'
+                                },
+                                    React.createElement('p', { className: 'text-gray-600' }, 'No photos found'),
+                                    React.createElement('a', {
+                                        href: `https://www.inaturalist.org/observations/${specimen.inaturalist_id}`,
+                                        target: '_blank',
+                                        className: 'text-blue-500 hover:text-blue-700 text-sm'
+                                    }, 'View on iNaturalist ↗')
+                                )
+                        ),
 
-        // Render the app
-        try {
-            console.log('🎬 About to render AdminPortal...');
-            const root = ReactDOM.createRoot(document.getElementById('admin-root'));
-            root.render(React.createElement(AdminPortal));
-            console.log('✅ AdminPortal rendered successfully');
-        } catch (error) {
-            console.error('❌ Error rendering AdminPortal:', error);
-            document.getElementById('admin-root').innerHTML = `
-                <div style="padding: 20px; color: red; text-align: center;">
-                    <h1>Rendering Error</h1>
-                    <p>Error: ${error.message}</p>
-                    <p>Check the console for details.</p>
-                </div>
-            `;
-        }
-    </script>
-</body>
-</html>
+                        // Specimen Details
+                        React.createElement('div', { className: 'grid md:grid-cols-2 gap-6' },
+                            React.createElement('div', null,
+                                React.createElement('h3', { className: 'font-semibold mb-3' }, 'Taxonomy'),
+                                React.createElement('div', { className: 'space-y-2 text-sm' },
+                                    React.createElement('div
