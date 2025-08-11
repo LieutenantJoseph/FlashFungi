@@ -1,6 +1,8 @@
+}
 
 // Quick Study Component
-function QuickStudy({ specimens, onBack, loadSpecimenPhotos, specimenPhotos }) {
+function QuickStudy(props) {
+    const { specimens, onBack, loadSpecimenPhotos, specimenPhotos } = props;
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [userAnswer, setUserAnswer] = React.useState('');
     const [showAnswer, setShowAnswer] = React.useState(false);
