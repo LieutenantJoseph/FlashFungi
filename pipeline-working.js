@@ -135,28 +135,32 @@ class EnhancedPipeline {
     return familyMap[genus] || 'Fungi';
   }
 
-  extractHabitat(observation) {
-    let habitat = '';
+  extractDescription(observation) {
+    let description = '';
     
     if (observation.description) {
-      habitat += observation.description + ' ';
+      description = observation.description.trim();
     }
     
+    // Also check observation fields for additional context
     if (observation.ofvs) {
-      const habitatFields = observation.ofvs
+      const contextFields = observation.ofvs
         .filter(field => 
           field.name.toLowerCase().includes('habitat') ||
           field.name.toLowerCase().includes('substrate') ||
           field.name.toLowerCase().includes('host') ||
-          field.name.toLowerCase().includes('growing')
+          field.name.toLowerCase().includes('growing') ||
+          field.name.toLowerCase().includes('notes')
         )
         .map(field => `${field.name}: ${field.value}`)
-        .join(', ');
+        .join('; ');
       
-      habitat += habitatFields;
+      if (contextFields) {
+        description = description ? `${description}. ${contextFields}` : contextFields;
+      }
     }
     
-    return habitat.trim() || 'Not specified';
+    return description || 'No description provided';
   }
 
   calculateQualityScore(observation, hasDNA) {
@@ -222,7 +226,7 @@ Each hint should be 1-3 sentences and focus on distinguishing characteristics th
 
 Species: ${specimen.species_name}
 Family: ${specimen.family}
-Habitat: ${specimen.habitat}
+Observer Description: ${specimen.description}
 
 Format your response exactly as:
 MORPHOLOGICAL: [description]
@@ -409,7 +413,7 @@ TAXONOMIC: [description]`;
         common_name: detailed.taxon.preferred_common_name,
         inaturalist_id: detailed.id.toString(),
         location: detailed.place_guess || 'Arizona, USA',
-        habitat: this.extractHabitat(detailed),
+        description: this.extractDescription(detailed),  // Changed from habitat
         dna_sequenced: hasDNA,
         status: 'pending',
         quality_score: this.calculateQualityScore(detailed, hasDNA),

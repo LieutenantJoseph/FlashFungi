@@ -1,4 +1,4 @@
-// Plain JavaScript React App - Final Reviewed Version
+// Plain JavaScript React App - Updated for improved display
 console.log('🔥 app.js executing - plain JavaScript version');
 
 // Check if React is available immediately
@@ -365,22 +365,22 @@ function QuickStudy(props) {
             educationalValue: 'high'
         });
 
-        // Level 3: Ecological/Contextual Information
+        // Level 3: Ecological/Contextual Information - Updated to use description
         const ecologicalHint = (() => {
             let hint = `Found in ${specimen.location}`;
             
-            if (specimen.habitat) {
-                const habitat = specimen.habitat.toLowerCase();
+            if (specimen.description) {
+                const desc = specimen.description.toLowerCase();
                 
-                // Extract key ecological information
-                if (habitat.includes('wood') || habitat.includes('log') || habitat.includes('tree')) {
+                // Extract key ecological information from description
+                if (desc.includes('wood') || desc.includes('log') || desc.includes('tree')) {
                     hint += '. This species grows on or near dead wood (saprotrophic), which is important for identification.';
-                } else if (habitat.includes('soil') || habitat.includes('ground') || habitat.includes('grass')) {
+                } else if (desc.includes('soil') || desc.includes('ground') || desc.includes('grass')) {
                     hint += '. This terrestrial species grows from soil, often associated with specific tree partnerships (mycorrhizal).';
-                } else if (habitat.includes('dung') || habitat.includes('manure')) {
+                } else if (desc.includes('dung') || desc.includes('manure')) {
                     hint += '. This coprophilous species specializes in growing on dung, a key identifying characteristic.';
                 } else {
-                    hint += `. Habitat: ${specimen.habitat.substring(0, 150)}${specimen.habitat.length > 150 ? '...' : ''}`;
+                    hint += `. Observer notes: ${specimen.description.substring(0, 150)}${specimen.description.length > 150 ? '...' : ''}`;
                 }
             }
 
@@ -730,17 +730,19 @@ function QuickStudy(props) {
                 
                 // Left Column - Photos and Specimen Info
                 h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', padding: '1.5rem' } },
-                    // Specimen Info
+                    // Specimen Info - Updated to show description instead of habitat
                     h('div', { style: { marginBottom: '1rem' } },
                         h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Specimen Information'),
                         h('div', { style: { fontSize: '0.875rem', color: '#6b7280', display: 'flex', flexDirection: 'column', gap: '0.25rem' } },
                             h('p', null, h('strong', null, 'Location: '), currentSpecimen.location),
-                            h('p', null, h('strong', null, 'Habitat: '), currentSpecimen.habitat?.substring(0, 100) + (currentSpecimen.habitat?.length > 100 ? '...' : '')),
-                            h('p', null, h('strong', null, 'Quality Score: '), `${((currentSpecimen.quality_score || 0) * 100).toFixed(0)}%`)
+                            currentSpecimen.description && h('p', null, 
+                                h('strong', null, 'Description: '), 
+                                currentSpecimen.description.substring(0, 200) + (currentSpecimen.description.length > 200 ? '...' : '')
+                            )
                         )
                     ),
 
-                    // Photo Display Section
+                    // Photo Display Section - Updated for equal sizing
                     h('div', { style: { marginBottom: '1rem' } },
                         h('h4', { style: { fontWeight: '500', marginBottom: '0.5rem' } }, 'Photos'),
                         !photosLoaded ? 
@@ -749,67 +751,71 @@ function QuickStudy(props) {
                                 style: {
                                     backgroundColor: '#f3f4f6',
                                     borderRadius: '0.5rem',
-                                    height: '16rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(2, 1fr)',
+                                    gap: '0.5rem',
+                                    padding: '1rem'
                                 }
                             },
-                                h('div', { style: { textAlign: 'center', color: '#6b7280' } },
+                                h('div', { style: { textAlign: 'center', color: '#6b7280', gridColumn: '1 / -1' } },
                                     h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '⏳'),
                                     h('p', { style: { fontSize: '0.875rem' } }, 'Loading photos...')
                                 )
                             ) :
                         currentPhotos.length > 0 ?
-                            // Photo Gallery
+                            // Updated Photo Gallery - Equal sizing for all photos
                             h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' } },
-                                // Main Photo
-                                h('div', { style: { position: 'relative' } },
-                                    h('img', {
-                                        src: currentPhotos[0].medium_url,
-                                        alt: 'Main specimen view',
-                                        style: {
-                                            width: '100%',
-                                            height: '16rem',
-                                            objectFit: 'cover',
-                                            borderRadius: '0.5rem',
-                                            cursor: 'pointer'
-                                        },
-                                        onClick: () => setSelectedPhoto(currentPhotos[0])
-                                    }),
-                                    h('div', {
-                                        style: {
-                                            position: 'absolute',
-                                            bottom: '0.5rem',
-                                            right: '0.5rem',
-                                            backgroundColor: 'rgba(0,0,0,0.7)',
-                                            color: 'white',
-                                            fontSize: '0.75rem',
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '0.25rem'
-                                        }
-                                    }, 'Click to enlarge')
-                                ),
-                                // Thumbnail Gallery (if more than 1 photo)
-                                currentPhotos.length > 1 && h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' } },
-                                    ...currentPhotos.slice(1, 5).map((photo, index) =>
-                                        h('img', {
+                                // Photo Grid - All photos equal size
+                                h('div', { 
+                                    style: { 
+                                        display: 'grid', 
+                                        gridTemplateColumns: currentPhotos.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+                                        gap: '0.5rem'
+                                    } 
+                                },
+                                    ...currentPhotos.slice(0, 6).map((photo, index) =>
+                                        h('div', {
                                             key: photo.id,
-                                            src: photo.url,
-                                            alt: `View ${index + 2}`,
                                             style: {
-                                                width: '100%',
-                                                height: '4rem',
-                                                objectFit: 'cover',
-                                                borderRadius: '0.25rem',
+                                                position: 'relative',
+                                                paddingBottom: '100%', // Square aspect ratio
+                                                backgroundColor: '#f3f4f6',
+                                                borderRadius: '0.5rem',
+                                                overflow: 'hidden',
                                                 cursor: 'pointer'
                                             },
                                             onClick: () => setSelectedPhoto(photo)
-                                        })
+                                        },
+                                            h('img', {
+                                                src: photo.medium_url,
+                                                alt: `Specimen view ${index + 1}`,
+                                                style: {
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    objectFit: 'contain', // Changed from 'cover' to 'contain' to show full image
+                                                    backgroundColor: '#f9fafb'
+                                                }
+                                            }),
+                                            index === 0 && currentPhotos.length > 1 && h('div', {
+                                                style: {
+                                                    position: 'absolute',
+                                                    bottom: '0.25rem',
+                                                    right: '0.25rem',
+                                                    backgroundColor: 'rgba(0,0,0,0.6)',
+                                                    color: 'white',
+                                                    fontSize: '0.625rem',
+                                                    padding: '0.125rem 0.375rem',
+                                                    borderRadius: '0.25rem'
+                                                }
+                                            }, 'Click to enlarge')
+                                        )
                                     )
                                 ),
                                 h('p', { style: { fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' } },
-                                    `📸 ${currentPhotos.length} photos available`
+                                    `📸 ${currentPhotos.length} photos available • Click any photo to enlarge`
                                 )
                             ) :
                             // No Photos Available
@@ -817,7 +823,7 @@ function QuickStudy(props) {
                                 style: {
                                     backgroundColor: '#f3f4f6',
                                     borderRadius: '0.5rem',
-                                    height: '16rem',
+                                    padding: '2rem',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center'
@@ -1043,7 +1049,7 @@ function QuickStudy(props) {
             )
         ),
 
-        // Photo Modal
+        // Photo Modal - Updated to show full image
         selectedPhoto && h('div', {
             style: {
                 position: 'fixed',
@@ -1051,23 +1057,23 @@ function QuickStudy(props) {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.8)',
+                backgroundColor: 'rgba(0,0,0,0.9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '1rem',
+                padding: '2rem',
                 zIndex: 50
             },
             onClick: () => setSelectedPhoto(null)
         },
-            h('div', { style: { maxWidth: '64rem', maxHeight: '100%' } },
+            h('div', { style: { maxWidth: '90vw', maxHeight: '90vh', position: 'relative' } },
                 h('img', {
-                    src: selectedPhoto.large_url,
+                    src: selectedPhoto.large_url || selectedPhoto.medium_url,
                     alt: 'Full size specimen view',
                     style: {
                         maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
+                        maxHeight: '85vh',
+                        objectFit: 'contain', // Changed to contain to show full image
                         borderRadius: '0.5rem'
                     }
                 }),
@@ -1155,7 +1161,7 @@ function App() {
                     id: photo.id,
                     url: photo.url,
                     medium_url: photo.url.replace('square', 'medium'),
-                    large_url: photo.url.replace('square', 'large'),
+                    large_url: photo.url.replace('square', 'large') || photo.url.replace('square', 'original'),
                     attribution: photo.attribution || 'iNaturalist user'
                 }));
                 
