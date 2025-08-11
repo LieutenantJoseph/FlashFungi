@@ -1,4 +1,5 @@
 
+
 // Quick Study Component
 function QuickStudy(props) {
     const { specimens, onBack, loadSpecimenPhotos, specimenPhotos } = props;
