@@ -20,16 +20,42 @@ function App() {
 
     const loadSpecimens = async () => {
         try {
+            console.log('🔍 Loading specimens from Supabase...');
             const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?status=eq.approved&select=*`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
                 }
             });
-            const data = await response.json();
+            
+            console.log(`📊 Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Supabase error:', errorText);
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            const responseText = await response.text();
+            console.log('📝 Raw response:', responseText.substring(0, 200) + '...');
+            
+            let data = [];
+            if (responseText.trim()) {
+                try {
+                    data = JSON.parse(responseText);
+                    console.log(`✅ Loaded ${data.length} specimens`);
+                } catch (parseError) {
+                    console.error('JSON parse error:', parseError);
+                    console.error('Response text:', responseText);
+                    throw new Error('Invalid JSON response from server');
+                }
+            }
+            
             setSpecimens(data || []);
         } catch (error) {
-            console.error('Error loading specimens:', error);
+            console.error('❌ Error loading specimens:', error);
+            setSpecimens([]); // Set empty array so app doesn't stay stuck
         } finally {
             setLoading(false);
         }
