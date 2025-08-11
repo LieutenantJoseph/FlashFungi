@@ -376,7 +376,7 @@ function QuickStudy(props) {
     }
 
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-        // Header with Back Button
+        // Header with Back Button and Progress
         h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
             h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1rem' } },
                 h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
@@ -434,37 +434,290 @@ function QuickStudy(props) {
             )
         ),
 
-        // Simple placeholder for now - just show current specimen info
-        h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem', textAlign: 'center' } },
-            h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', padding: '2rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
-                h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 'Quick Study Mode'),
-                h('p', { style: { fontSize: '1.125rem', marginBottom: '0.5rem' } }, `Current Specimen: ${currentSpecimen.species_name}`),
-                h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, `Location: ${currentSpecimen.location}`),
-                h('p', { style: { color: '#6b7280', marginBottom: '2rem' } }, `Habitat: ${currentSpecimen.habitat}`),
-                h('div', { style: { display: 'flex', gap: '1rem', justifyContent: 'center' } },
-                    h('button', {
-                        onClick: handleNext,
-                        style: {
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            padding: '0.75rem 1.5rem',
-                            borderRadius: '0.5rem',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                        }
-                    }, currentIndex < studySpecimens.length - 1 ? 'Next Question →' : 'Finish Study'),
-                    h('button', {
-                        onClick: onBack,
-                        style: {
-                            backgroundColor: '#6b7280',
-                            color: 'white',
-                            padding: '0.75rem 1.5rem',
-                            borderRadius: '0.5rem',
-                            border: 'none',
-                            cursor: 'pointer'
-                        }
-                    }, 'Back to Home')
+        // Main Flashcard Interface
+        h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
+            h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
+                
+                // Left Column - Photos and Specimen Info
+                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', padding: '1.5rem' } },
+                    // Specimen Info
+                    h('div', { style: { marginBottom: '1rem' } },
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Specimen Information'),
+                        h('div', { style: { fontSize: '0.875rem', color: '#6b7280', display: 'flex', flexDirection: 'column', gap: '0.25rem' } },
+                            h('p', null, h('strong', null, 'Location: '), currentSpecimen.location),
+                            h('p', null, h('strong', null, 'Habitat: '), currentSpecimen.habitat?.substring(0, 100) + (currentSpecimen.habitat?.length > 100 ? '...' : '')),
+                            h('p', null, h('strong', null, 'Quality Score: '), `${((currentSpecimen.quality_score || 0) * 100).toFixed(0)}%`)
+                        )
+                    ),
+
+                    // Photo Display Section
+                    h('div', { style: { marginBottom: '1rem' } },
+                        h('h4', { style: { fontWeight: '500', marginBottom: '0.5rem' } }, 'Photos'),
+                        !photosLoaded ? 
+                            // Loading State
+                            h('div', {
+                                style: {
+                                    backgroundColor: '#f3f4f6',
+                                    borderRadius: '0.5rem',
+                                    height: '16rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }
+                            },
+                                h('div', { style: { textAlign: 'center', color: '#6b7280' } },
+                                    h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '⏳'),
+                                    h('p', { style: { fontSize: '0.875rem' } }, 'Loading photos...')
+                                )
+                            ) :
+                        currentPhotos.length > 0 ?
+                            // Photo Gallery
+                            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' } },
+                                // Main Photo
+                                h('div', { style: { position: 'relative' } },
+                                    h('img', {
+                                        src: currentPhotos[0].medium_url,
+                                        alt: 'Main specimen view',
+                                        style: {
+                                            width: '100%',
+                                            height: '16rem',
+                                            objectFit: 'cover',
+                                            borderRadius: '0.5rem',
+                                            cursor: 'pointer'
+                                        },
+                                        onClick: () => setSelectedPhoto(currentPhotos[0])
+                                    }),
+                                    h('div', {
+                                        style: {
+                                            position: 'absolute',
+                                            bottom: '0.5rem',
+                                            right: '0.5rem',
+                                            backgroundColor: 'rgba(0,0,0,0.7)',
+                                            color: 'white',
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '0.25rem'
+                                        }
+                                    }, 'Click to enlarge')
+                                ),
+                                // Thumbnail Gallery (if more than 1 photo)
+                                currentPhotos.length > 1 && h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' } },
+                                    ...currentPhotos.slice(1, 5).map((photo, index) =>
+                                        h('img', {
+                                            key: photo.id,
+                                            src: photo.url,
+                                            alt: `View ${index + 2}`,
+                                            style: {
+                                                width: '100%',
+                                                height: '4rem',
+                                                objectFit: 'cover',
+                                                borderRadius: '0.25rem',
+                                                cursor: 'pointer'
+                                            },
+                                            onClick: () => setSelectedPhoto(photo)
+                                        })
+                                    )
+                                ),
+                                h('p', { style: { fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' } },
+                                    `📸 ${currentPhotos.length} photos available`
+                                )
+                            ) :
+                            // No Photos Available
+                            h('div', {
+                                style: {
+                                    backgroundColor: '#f3f4f6',
+                                    borderRadius: '0.5rem',
+                                    height: '16rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }
+                            },
+                                h('div', { style: { textAlign: 'center', color: '#6b7280' } },
+                                    h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '📸'),
+                                    h('p', { style: { fontSize: '0.875rem' } }, 'No photos available'),
+                                    h('a', {
+                                        href: `https://www.inaturalist.org/observations/${currentSpecimen.inaturalist_id}`,
+                                        target: '_blank',
+                                        style: { color: '#3b82f6', fontSize: '0.75rem' }
+                                    }, 'View on iNaturalist ↗')
+                                )
+                            )
+                    )
+                ),
+
+                // Right Column - Answer Interface
+                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', padding: '1.5rem' } },
+                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' } }, 'Identify This Mushroom'),
+                    
+                    !showAnswer ? 
+                        // Question Mode
+                        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '1rem' } },
+                            h('div', null,
+                                h('label', { style: { display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' } },
+                                    'What species is this mushroom?'
+                                ),
+                                h('input', {
+                                    type: 'text',
+                                    value: userAnswer,
+                                    onChange: (e) => setUserAnswer(e.target.value),
+                                    onKeyPress: handleKeyPress,
+                                    placeholder: 'Enter genus and species (e.g., Agaricus campestris)',
+                                    style: {
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        boxSizing: 'border-box'
+                                    }
+                                })
+                            ),
+                            
+                            h('div', { style: { display: 'flex', gap: '0.5rem' } },
+                                h('button', {
+                                    onClick: handleSubmit,
+                                    disabled: !userAnswer.trim(),
+                                    style: {
+                                        flex: 1,
+                                        backgroundColor: userAnswer.trim() ? '#10b981' : '#d1d5db',
+                                        color: 'white',
+                                        padding: '0.75rem',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
+                                        fontWeight: '500'
+                                    }
+                                }, 'Submit Answer'),
+                                
+                                h('button', {
+                                    onClick: useHint,
+                                    disabled: hintsUsed >= 4,
+                                    style: {
+                                        backgroundColor: hintsUsed < 4 ? '#f59e0b' : '#d1d5db',
+                                        color: 'white',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: hintsUsed < 4 ? 'pointer' : 'not-allowed',
+                                        fontSize: '0.875rem'
+                                    }
+                                }, `💡 Hint (${hintsUsed}/4)`)
+                            ),
+
+                            // Hints Display
+                            showHints && hintsUsed > 0 && h('div', {
+                                style: {
+                                    backgroundColor: '#fef3c7',
+                                    border: '1px solid #f59e0b',
+                                    borderRadius: '0.5rem',
+                                    padding: '1rem'
+                                }
+                            },
+                                h('h4', { style: { fontWeight: '500', color: '#92400e', marginBottom: '0.5rem' } }, 'Hints Used:'),
+                                h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.5rem' } },
+                                    ...hints.slice(0, hintsUsed).map((hint, index) =>
+                                        h('div', { key: index, style: { fontSize: '0.875rem', color: '#92400e' } },
+                                            h('strong', null, `Level ${hint.level} (${hint.type}): `),
+                                            hint.text
+                                        )
+                                    )
+                                )
+                            )
+                        ) :
+                        // Answer Mode
+                        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '1rem' } },
+                            // Answer Result
+                            h('div', {
+                                style: {
+                                    padding: '1rem',
+                                    borderRadius: '0.5rem',
+                                    border: '2px solid',
+                                    borderColor: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
+                                               currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
+                                               '#10b981' : '#ef4444',
+                                    backgroundColor: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
+                                                   currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
+                                                   '#f0fdf4' : '#fef2f2'
+                                }
+                            },
+                                h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
+                                    userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
+                                    currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ?
+                                        h('span', { style: { color: '#10b981' } }, '✅') :
+                                        h('span', { style: { color: '#ef4444' } }, '❌'),
+                                    h('span', { 
+                                        style: { 
+                                            fontWeight: '500', 
+                                            color: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
+                                                   currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
+                                                   '#065f46' : '#991b1b'
+                                        } 
+                                    }, 
+                                        userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
+                                        currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
+                                        'Correct!' : 'Incorrect'
+                                    )
+                                ),
+                                
+                                h('div', { style: { fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' } },
+                                    h('p', null, h('strong', null, 'Correct Answer: '), h('em', null, currentSpecimen.species_name)),
+                                    h('p', null, h('strong', null, 'Common Name: '), currentSpecimen.common_name || 'Unknown'),
+                                    h('p', null, h('strong', null, 'Family: '), currentSpecimen.family),
+                                    h('p', null, h('strong', null, 'Your Answer: '), userAnswer),
+                                    hintsUsed > 0 && h('p', null, h('strong', null, 'Hints Used: '), `${hintsUsed}/4`)
+                                )
+                            ),
+                            
+                            h('button', {
+                                onClick: handleNext,
+                                style: {
+                                    width: '100%',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    padding: '0.75rem',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: '500'
+                                }
+                            }, currentIndex < studySpecimens.length - 1 ? 'Next Question →' : 'Finish Study')
+                        )
+                )
+            )
+        ),
+
+        // Photo Modal
+        selectedPhoto && h('div', {
+            style: {
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+                zIndex: 50
+            },
+            onClick: () => setSelectedPhoto(null)
+        },
+            h('div', { style: { maxWidth: '64rem', maxHeight: '100%' } },
+                h('img', {
+                    src: selectedPhoto.large_url,
+                    alt: 'Full size specimen view',
+                    style: {
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        borderRadius: '0.5rem'
+                    }
+                }),
+                h('div', { style: { textAlign: 'center', marginTop: '1rem' } },
+                    h('p', { style: { color: 'white', fontSize: '0.875rem' } }, selectedPhoto.attribution),
+                    h('p', { style: { color: '#d1d5db', fontSize: '0.75rem', marginTop: '0.25rem' } }, 'Click anywhere to close')
                 )
             )
         )
