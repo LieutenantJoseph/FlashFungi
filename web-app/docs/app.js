@@ -1,4 +1,3 @@
-}
 
 // Quick Study Component
 function QuickStudy(props) {
