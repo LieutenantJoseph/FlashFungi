@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/admin.js": {
-      "runtime": "@vercel/node@3"
-    }
-  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -16,10 +11,6 @@
     {
       "src": "/",
       "dest": "/docs/index.html"
-    },
-    {
-      "src": "/(.*\\.(js|css|html|png|jpg|svg|ico))",
-      "dest": "/docs/$1"
     },
     {
       "src": "/(.*)",
