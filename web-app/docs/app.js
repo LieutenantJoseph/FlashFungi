@@ -271,11 +271,12 @@ function QuickStudy(props) {
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [userAnswer, setUserAnswer] = React.useState('');
     const [showAnswer, setShowAnswer] = React.useState(false);
-    const [score, setScore] = React.useState({ correct: 0, total: 0 });
+    const [score, setScore] = React.useState({ correct: 0, total: 0, totalScore: 0 });
     const [hintsUsed, setHintsUsed] = React.useState(0);
     const [showHints, setShowHints] = React.useState(false);
     const [photosLoaded, setPhotosLoaded] = React.useState(false);
     const [selectedPhoto, setSelectedPhoto] = React.useState(null);
+    const [validationResult, setValidationResult] = React.useState(null);
 
     // Get 10 random approved specimens for study
     const studySpecimens = React.useMemo(() => {
@@ -310,16 +311,198 @@ function QuickStudy(props) {
         ];
     }, [currentSpecimen]);
 
+    // Enhanced Answer Validation System
+    const validateAnswer = React.useCallback((userInput, specimen) => {
+        if (!userInput || !specimen) {
+            return {
+                isCorrect: false,
+                score: 0,
+                feedback: 'No answer provided',
+                matchType: 'none'
+            };
+        }
+
+        const cleanInput = userInput.toLowerCase().trim();
+        const speciesName = specimen.species_name.toLowerCase();
+        const genus = specimen.genus.toLowerCase();
+        const commonName = (specimen.common_name || '').toLowerCase();
+        const family = specimen.family.toLowerCase();
+
+        // Split input and target into parts for analysis
+        const inputParts = cleanInput.split(/\s+/);
+        const speciesParts = speciesName.split(/\s+/);
+        
+        // Perfect match - full species name
+        if (cleanInput === speciesName || 
+            cleanInput.includes(speciesName) || 
+            speciesName.includes(cleanInput)) {
+            return {
+                isCorrect: true,
+                score: 1.0,
+                feedback: 'Perfect! You identified the complete species correctly.',
+                matchType: 'perfect',
+                details: {
+                    matchedSpecies: true,
+                    matchedGenus: true,
+                    matchedCommon: false
+                }
+            };
+        }
+
+        // Common name match (if available)
+        if (commonName && cleanInput === commonName) {
+            return {
+                isCorrect: true,
+                score: 0.9,
+                feedback: 'Excellent! You identified it by its common name.',
+                matchType: 'common-name',
+                details: {
+                    matchedSpecies: false,
+                    matchedGenus: true, // Assume genus is correct for common name
+                    matchedCommon: true
+                }
+            };
+        }
+
+        // Genus-only match
+        if (inputParts.length >= 1 && speciesParts.length >= 1) {
+            const inputGenus = inputParts[0];
+            const targetGenus = speciesParts[0];
+            
+            if (inputGenus === targetGenus || inputGenus === genus) {
+                // Check if they attempted species epithet
+                if (inputParts.length >= 2 && speciesParts.length >= 2) {
+                    const inputSpecies = inputParts[1];
+                    const targetSpecies = speciesParts[1];
+                    
+                    // Genus correct, species wrong
+                    if (inputSpecies !== targetSpecies) {
+                        return {
+                            isCorrect: false,
+                            score: 0.6,
+                            feedback: `Good start! You got the genus ${specimen.genus} correct, but the species epithet should be "${speciesParts[1]}".`,
+                            matchType: 'genus-only',
+                            details: {
+                                matchedSpecies: false,
+                                matchedGenus: true,
+                                matchedCommon: false,
+                                attemptedSpecies: true
+                            }
+                        };
+                    }
+                } else {
+                    // Only provided genus
+                    return {
+                        isCorrect: false,
+                        score: 0.5,
+                        feedback: `You're halfway there! The genus ${specimen.genus} is correct. Can you identify the complete species?`,
+                        matchType: 'genus-only',
+                        details: {
+                            matchedSpecies: false,
+                            matchedGenus: true,
+                            matchedCommon: false,
+                            attemptedSpecies: false
+                        }
+                    };
+                }
+            }
+        }
+
+        // Fuzzy matching for typos (simple implementation)
+        const similarity = calculateSimilarity(cleanInput, speciesName);
+        if (similarity > 0.8) {
+            return {
+                isCorrect: true,
+                score: 0.85,
+                feedback: 'Close enough! Check your spelling, but you have the right species.',
+                matchType: 'fuzzy',
+                details: {
+                    similarity: similarity,
+                    matchedSpecies: true,
+                    matchedGenus: true,
+                    matchedCommon: false
+                }
+            };
+        }
+
+        // Family-level understanding
+        if (cleanInput.includes(family) || family.includes(cleanInput)) {
+            return {
+                isCorrect: false,
+                score: 0.3,
+                feedback: `You identified the family ${specimen.family} correctly! That's a good foundation - now try to narrow it down to the species.`,
+                matchType: 'family-only',
+                details: {
+                    matchedSpecies: false,
+                    matchedGenus: false,
+                    matchedCommon: false,
+                    matchedFamily: true
+                }
+            };
+        }
+
+        // No meaningful match
+        return {
+            isCorrect: false,
+            score: 0,
+            feedback: 'Not quite right. Try using the hints to guide your identification!',
+            matchType: 'none',
+            details: {
+                matchedSpecies: false,
+                matchedGenus: false,
+                matchedCommon: false,
+                matchedFamily: false
+            }
+        };
+    }, []);
+
+    // Simple similarity calculation (Levenshtein-like)
+    const calculateSimilarity = (str1, str2) => {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        const editDistance = getEditDistance(longer, shorter);
+        return (longer.length - editDistance) / longer.length;
+    };
+
+    // Simple edit distance calculation
+    const getEditDistance = (str1, str2) => {
+        const matrix = Array(str2.length + 1).fill(null).map(() => 
+            Array(str1.length + 1).fill(null)
+        );
+        
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+        
+        for (let j = 1; j <= str2.length; j++) {
+            for (let i = 1; i <= str1.length; i++) {
+                const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                matrix[j][i] = Math.min(
+                    matrix[j][i - 1] + 1, // deletion
+                    matrix[j - 1][i] + 1, // insertion
+                    matrix[j - 1][i - 1] + substitutionCost // substitution
+                );
+            }
+        }
+        
+        return matrix[str2.length][str1.length];
+    };
+
     const handleSubmit = () => {
         if (!userAnswer.trim()) return;
         
-        const isCorrect = userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) ||
-                         currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase());
+        const validation = validateAnswer(userAnswer, currentSpecimen);
         
         setScore(prev => ({
-            correct: prev.correct + (isCorrect ? 1 : 0),
-            total: prev.total + 1
+            correct: prev.correct + (validation.isCorrect ? 1 : 0),
+            total: prev.total + 1,
+            totalScore: (prev.totalScore || 0) + validation.score
         }));
+        
+        // Store validation result for display
+        setValidationResult(validation);
         setShowAnswer(true);
     };
 
@@ -331,10 +514,13 @@ function QuickStudy(props) {
             setHintsUsed(0);
             setShowHints(false);
             setSelectedPhoto(null);
+            setValidationResult(null);
         } else {
-            // Study complete
-            const finalScore = Math.round((score.correct / score.total) * 100);
-            alert(`Quick Study Complete!\n\nFinal Score: ${score.correct}/${score.total} (${finalScore}%)\n\nGreat job studying Arizona mushrooms!`);
+            // Study complete - show detailed final score
+            const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+            const avgScore = score.total > 0 ? Math.round((score.totalScore / score.total) * 100) : 0;
+            
+            alert(`Quick Study Complete!\n\nFinal Results:\n✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n📊 Average Score: ${avgScore}%\n\nGreat job studying Arizona mushrooms!`);
             onBack();
         }
     };
@@ -401,9 +587,9 @@ function QuickStudy(props) {
                     h('div', { style: { display: 'flex', alignItems: 'center', gap: '1.5rem' } },
                         h('div', { style: { textAlign: 'center' } },
                             h('div', { style: { fontSize: '1.125rem', fontWeight: 'bold', color: '#10b981' } },
-                                `${score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0}%`
+                                `${score.total > 0 ? Math.round((score.totalScore / score.total) * 100) : 0}%`
                             ),
-                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Accuracy')
+                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Avg Score')
                         ),
                         currentSpecimen.dna_sequenced && h('div', {
                             style: {
@@ -627,37 +813,46 @@ function QuickStudy(props) {
                         ) :
                         // Answer Mode
                         h('div', { style: { display: 'flex', flexDirection: 'column', gap: '1rem' } },
-                            // Answer Result
-                            h('div', {
+                            // Enhanced Answer Result
+                            validationResult && h('div', {
                                 style: {
                                     padding: '1rem',
                                     borderRadius: '0.5rem',
                                     border: '2px solid',
-                                    borderColor: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
-                                               currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
-                                               '#10b981' : '#ef4444',
-                                    backgroundColor: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
-                                                   currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
-                                                   '#f0fdf4' : '#fef2f2'
+                                    borderColor: validationResult.isCorrect ? '#10b981' : 
+                                               validationResult.score > 0.3 ? '#f59e0b' : '#ef4444',
+                                    backgroundColor: validationResult.isCorrect ? '#f0fdf4' : 
+                                                   validationResult.score > 0.3 ? '#fef3c7' : '#fef2f2'
                                 }
                             },
                                 h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                    userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
-                                    currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ?
-                                        h('span', { style: { color: '#10b981' } }, '✅') :
-                                        h('span', { style: { color: '#ef4444' } }, '❌'),
+                                    h('span', { 
+                                        style: { 
+                                            color: validationResult.isCorrect ? '#10b981' : 
+                                                  validationResult.score > 0.3 ? '#f59e0b' : '#ef4444',
+                                            fontSize: '1.25rem'
+                                        } 
+                                    }, validationResult.isCorrect ? '✅' : 
+                                        validationResult.score > 0.3 ? '🟡' : '❌'),
                                     h('span', { 
                                         style: { 
                                             fontWeight: '500', 
-                                            color: userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
-                                                   currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
-                                                   '#065f46' : '#991b1b'
+                                            color: validationResult.isCorrect ? '#065f46' : 
+                                                  validationResult.score > 0.3 ? '#92400e' : '#991b1b'
                                         } 
-                                    }, 
-                                        userAnswer.toLowerCase().includes(currentSpecimen.species_name.toLowerCase()) || 
-                                        currentSpecimen.species_name.toLowerCase().includes(userAnswer.toLowerCase()) ? 
-                                        'Correct!' : 'Incorrect'
-                                    )
+                                    }, validationResult.feedback)
+                                ),
+                                
+                                // Score display
+                                validationResult.score > 0 && validationResult.score < 1 && 
+                                h('div', { style: { marginBottom: '0.5rem' } },
+                                    h('span', { 
+                                        style: { 
+                                            fontSize: '0.875rem', 
+                                            fontWeight: '500',
+                                            color: validationResult.score > 0.5 ? '#059669' : '#d97706'
+                                        } 
+                                    }, `Score: ${Math.round(validationResult.score * 100)}%`)
                                 ),
                                 
                                 h('div', { style: { fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' } },
@@ -665,7 +860,8 @@ function QuickStudy(props) {
                                     h('p', null, h('strong', null, 'Common Name: '), currentSpecimen.common_name || 'Unknown'),
                                     h('p', null, h('strong', null, 'Family: '), currentSpecimen.family),
                                     h('p', null, h('strong', null, 'Your Answer: '), userAnswer),
-                                    hintsUsed > 0 && h('p', null, h('strong', null, 'Hints Used: '), `${hintsUsed}/4`)
+                                    hintsUsed > 0 && h('p', null, h('strong', null, 'Hints Used: '), `${hintsUsed}/4`),
+                                    validationResult.matchType && h('p', null, h('strong', null, 'Match Type: '), validationResult.matchType)
                                 )
                             ),
                             
