@@ -1,3 +1,10 @@
+// Check if React is available
+if (typeof React === 'undefined') {
+    console.error('❌ React not available in app.js');
+} else {
+    console.log('✅ React available in app.js');
+}
+
 const { useState, useEffect } = React;
 
 // Configuration
