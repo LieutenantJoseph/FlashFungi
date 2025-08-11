@@ -26,7 +26,4 @@
       "dest": "/docs/index.html"
     }
   ],
-  "env": {
-    "SUPABASE_SERVICE_KEY": "@supabase-service-key"
-  }
 }
