@@ -1,451 +1,550 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona Mushroom Study - Admin Portal</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-    <div id="admin-root">
-        <div style="padding: 20px; text-align: center;">
-            <h1>Loading Admin Portal...</h1>
-            <p>If this message persists, there may be a JavaScript error.</p>
-        </div>
-    </div>
-
-    <script type="text/babel">
-        console.log('🔥 Admin portal script starting...');
-        
-        const { useState, useEffect } = React;
-        
-        // Configuration
-        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-        const INATURALIST_API = 'https://api.inaturalist.org/v1';
-
-        function AdminPortal() {
-            console.log('🏗️ AdminPortal component rendering');
-            
-            const [currentView, setCurrentView] = useState('dashboard');
-            const [specimens, setSpecimens] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [stats, setStats] = useState({});
-            const [selectedSpecimen, setSelectedSpecimen] = useState(null);
-            const [specimenPhotos, setSpecimenPhotos] = useState({});
-            const [taxonomyCache, setTaxonomyCache] = useState({});
-
-            useEffect(() => {
-                console.log('🔄 useEffect triggered');
-                loadData();
-            }, []);
-
-            const loadData = async () => {
-                try {
-                    console.log('📊 Loading specimens data...');
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        const specimen = specimens.find(s => s.species_name === speciesName);
+                        const hintsData = {
+                            species_name: speciesName,
+                            genus: specimen ? specimen.genus : speciesName.split(' ')[0],
+                            family: specimen ? specimen.family : 'Unknown',
+                            hints: result.hints,
+                            source_quality: result.source_quality,
+                            ai_confidence: result.confidence,
+                            admin_reviewed: false
+                        };
+                        
+                        const saved = await saveSpeciesHints(hintsData);
+                        if (saved) {
+                            alert('Hints generated and saved successfully!');
+                        } else {
+                            alert('Failed to save hints');
                         }
-                    });
-                    
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    } else {
+                        alert('Error generating hints: ' + (result.error || 'Unknown error'));
                     }
-                    
-                    const data = await response.json();
-                    console.log(`✅ Loaded ${data.length} specimens`);
-                    setSpecimens(data || []);
-
-                    // Calculate stats (no rejected specimens)
-                    const pending = data.filter(s => s.status === 'pending').length;
-                    const approved = data.filter(s => s.status === 'approved').length;
-                    const dnaVerified = data.filter(s => s.dna_sequenced).length;
-                    
-                    setStats({
-                        total: data.length,
-                        pending,
-                        approved,
-                        dnaVerified
-                    });
-
                 } catch (error) {
-                    console.error('❌ Error loading data:', error);
+                    alert('Failed to generate hints: ' + error.message);
                 } finally {
-                    setLoading(false);
+                    setIsGenerating(false);
                 }
             };
 
-            // NEW: Load taxonomy information from iNaturalist
-            const loadTaxonomyInfo = async (speciesName) => {
-                if (taxonomyCache[speciesName]) {
-                    return taxonomyCache[speciesName];
-                }
-
-                try {
-                    console.log(`🌿 Loading taxonomy for: ${speciesName}`);
-                    
-                    // Search for the species on iNaturalist
-                    const searchResponse = await fetch(`${INATURALIST_API}/taxa?q=${encodeURIComponent(speciesName)}&rank=species&is_active=true`);
-                    const searchData = await searchResponse.json();
-                    
-                    if (searchData.results && searchData.results.length > 0) {
-                        const taxon = searchData.results[0];
-                        
-                        // Get detailed taxonomy with ancestors
-                        const detailResponse = await fetch(`${INATURALIST_API}/taxa/${taxon.id}`);
-                        const detailData = await detailResponse.json();
-                        
-                        if (detailData.results && detailData.results[0]) {
-                            const detailedTaxon = detailData.results[0];
-                            
-                            // Extract taxonomic hierarchy
-                            const taxonomy = {
-                                species: detailedTaxon.name,
-                                genus: extractTaxonByRank(detailedTaxon, 'genus'),
-                                family: extractTaxonByRank(detailedTaxon, 'family'),
-                                order: extractTaxonByRank(detailedTaxon, 'order'),
-                                class: extractTaxonByRank(detailedTaxon, 'class'),
-                                phylum: extractTaxonByRank(detailedTaxon, 'phylum'),
-                                kingdom: extractTaxonByRank(detailedTaxon, 'kingdom'),
-                                common_name: detailedTaxon.preferred_common_name,
-                                full_hierarchy: detailedTaxon.ancestors || []
-                            };
-                            
-                            // Cache the result
-                            setTaxonomyCache(prev => ({
-                                ...prev,
-                                [speciesName]: taxonomy
-                            }));
-                            
-                            console.log(`✅ Loaded taxonomy for ${speciesName}:`, taxonomy);
-                            return taxonomy;
-                        }
-                    }
-                    
-                    console.log(`⚠️ No taxonomy found for ${speciesName}`);
-                    return null;
-                } catch (error) {
-                    console.error('Error loading taxonomy:', error);
-                    return null;
-                }
+            const handleAddHint = () => {
+                setEditableHints([...editableHints, { type: 'morphological', level: 1, text: '' }]);
+                setHasChanges(true);
             };
 
-            // Helper function to extract taxon by rank
-            const extractTaxonByRank = (taxon, targetRank) => {
-                // Check if the taxon itself is the target rank
-                if (taxon.rank === targetRank) {
-                    return taxon.name;
-                }
-                
-                // Check ancestors
-                if (taxon.ancestors) {
-                    const ancestor = taxon.ancestors.find(a => a.rank === targetRank);
-                    if (ancestor) {
-                        return ancestor.name;
-                    }
-                }
-                
-                return null;
+            const handleUpdateHint = (index, field, value) => {
+                const updated = [...editableHints];
+                updated[index] = { ...updated[index], [field]: value };
+                setEditableHints(updated);
+                setHasChanges(true);
             };
 
-            const loadSpecimenPhotos = async (inaturalistId) => {
-                if (specimenPhotos[inaturalistId]) {
-                    return specimenPhotos[inaturalistId];
-                }
-
-                try {
-                    console.log(`📸 Loading photos for specimen: ${inaturalistId}`);
-                    const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
-                    const data = await response.json();
-                    
-                    if (data.results && data.results[0] && data.results[0].photos) {
-                        const photos = data.results[0].photos.map(photo => ({
-                            id: photo.id,
-                            url: photo.url,
-                            medium_url: photo.url.replace('square', 'medium'),
-                            large_url: photo.url.replace('square', 'large'),
-                            attribution: photo.attribution || 'iNaturalist user'
-                        }));
-                        
-                        setSpecimenPhotos(prev => ({
-                            ...prev,
-                            [inaturalistId]: photos
-                        }));
-                        
-                        console.log(`✅ Loaded ${photos.length} photos`);
-                        return photos;
-                    }
-                } catch (error) {
-                    console.error('Error loading photos:', error);
-                }
-                
-                return [];
+            const handleRemoveHint = (index) => {
+                setEditableHints(editableHints.filter((_, i) => i !== index));
+                setHasChanges(true);
             };
 
-            // NEW: Update specimen with accurate taxonomy
-            const updateSpecimenTaxonomy = async (specimenId, taxonomy) => {
-                if (!taxonomy) return;
-
-                try {
-                    const updateData = {
-                        genus: taxonomy.genus || 'Unknown',
-                        family: taxonomy.family || 'Fungi',
-                        common_name: taxonomy.common_name || null
+            const handleSaveAndApprove = async () => {
+                if (hasChanges || !hints) {
+                    const hintsData = {
+                        species_name: species,
+                        genus: specimen.genus,
+                        family: specimen.family,
+                        common_name: specimen.common_name,
+                        hints: editableHints,
+                        reference_url: referenceUrl,
+                        admin_reviewed: true,
+                        source_quality: referenceUrl ? 'web-reference' : 'manual'
                     };
 
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updateData)
-                    });
-
-                    if (response.ok) {
-                        console.log(`✅ Updated taxonomy for specimen ${specimenId}`);
-                        loadData(); // Refresh data
+                    const success = await saveSpeciesHints(hintsData);
+                    if (!success) {
+                        alert('Failed to save hints');
+                        return;
                     }
-                } catch (error) {
-                    console.error('Error updating specimen taxonomy:', error);
                 }
+
+                // Proceed with approval
+                onApprove();
             };
 
-            const updateSpecimenStatus = async (specimenId, status, notes = '', selectedPhotoIds = []) => {
-                try {
-                    console.log(`Updating specimen ${specimenId} to ${status}`);
-                    
-                    const response = await fetch('/api/admin', {
-                        method: 'PATCH',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            specimenId,
-                            status,
-                            notes,
-                            selectedPhotoIds
-                        })
-                    });
+            return React.createElement('div', {
+                className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'
+            },
+                React.createElement('div', {
+                    className: 'bg-white rounded-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto'
+                },
+                    // Header
+                    React.createElement('div', { className: 'p-6 border-b bg-blue-50' },
+                        React.createElement('h2', { className: 'text-xl font-bold text-blue-800' }, 
+                            `🆕 First-Time Species: ${species}`
+                        ),
+                        React.createElement('p', { className: 'text-sm text-blue-600 mt-2' },
+                            'This is the first specimen of this species being approved. Please review and finalize the identification hints that will be used for study sessions.'
+                        )
+                    ),
 
-                    const result = await response.json();
-
-                    if (response.ok) {
-                        alert(result.message || `Specimen ${status} successfully!`);
-                        loadData();
-                        setSelectedSpecimen(null);
-                    } else {
-                        alert(`Error: ${result.error || 'Failed to update specimen'}`);
-                    }
-                } catch (error) {
-                    console.error('Error updating specimen:', error);
-                    alert(`Error: ${error.message}`);
-                }
-            };
-
-            const deleteSpecimen = async (specimenId, speciesName) => {
-                if (!confirm(`Are you sure you want to delete the specimen "${speciesName}"? This action cannot be undone.`)) {
-                    return;
-                }
-
-                try {
-                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'apikey': SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                        }
-                    });
-
-                    if (response.ok) {
-                        alert('Specimen deleted successfully!');
-                        loadData();
-                        setSelectedSpecimen(null);
-                    } else {
-                        alert('Failed to delete specimen');
-                    }
-                } catch (error) {
-                    console.error('Error deleting specimen:', error);
-                    alert('Error deleting specimen: ' + error.message);
-                }
-            };
-
-            if (loading) {
-                return React.createElement('div', {
-                    className: 'min-h-screen bg-gray-50 flex items-center justify-center'
-                }, 
-                    React.createElement('div', { className: 'text-center' },
-                        React.createElement('div', { className: 'text-6xl mb-4' }, '🛡️'),
-                        React.createElement('h1', { className: 'text-2xl font-bold text-gray-800 mb-2' }, 'Admin Portal'),
-                        React.createElement('p', { className: 'text-gray-600' }, 'Loading data...')
-                    )
-                );
-            }
-
-            return React.createElement('div', { className: 'min-h-screen bg-gray-50' },
-                React.createElement(AdminHeader, { stats }),
-                React.createElement(AdminNavigation, { currentView, setCurrentView }),
-                React.createElement('main', { className: 'max-w-7xl mx-auto px-4 py-8' },
-                    currentView === 'dashboard' && React.createElement(Dashboard, { stats, specimens }),
-                    currentView === 'review' && React.createElement(ReviewQueue, { 
-                        specimens: specimens.filter(s => s.status === 'pending'),
-                        onSelectSpecimen: (specimen) => {
-                            setSelectedSpecimen(specimen);
-                            loadSpecimenPhotos(specimen.inaturalist_id);
-                            loadTaxonomyInfo(specimen.species_name);
-                        }
-                    }),
-                    currentView === 'approved' && React.createElement(ApprovedSpecimens, { 
-                        specimens: specimens.filter(s => s.status === 'approved'),
-                        onSelectSpecimen: (specimen) => {
-                            setSelectedSpecimen(specimen);
-                            loadSpecimenPhotos(specimen.inaturalist_id);
-                            loadTaxonomyInfo(specimen.species_name);
-                        }
-                    }),
-                    currentView === 'all' && React.createElement(AllSpecimens, { 
-                        specimens,
-                        onSelectSpecimen: (specimen) => {
-                            setSelectedSpecimen(specimen);
-                            loadSpecimenPhotos(specimen.inaturalist_id);
-                            loadTaxonomyInfo(specimen.species_name);
-                        }
-                    })
-                ),
-                
-                // Review Modal with Taxonomy
-                selectedSpecimen && React.createElement(SpecimenReviewModal, {
-                    specimen: selectedSpecimen,
-                    photos: specimenPhotos[selectedSpecimen.inaturalist_id] || [],
-                    taxonomy: taxonomyCache[selectedSpecimen.species_name] || null,
-                    onClose: () => setSelectedSpecimen(null),
-                    onApprove: (notes, selectedPhotoIds) => updateSpecimenStatus(selectedSpecimen.id, 'approved', notes, selectedPhotoIds),
-                    onDelete: () => deleteSpecimen(selectedSpecimen.id, selectedSpecimen.species_name),
-                    onUpdateTaxonomy: (taxonomy) => updateSpecimenTaxonomy(selectedSpecimen.id, taxonomy),
-                    loadPhotos: () => loadSpecimenPhotos(selectedSpecimen.inaturalist_id)
-                })
-            );
-        }
-
-        function AdminHeader({ stats }) {
-            return React.createElement('div', { className: 'bg-slate-800 text-white' },
-                React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-4' },
-                    React.createElement('div', { className: 'flex justify-between items-center' },
-                        React.createElement('div', { className: 'flex items-center gap-3' },
-                            React.createElement('div', { className: 'text-3xl' }, '🛡️'),
-                            React.createElement('div', null,
-                                React.createElement('h1', { className: 'text-xl font-bold' }, 'Admin Portal'),
-                                React.createElement('p', { className: 'text-slate-300 text-sm' }, 'Arizona Mushroom Study')
+                    // Content
+                    React.createElement('div', { className: 'p-6 space-y-6' },
+                        // Reference URL Section
+                        React.createElement('div', null,
+                            React.createElement('h3', { className: 'font-semibold mb-3' }, 'Reference Source'),
+                            React.createElement('div', { className: 'flex gap-2' },
+                                React.createElement('input', {
+                                    type: 'url',
+                                    value: referenceUrl,
+                                    onChange: (e) => {
+                                        setReferenceUrl(e.target.value);
+                                        setHasChanges(true);
+                                    },
+                                    placeholder: 'https://example.com/taxonomic-description',
+                                    className: 'flex-1 p-2 border rounded'
+                                }),
+                                React.createElement('button', {
+                                    onClick: handleGenerateHints,
+                                    disabled: isGenerating,
+                                    className: 'bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-4 py-2 rounded transition-colors'
+                                }, isGenerating ? 'Generating...' : 'Regenerate Hints')
+                            ),
+                            React.createElement('p', { className: 'text-xs text-gray-500 mt-1' },
+                                'Provide a URL with taxonomic information for better AI-generated hints'
                             )
                         ),
-                        React.createElement('div', { className: 'flex items-center gap-6' },
-                            React.createElement('div', { className: 'text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-orange-400' }, stats.pending || 0),
-                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Pending Review')
-                            ),
-                            React.createElement('div', { className: 'text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, stats.approved || 0),
-                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Approved')
-                            ),
-                            React.createElement('div', { className: 'text-center' },
-                                React.createElement('div', { className: 'text-2xl font-bold text-blue-400' }, stats.dnaVerified || 0),
-                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'DNA Verified')
-                            )
-                        )
-                    )
-                )
-            );
-        }
 
-        function AdminNavigation({ currentView, setCurrentView }) {
-            const navItems = [
-                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-                { id: 'review', label: 'Review Queue', icon: '⏳' },
-                { id: 'approved', label: 'Approved', icon: '✅' },
-                { id: 'all', label: 'All Specimens', icon: '🔧' }
-            ];
+                        // Hints Editor
+                        React.createElement('div', null,
+                            React.createElement('div', { className: 'flex justify-between items-center mb-3' },
+                                React.createElement('h3', { className: 'font-semibold' }, 'Identification Hints'),
+                                React.createElement('button', {
+                                    onClick: handleAddHint,
+                                    className: 'bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm'
+                                }, '+ Add Hint')
+                            ),
 
-            return React.createElement('div', { className: 'bg-white border-b shadow-sm' },
-                React.createElement('div', { className: 'max-w-7xl mx-auto px-4' },
-                    React.createElement('div', { className: 'flex gap-6' },
-                        ...navItems.map(item =>
-                            React.createElement('button', {
-                                key: item.id,
-                                onClick: () => setCurrentView(item.id),
-                                className: `flex items-center gap-2 px-4 py-4 border-b-2 transition-colors ${
-                                    currentView === item.id 
-                                        ? 'border-green-500 text-green-600' 
-                                        : 'border-transparent text-gray-600 hover:text-gray-800'
-                                }`
+                            React.createElement('div', { className: 'space-y-4' },
+                                ...editableHints.map((hint, index) =>
+                                    React.createElement('div', {
+                                        key: index,
+                                        className: 'border rounded-lg p-4'
+                                    },
+                                        React.createElement('div', { className: 'flex justify-between items-start mb-3' },
+                                            React.createElement('div', { className: 'flex gap-4' },
+                                                React.createElement('select', {
+                                                    value: hint.type,
+                                                    onChange: (e) => handleUpdateHint(index, 'type', e.target.value),
+                                                    className: 'px-3 py-1 border rounded'
+                                                },
+                                                    React.createElement('option', { value: 'morphological' }, 'Morphological'),
+                                                    React.createElement('option', { value: 'comparative' }, 'Comparative'),
+                                                    React.createElement('option', { value: 'ecological' }, 'Ecological'),
+                                                    React.createElement('option', { value: 'taxonomic' }, 'Taxonomic')
+                                                ),
+                                                React.createElement('select', {
+                                                    value: hint.level,
+                                                    onChange: (e) => handleUpdateHint(index, 'level', parseInt(e.target.value)),
+                                                    className: 'px-3 py-1 border rounded'
+                                                },
+                                                    React.createElement('option', { value: 1 }, 'Level 1 (Easy)'),
+                                                    React.createElement('option', { value: 2 }, 'Level 2 (Medium)'),
+                                                    React.createElement('option', { value: 3 }, 'Level 3 (Hard)'),
+                                                    React.createElement('option', { value: 4 }, 'Level 4 (Expert)')
+                                                )
+                                            ),
+                                            React.createElement('button', {
+                                                onClick: () => handleRemoveHint(index),
+                                                className: 'text-red-500 hover:text-red-700 text-sm'
+                                            }, 'Remove')
+                                        ),
+                                        React.createElement('textarea', {
+                                            value: hint.text,
+                                            onChange: (e) => handleUpdateHint(index, 'text', e.target.value),
+                                            placeholder: 'Enter hint text...',
+                                            className: 'w-full p-3 border rounded resize-none',
+                                            rows: 3
+                                        })
+                                    )
+                                )
+                            ),
+
+                            editableHints.length === 0 && React.createElement('div', {
+                                className: 'text-center py-8 text-gray-500'
                             },
-                                React.createElement('span', null, item.icon),
-                                item.label
-                            )
+                                React.createElement('p', null, isGenerating ? 'Generating hints...' : 'No hints yet. Click "Regenerate Hints" to create some.'))
+                        ),
+
+                        // Action Buttons
+                        React.createElement('div', { className: 'flex gap-4 pt-4 border-t' },
+                            React.createElement('button', {
+                                onClick: handleSaveAndApprove,
+                                disabled: editableHints.length === 0,
+                                className: 'bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors flex items-center gap-2'
+                            }, '✅ Save Hints & Approve Specimen'),
+                            React.createElement('button', {
+                                onClick: onClose,
+                                className: 'bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors'
+                            }, 'Cancel Approval')
                         )
                     )
                 )
             );
         }
 
-        function Dashboard({ stats, specimens }) {
-            const recentSpecimens = specimens.slice(0, 5);
+        // Species Hints Management Modal
+        function SpeciesHintsModal({ species, hints, onClose, generateAIHints, saveSpeciesHints }) {
+            const [editableHints, setEditableHints] = useState(hints?.hints || []);
+            const [referenceUrl, setReferenceUrl] = useState(hints?.reference_url || '');
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [hasChanges, setHasChanges] = useState(false);
+
+            const handleAddHint = () => {
+                setEditableHints([...editableHints, { type: 'morphological', level: 1, text: '' }]);
+                setHasChanges(true);
+            };
+
+            const handleUpdateHint = (index, field, value) => {
+                const updated = [...editableHints];
+                updated[index] = { ...updated[index], [field]: value };
+                setEditableHints(updated);
+                setHasChanges(true);
+            };
+
+            const handleRemoveHint = (index) => {
+                setEditableHints(editableHints.filter((_, i) => i !== index));
+                setHasChanges(true);
+            };
+
+            const handleGenerateHints = async () => {
+                setIsGenerating(true);
+                try {
+                    const result = await generateAIHints(species, referenceUrl || null);
+                    if (result.success && !result.error) {
+                        setEditableHints(result.hints);
+                        setReferenceUrl(result.reference_url || referenceUrl);
+                        setHasChanges(true);
+                    } else {
+                        alert('Error generating hints: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    alert('Failed to generate hints: ' + error.message);
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const handleSave = async () => {
+                const hintsData = {
+                    species_name: species,
+                    genus: species.split(' ')[0],
+                    family: 'Unknown',
+                    hints: editableHints,
+                    reference_url: referenceUrl,
+                    admin_reviewed: true,
+                    source_quality: 'manual'
+                };
+
+                const success = await saveSpeciesHints(hintsData);
+                if (success) {
+                    alert('Hints saved successfully!');
+                    onClose();
+                } else {
+                    alert('Failed to save hints');
+                }
+            };
+
+            return React.createElement('div', {
+                className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'
+            },
+                React.createElement('div', {
+                    className: 'bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto'
+                },
+                    React.createElement('div', { className: 'p-6 border-b' },
+                        React.createElement('div', { className: 'flex justify-between items-center' },
+                            React.createElement('h2', { className: 'text-xl font-bold' }, `Species Hints: ${species}`),
+                            React.createElement('button', {
+                                onClick: onClose,
+                                className: 'text-gray-500 hover:text-gray-700 text-2xl'
+                            }, '×')
+                        )
+                    ),
+
+                    React.createElement('div', { className: 'p-6 space-y-6' },
+                        // Reference URL Section
+                        React.createElement('div', null,
+                            React.createElement('h3', { className: 'font-semibold mb-3' }, 'Reference Source'),
+                            React.createElement('div', { className: 'flex gap-2' },
+                                React.createElement('input', {
+                                    type: 'url',
+                                    value: referenceUrl,
+                                    onChange: (e) => {
+                                        setReferenceUrl(e.target.value);
+                                        setHasChanges(true);
+                                    },
+                                    placeholder: 'https://example.com/taxonomic-description',
+                                    className: 'flex-1 p-2 border rounded'
+                                }),
+                                React.createElement('button', {
+                                    onClick: handleGenerateHints,
+                                    disabled: isGenerating,
+                                    className: 'bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-4 py-2 rounded transition-colors'
+                                }, isGenerating ? 'Generating...' : 'Generate AI Hints')
+                            )
+                        ),
+
+                        // Hints Editor
+                        React.createElement('div', null,
+                            React.createElement('div', { className: 'flex justify-between items-center mb-3' },
+                                React.createElement('h3', { className: 'font-semibold' }, 'Identification Hints'),
+                                React.createElement('button', {
+                                    onClick: handleAddHint,
+                                    className: 'bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm'
+                                }, '+ Add Hint')
+                            ),
+
+                            React.createElement('div', { className: 'space-y-4' },
+                                ...editableHints.map((hint, index) =>
+                                    React.createElement('div', {
+                                        key: index,
+                                        className: 'border rounded-lg p-4'
+                                    },
+                                        React.createElement('div', { className: 'flex justify-between items-start mb-3' },
+                                            React.createElement('div', { className: 'flex gap-4' },
+                                                React.createElement('select', {
+                                                    value: hint.type,
+                                                    onChange: (e) => handleUpdateHint(index, 'type', e.target.value),
+                                                    className: 'px-3 py-1 border rounded'
+                                                },
+                                                    React.createElement('option', { value: 'morphological' }, 'Morphological'),
+                                                    React.createElement('option', { value: 'comparative' }, 'Comparative'),
+                                                    React.createElement('option', { value: 'ecological' }, 'Ecological'),
+                                                    React.createElement('option', { value: 'taxonomic' }, 'Taxonomic')
+                                                ),
+                                                React.createElement('select', {
+                                                    value: hint.level,
+                                                    onChange: (e) => handleUpdateHint(index, 'level', parseInt(e.target.value)),
+                                                    className: 'px-3 py-1 border rounded'
+                                                },
+                                                    React.createElement('option', { value: 1 }, 'Level 1 (Easy)'),
+                                                    React.createElement('option', { value: 2 }, 'Level 2 (Medium)'),
+                                                    React.createElement('option', { value: 3 }, 'Level 3 (Hard)'),
+                                                    React.createElement('option', { value: 4 }, 'Level 4 (Expert)')
+                                                )
+                                            ),
+                                            React.createElement('button', {
+                                                onClick: () => handleRemoveHint(index),
+                                                className: 'text-red-500 hover:text-red-700 text-sm'
+                                            }, 'Remove')
+                                        ),
+                                        React.createElement('textarea', {
+                                            value: hint.text,
+                                            onChange: (e) => handleUpdateHint(index, 'text', e.target.value),
+                                            placeholder: 'Enter hint text...',
+                                            className: 'w-full p-3 border rounded resize-none',
+                                            rows: 3
+                                        })
+                                    )
+                                )
+                            ),
+
+                            editableHints.length === 0 && React.createElement('div', {
+                                className: 'text-center py-8 text-gray-500'
+                            },
+                                React.createElement('p', null, 'No hints yet. Add some hints or generate them with AI.'))
+                        ),
+
+                        // Action Buttons
+                        React.createElement('div', { className: 'flex gap-4 pt-4 border-t' },
+                            React.createElement('button', {
+                                onClick: handleSave,
+                                disabled: !hasChanges,
+                                className: 'bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg transition-colors'
+                            }, 'Save Hints'),
+                            React.createElement('button', {
+                                onClick: onClose,
+                                className: 'bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition-colors'
+                            }, 'Cancel')
+                        )
+                    )
+                )
+            );
+        }
+
+        // Reusable Specimen Card Component
+        function SpecimenCard({ specimen, onReview, showReviewButton, reviewButtonText = 'Review' }) {
+            return React.createElement('div', {
+                className: 'bg-white rounded-xl shadow-sm p-6'
+            },
+                React.createElement('div', { className: 'flex justify-between items-start mb-4' },
+                    React.createElement('div', null,
+                        React.createElement('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
+                        React.createElement('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
+                        React.createElement('p', { className: 'text-sm text-gray-500' }, specimen.location)
+                    ),
+                    React.createElement('div', { className: 'flex items-center gap-2' },
+                        React.createElement(StatusBadge, { status: specimen.status }),
+                        specimen.dna_sequenced && React.createElement('span', {
+                            className: 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium'
+                        }, 'DNA Verified'),
+                        showReviewButton && React.createElement('button', {
+                            onClick: onReview,
+                            className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
+                        }, reviewButtonText)
+                    )
+                ),
+                React.createElement('div', { className: 'grid md:grid-cols-4 gap-2 mb-4' },
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Family: '), specimen.family
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Habitat: '), 
+                        specimen.habitat && specimen.habitat.length > 50 ? 
+                            specimen.habitat.substring(0, 50) + '...' : 
+                            specimen.habitat || 'Not specified'
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'iNat ID: '), specimen.inaturalist_id
+                    ),
+                    React.createElement('div', { className: 'text-sm' },
+                        React.createElement('strong', null, 'Quality: '), 
+                        `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
+                    )
+                ),
+                React.createElement('div', { className: 'text-xs text-gray-500' },
+                    'Added: ', new Date(specimen.created_at).toLocaleDateString(),
+                    specimen.approved_at && React.createElement('span', null, 
+                        ' • Approved: ', new Date(specimen.approved_at).toLocaleDateString()
+                    )
+                )
+            );
+        }
+
+        function StatCard({ title, value, color }) {
+            return React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('div', null,
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, title),
+                        React.createElement('p', { className: `text-2xl font-bold ${color}` }, value || 0)
+                    )
+                )
+            );
+        }
+
+        function QuickActionCard({ title, description, icon, color }) {
+            return React.createElement('div', { className: `${color} border rounded-lg p-4 cursor-pointer transition-colors` },
+                React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('div', { className: 'text-2xl' }, icon),
+                    React.createElement('div', null,
+                        React.createElement('h4', { className: 'font-medium' }, title),
+                        React.createElement('p', { className: 'text-sm text-gray-600' }, description)
+                    )
+                )
+            );
+        }
+
+        function StatusBadge({ status }) {
+            const statusConfig = {
+                pending: { color: 'bg-orange-100 text-orange-800', label: 'Pending Review' },
+                approved: { color: 'bg-green-100 text-green-800', label: 'Approved' }
+            };
+
+            const config = statusConfig[status] || statusConfig.pending;
+
+            return React.createElement('span', {
+                className: `px-3 py-1 rounded-full text-sm font-medium ${config.color}`
+            }, config.label);
+        }
+
+        // Render the app
+        try {
+            console.log('🎬 About to render AdminPortal...');
+            const root = ReactDOM.createRoot(document.getElementById('admin-root'));
+            root.render(React.createElement(AdminPortal));
+            console.log('✅ AdminPortal rendered successfully');
+        } catch (error) {
+            console.error('❌ Error rendering AdminPortal:', error);
+            document.getElementById('admin-root').innerHTML = `
+                <div style="padding: 20px; color: red; text-align: center;">
+                    <h1>Rendering Error</h1>
+                    <p>Error: ${error.message}</p>
+                    <p>Check the console for details.</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>'));
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            };
 
             return React.createElement('div', { className: 'space-y-6' },
-                React.createElement('div', { className: 'grid md:grid-cols-3 gap-6' },
-                    React.createElement(StatCard, { title: 'Total Specimens', value: stats.total, color: 'text-blue-600' }),
-                    React.createElement(StatCard, { title: 'Pending Review', value: stats.pending, color: 'text-orange-600' }),
-                    React.createElement(StatCard, { title: 'Approved & Ready', value: stats.approved, color: 'text-green-600' })
-                ),
-                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
-                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Quick Actions'),
-                    React.createElement('div', { className: 'grid md:grid-cols-3 gap-4' },
-                        React.createElement(QuickActionCard, { 
-                            title: 'Review Pending',
-                            description: `${stats.pending} specimens need attention`,
-                            icon: '⏳',
-                            color: 'bg-orange-50 hover:bg-orange-100 border-orange-200'
-                        }),
-                        React.createElement(QuickActionCard, { 
-                            title: 'Manage Approved',
-                            description: `${stats.approved} specimens ready for study`,
-                            icon: '✅',
-                            color: 'bg-green-50 hover:bg-green-100 border-green-200'
-                        }),
-                        React.createElement(QuickActionCard, { 
-                            title: 'View All Specimens',
-                            description: 'Search and organize database',
-                            icon: '🔧',
-                            color: 'bg-blue-50 hover:bg-blue-100 border-blue-200'
-                        })
-                    )
-                ),
-                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
-                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Recent Specimens'),
-                    React.createElement('div', { className: 'space-y-3' },
-                        ...recentSpecimens.map(specimen =>
-                            React.createElement('div', {
-                                key: specimen.id,
-                                className: 'flex items-center justify-between p-3 bg-gray-50 rounded-lg'
-                            },
-                                React.createElement('div', null,
-                                    React.createElement('h4', { className: 'font-medium' }, specimen.species_name),
-                                    React.createElement('p', { className: 'text-sm text-gray-600' }, specimen.location)
-                                ),
-                                React.createElement('div', { className: 'flex items-center gap-2' },
-                                    React.createElement(StatusBadge, { status: specimen.status }),
-                                    specimen.dna_sequenced && React.createElement('span', {
-                                        className: 'text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'
-                                    }, 'DNA')
-                                )
-                            )
+                React.createElement('div', { className: 'flex justify-between items-center' },
+                    React.createElement('h2', { className: 'text-2xl font-bold' }, 'Species Hints Management'),
+                    React.createElement('div', { className: 'flex gap-2' },
+                        React.createElement('select', {
+                            value: filter,
+                            onChange: (e) => setFilter(e.target.value),
+                            className: 'px-3 py-1 border rounded'
+                        },
+                            React.createElement('option', { value: 'all' }, `All Species (${allSpecies.length})`),
+                            React.createElement('option', { value: 'with-hints' }, `With Hints (${speciesWithHints.size})`),
+                            React.createElement('option', { value: 'missing-hints' }, `Missing Hints (${allSpecies.length - speciesWithHints.size})`)
                         )
                     )
+                ),
+                React.createElement('div', { className: 'grid gap-4' },
+                    ...filteredSpecies.map(species => {
+                        const hints = speciesHints.find(h => h.species_name === species);
+                        const specimenCount = specimens.filter(s => s.species_name === species).length;
+                        const approvedCount = specimens.filter(s => s.species_name === species && s.status === 'approved').length;
+                        
+                        return React.createElement('div', {
+                            key: species,
+                            className: 'bg-white rounded-xl p-4 shadow-sm'
+                        },
+                            React.createElement('div', { className: 'flex justify-between items-start' },
+                                React.createElement('div', { className: 'flex-1' },
+                                    React.createElement('h3', { className: 'font-semibold text-lg' }, species),
+                                    React.createElement('p', { className: 'text-sm text-gray-600' },
+                                        `${specimenCount} specimens (${approvedCount} approved)`
+                                    ),
+                                    hints && React.createElement('div', { className: 'mt-2' },
+                                        React.createElement('p', { className: 'text-xs text-gray-500' },
+                                            `Hints: ${hints.hints?.length || 0} • `,
+                                            `Source: ${hints.source_quality || 'Unknown'} • `,
+                                            `Updated: ${new Date(hints.updated_at || hints.created_at).toLocaleDateString()}`
+                                        ),
+                                        hints.ai_confidence && React.createElement('div', { className: 'flex items-center gap-1 mt-1' },
+                                            React.createElement('span', { className: 'text-xs text-gray-500' }, 'AI Confidence:'),
+                                            React.createElement('div', { className: 'w-16 bg-gray-200 rounded-full h-1' },
+                                                React.createElement('div', {
+                                                    className: 'bg-green-500 h-1 rounded-full',
+                                                    style: { width: `${hints.ai_confidence * 100}%` }
+                                                })
+                                            ),
+                                            React.createElement('span', { className: 'text-xs text-gray-500' }, `${Math.round(hints.ai_confidence * 100)}%`)
+                                        )
+                                    )
+                                ),
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    hints ? React.createElement('span', {
+                                        className: 'bg-green-100 text-green-800 px-2 py-1 rounded text-xs'
+                                    }, '✓ Has Hints') : React.createElement('div', { className: 'flex items-center gap-2' },
+                                        React.createElement('span', {
+                                            className: 'bg-orange-100 text-orange-800 px-2 py-1 rounded text-xs'
+                                        }, '⚠ Missing Hints'),
+                                        React.createElement('button', {
+                                            onClick: () => handleGenerateHints(species),
+                                            className: 'bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors'
+                                        }, 'Generate Hints')
+                                    ),
+                                    React.createElement('button', {
+                                        onClick: () => onSelectSpecies(species),
+                                        className: 'bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm transition-colors'
+                                    }, hints ? 'Edit Hints' : 'Create Hints')
+                                )
+                            )
+                        );
+                    })
                 )
             );
         }
@@ -583,8 +682,8 @@
             );
         }
 
-        // Enhanced Specimen Review Modal with Taxonomy
-        function SpecimenReviewModal({ specimen, photos, taxonomy, onClose, onApprove, onDelete, onUpdateTaxonomy, loadPhotos }) {
+        // Enhanced Specimen Review Modal with First-of-Species Detection
+        function SpecimenReviewModal({ specimen, photos, taxonomy, onClose, onApprove, onDelete, onUpdateTaxonomy, loadPhotos, isFirstOfSpecies }) {
             const [notes, setNotes] = useState(specimen.admin_notes || '');
             const [photosLoaded, setPhotosLoaded] = useState(false);
             const [selectedPhoto, setSelectedPhoto] = useState(null);
@@ -617,12 +716,23 @@
                     React.createElement('div', { className: 'p-6 border-b' },
                         React.createElement('div', { className: 'flex justify-between items-center' },
                             React.createElement('h2', { className: 'text-xl font-bold' }, 
-                                `Review: ${specimen.species_name}`
+                                `Review: ${specimen.species_name}`,
+                                isFirstOfSpecies && React.createElement('span', {
+                                    className: 'ml-3 bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm font-normal'
+                                }, '🆕 First of Species')
                             ),
                             React.createElement('button', {
                                 onClick: onClose,
                                 className: 'text-gray-500 hover:text-gray-700 text-2xl'
                             }, '×')
+                        ),
+                        isFirstOfSpecies && React.createElement('div', {
+                            className: 'mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded'
+                        },
+                            React.createElement('p', { className: 'text-sm text-yellow-800' },
+                                React.createElement('strong', null, 'Note: '), 
+                                'This is the first specimen of this species. Upon approval, you will be prompted to review the species identification hints.'
+                            )
                         )
                     ),
 
@@ -870,107 +980,675 @@
             );
         }
 
-        // Reusable Specimen Card Component
-        function SpecimenCard({ specimen, onReview, showReviewButton, reviewButtonText = 'Review' }) {
-            return React.createElement('div', {
-                className: 'bg-white rounded-xl shadow-sm p-6'
-            },
-                React.createElement('div', { className: 'flex justify-between items-start mb-4' },
-                    React.createElement('div', null,
-                        React.createElement('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
-                        React.createElement('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
-                        React.createElement('p', { className: 'text-sm text-gray-500' }, specimen.location)
-                    ),
-                    React.createElement('div', { className: 'flex items-center gap-2' },
-                        React.createElement(StatusBadge, { status: specimen.status }),
-                        specimen.dna_sequenced && React.createElement('span', {
-                            className: 'bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium'
-                        }, 'DNA Verified'),
-                        showReviewButton && React.createElement('button', {
-                            onClick: onReview,
-                            className: 'bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors'
-                        }, reviewButtonText)
-                    )
-                ),
-                React.createElement('div', { className: 'grid md:grid-cols-4 gap-2 mb-4' },
-                    React.createElement('div', { className: 'text-sm' },
-                        React.createElement('strong', null, 'Family: '), specimen.family
-                    ),
-                    React.createElement('div', { className: 'text-sm' },
-                        React.createElement('strong', null, 'Habitat: '), 
-                        specimen.habitat && specimen.habitat.length > 50 ? 
-                            specimen.habitat.substring(0, 50) + '...' : 
-                            specimen.habitat || 'Not specified'
-                    ),
-                    React.createElement('div', { className: 'text-sm' },
-                        React.createElement('strong', null, 'iNat ID: '), specimen.inaturalist_id
-                    ),
-                    React.createElement('div', { className: 'text-sm' },
-                        React.createElement('strong', null, 'Quality: '), 
-                        `${((specimen.quality_score || 0) * 100).toFixed(0)}%`
-                    )
-                ),
-                React.createElement('div', { className: 'text-xs text-gray-500' },
-                    'Added: ', new Date(specimen.created_at).toLocaleDateString(),
-                    specimen.approved_at && React.createElement('span', null, 
-                        ' • Approved: ', new Date(specimen.approved_at).toLocaleDateString()
-                    )
-                )
-            );
-        }
+        // Species Hints Review Modal for First-Time Approvals
+        function SpeciesHintsReviewModal({ species, specimen, hints, onClose, onApprove, generateAIHints, saveSpeciesHints }) {
+            const [editableHints, setEditableHints] = useState(hints?.hints || []);
+            const [referenceUrl, setReferenceUrl] = useState(hints?.reference_url || '');
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [hasChanges, setHasChanges] = useState(false);
 
-        function StatCard({ title, value, color }) {
-            return React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
-                React.createElement('div', { className: 'flex items-center gap-3' },
-                    React.createElement('div', null,
-                        React.createElement('p', { className: 'text-sm text-gray-600' }, title),
-                        React.createElement('p', { className: `text-2xl font-bold ${color}` }, value || 0)
-                    )
-                )
-            );
-        }
+            useEffect(() => {
+                // If no hints exist, try to generate some
+                if (!hints || !hints.hints || hints.hints.length === 0) {
+                    handleGenerateHints();
+                }
+            }, []);
 
-        function QuickActionCard({ title, description, icon, color }) {
-            return React.createElement('div', { className: `${color} border rounded-lg p-4 cursor-pointer transition-colors` },
-                React.createElement('div', { className: 'flex items-center gap-3' },
-                    React.createElement('div', { className: 'text-2xl' }, icon),
-                    React.createElement('div', null,
-                        React.createElement('h4', { className: 'font-medium' }, title),
-                        React.createElement('p', { className: 'text-sm text-gray-600' }, description)
-                    )
-                )
-            );
-        }
+            const handleGenerateHints = async () => {
+                setIsGenerating(true);
+                try {
+                    const result = await generateAIHints(species, referenceUrl || null);
+                    if (result.success && !result.error) {
+                        setEditableHints(result.hints);
+                        setReferenceUrl(result.reference_url || referenceUrl);
+                        setHasChanges(true);
+                    } else {
+                        alert('Error generating hints: ' + (result.error || 'Unknown error<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arizona Mushroom Study - Admin Portal</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="admin-root">
+        <div style="padding: 20px; text-align: center;">
+            <h1>Loading Admin Portal...</h1>
+            <p>If this message persists, there may be a JavaScript error.</p>
+        </div>
+    </div>
 
-        function StatusBadge({ status }) {
-            const statusConfig = {
-                pending: { color: 'bg-orange-100 text-orange-800', label: 'Pending Review' },
-                approved: { color: 'bg-green-100 text-green-800', label: 'Approved' }
+    <script type="text/babel">
+        console.log('🔥 Admin portal script starting...');
+        
+        const { useState, useEffect } = React;
+        
+        // Configuration
+        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+        const INATURALIST_API = 'https://api.inaturalist.org/v1';
+
+        function AdminPortal() {
+            console.log('🏗️ AdminPortal component rendering');
+            
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [specimens, setSpecimens] = useState([]);
+            const [speciesHints, setSpeciesHints] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [stats, setStats] = useState({});
+            const [selectedSpecimen, setSelectedSpecimen] = useState(null);
+            const [selectedSpecies, setSelectedSpecies] = useState(null);
+            const [specimenPhotos, setSpecimenPhotos] = useState({});
+            const [taxonomyCache, setTaxonomyCache] = useState({});
+            const [showSpeciesHintsReview, setShowSpeciesHintsReview] = useState(false);
+            const [pendingApproval, setPendingApproval] = useState(null);
+
+            useEffect(() => {
+                console.log('🔄 useEffect triggered');
+                loadData();
+            }, []);
+
+            const loadData = async () => {
+                try {
+                    console.log('📊 Loading specimens data...');
+                    const specimensResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+                    
+                    if (!specimensResponse.ok) {
+                        throw new Error(`HTTP ${specimensResponse.status}: ${specimensResponse.statusText}`);
+                    }
+                    
+                    const specimenData = await specimensResponse.json();
+                    console.log(`✅ Loaded ${specimenData.length} specimens`);
+                    setSpecimens(specimenData || []);
+
+                    // Load species hints
+                    try {
+                        const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*&order=created_at.desc`, {
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                            }
+                        });
+                        if (hintsResponse.ok) {
+                            const hintsData = await hintsResponse.json();
+                            setSpeciesHints(hintsData || []);
+                            console.log(`✅ Loaded ${hintsData.length} species hints`);
+                        } else {
+                            console.log('Species hints table may not exist yet');
+                            setSpeciesHints([]);
+                        }
+                    } catch (error) {
+                        console.log('Species hints not available:', error);
+                        setSpeciesHints([]);
+                    }
+
+                    // Calculate stats
+                    const pending = specimenData.filter(s => s.status === 'pending').length;
+                    const approved = specimenData.filter(s => s.status === 'approved').length;
+                    const dnaVerified = specimenData.filter(s => s.dna_sequenced).length;
+                    
+                    setStats({
+                        total: specimenData.length,
+                        pending,
+                        approved,
+                        dnaVerified
+                    });
+
+                } catch (error) {
+                    console.error('❌ Error loading data:', error);
+                } finally {
+                    setLoading(false);
+                }
             };
 
-            const config = statusConfig[status] || statusConfig.pending;
+            // Load taxonomy information from iNaturalist
+            const loadTaxonomyInfo = async (speciesName) => {
+                if (taxonomyCache[speciesName]) {
+                    return taxonomyCache[speciesName];
+                }
 
-            return React.createElement('span', {
-                className: `px-3 py-1 rounded-full text-sm font-medium ${config.color}`
-            }, config.label);
+                try {
+                    console.log(`🌿 Loading taxonomy for: ${speciesName}`);
+                    
+                    const searchResponse = await fetch(`${INATURALIST_API}/taxa?q=${encodeURIComponent(speciesName)}&rank=species&is_active=true`);
+                    const searchData = await searchResponse.json();
+                    
+                    if (searchData.results && searchData.results.length > 0) {
+                        const taxon = searchData.results[0];
+                        
+                        const detailResponse = await fetch(`${INATURALIST_API}/taxa/${taxon.id}`);
+                        const detailData = await detailResponse.json();
+                        
+                        if (detailData.results && detailData.results[0]) {
+                            const detailedTaxon = detailData.results[0];
+                            
+                            const taxonomy = {
+                                species: detailedTaxon.name,
+                                genus: extractTaxonByRank(detailedTaxon, 'genus'),
+                                family: extractTaxonByRank(detailedTaxon, 'family'),
+                                order: extractTaxonByRank(detailedTaxon, 'order'),
+                                class: extractTaxonByRank(detailedTaxon, 'class'),
+                                phylum: extractTaxonByRank(detailedTaxon, 'phylum'),
+                                kingdom: extractTaxonByRank(detailedTaxon, 'kingdom'),
+                                common_name: detailedTaxon.preferred_common_name,
+                                full_hierarchy: detailedTaxon.ancestors || []
+                            };
+                            
+                            setTaxonomyCache(prev => ({
+                                ...prev,
+                                [speciesName]: taxonomy
+                            }));
+                            
+                            console.log(`✅ Loaded taxonomy for ${speciesName}:`, taxonomy);
+                            return taxonomy;
+                        }
+                    }
+                    
+                    console.log(`⚠️ No taxonomy found for ${speciesName}`);
+                    return null;
+                } catch (error) {
+                    console.error('Error loading taxonomy:', error);
+                    return null;
+                }
+            };
+
+            const extractTaxonByRank = (taxon, targetRank) => {
+                if (taxon.rank === targetRank) {
+                    return taxon.name;
+                }
+                
+                if (taxon.ancestors) {
+                    const ancestor = taxon.ancestors.find(a => a.rank === targetRank);
+                    if (ancestor) {
+                        return ancestor.name;
+                    }
+                }
+                
+                return null;
+            };
+
+            const loadSpecimenPhotos = async (inaturalistId) => {
+                if (specimenPhotos[inaturalistId]) {
+                    return specimenPhotos[inaturalistId];
+                }
+
+                try {
+                    console.log(`📸 Loading photos for specimen: ${inaturalistId}`);
+                    const response = await fetch(`${INATURALIST_API}/observations/${inaturalistId}`);
+                    const data = await response.json();
+                    
+                    if (data.results && data.results[0] && data.results[0].photos) {
+                        const photos = data.results[0].photos.map(photo => ({
+                            id: photo.id,
+                            url: photo.url,
+                            medium_url: photo.url.replace('square', 'medium'),
+                            large_url: photo.url.replace('square', 'large'),
+                            attribution: photo.attribution || 'iNaturalist user'
+                        }));
+                        
+                        setSpecimenPhotos(prev => ({
+                            ...prev,
+                            [inaturalistId]: photos
+                        }));
+                        
+                        console.log(`✅ Loaded ${photos.length} photos`);
+                        return photos;
+                    }
+                } catch (error) {
+                    console.error('Error loading photos:', error);
+                }
+                
+                return [];
+            };
+
+            // Check if this would be the first approved specimen of this species
+            const isFirstOfSpecies = (speciesName) => {
+                const approvedOfSpecies = specimens.filter(s => 
+                    s.species_name === speciesName && s.status === 'approved'
+                );
+                return approvedOfSpecies.length === 0;
+            };
+
+            // Generate AI hints
+            const generateAIHints = async (speciesName, referenceUrl = null) => {
+                try {
+                    console.log('Calling generate-hints API...');
+                    const response = await fetch('/api/generate-hints', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            species_name: speciesName,
+                            reference_url: referenceUrl
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API responded with status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    console.log('API Response:', result);
+                    return result;
+                } catch (error) {
+                    console.error('Error generating AI hints:', error);
+                    return { error: 'Failed to generate hints: ' + error.message };
+                }
+            };
+
+            // Save or update species hints
+            const saveSpeciesHints = async (hintsData) => {
+                try {
+                    // Check if hints already exist
+                    const existingHints = speciesHints.find(h => h.species_name === hintsData.species_name);
+                    
+                    let response;
+                    if (existingHints) {
+                        // Update existing hints
+                        response = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?species_name=eq.${encodeURIComponent(hintsData.species_name)}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                ...hintsData,
+                                updated_at: new Date().toISOString()
+                            })
+                        });
+                    } else {
+                        // Create new hints
+                        response = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
+                            method: 'POST',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=representation'
+                            },
+                            body: JSON.stringify(hintsData)
+                        });
+                    }
+
+                    if (response.ok) {
+                        loadData(); // Refresh data
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    console.error('Error saving species hints:', error);
+                    return false;
+                }
+            };
+
+            // Update specimen with accurate taxonomy
+            const updateSpecimenTaxonomy = async (specimenId, taxonomy) => {
+                if (!taxonomy) return;
+
+                try {
+                    const updateData = {
+                        genus: taxonomy.genus || 'Unknown',
+                        family: taxonomy.family || 'Fungi',
+                        common_name: taxonomy.common_name || null
+                    };
+
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updateData)
+                    });
+
+                    if (response.ok) {
+                        console.log(`✅ Updated taxonomy for specimen ${specimenId}`);
+                        loadData();
+                    }
+                } catch (error) {
+                    console.error('Error updating specimen taxonomy:', error);
+                }
+            };
+
+            // Handle specimen approval with species hints check
+            const handleSpecimenApproval = async (specimen, notes = '', selectedPhotoIds = []) => {
+                // Check if this is the first of the species
+                if (isFirstOfSpecies(specimen.species_name)) {
+                    console.log(`🆕 First specimen of ${specimen.species_name} - checking species hints`);
+                    
+                    // Store the pending approval data
+                    setPendingApproval({
+                        specimen,
+                        notes,
+                        selectedPhotoIds
+                    });
+                    
+                    // Show species hints review modal
+                    setShowSpeciesHintsReview(true);
+                } else {
+                    // Proceed with normal approval
+                    await updateSpecimenStatus(specimen.id, 'approved', notes, selectedPhotoIds);
+                }
+            };
+
+            // Complete the approval after species hints review
+            const completeApproval = async () => {
+                if (pendingApproval) {
+                    await updateSpecimenStatus(
+                        pendingApproval.specimen.id, 
+                        'approved', 
+                        pendingApproval.notes, 
+                        pendingApproval.selectedPhotoIds
+                    );
+                    setPendingApproval(null);
+                    setShowSpeciesHintsReview(false);
+                }
+            };
+
+            const updateSpecimenStatus = async (specimenId, status, notes = '', selectedPhotoIds = []) => {
+                try {
+                    console.log(`Updating specimen ${specimenId} to ${status}`);
+                    
+                    const response = await fetch('/api/admin', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            specimenId,
+                            status,
+                            notes,
+                            selectedPhotoIds
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        alert(result.message || `Specimen ${status} successfully!`);
+                        loadData();
+                        setSelectedSpecimen(null);
+                    } else {
+                        alert(`Error: ${result.error || 'Failed to update specimen'}`);
+                    }
+                } catch (error) {
+                    console.error('Error updating specimen:', error);
+                    alert(`Error: ${error.message}`);
+                }
+            };
+
+            const deleteSpecimen = async (specimenId, speciesName) => {
+                if (!confirm(`Are you sure you want to delete the specimen "${speciesName}"? This action cannot be undone.`)) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'apikey': SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        alert('Specimen deleted successfully!');
+                        loadData();
+                        setSelectedSpecimen(null);
+                    } else {
+                        alert('Failed to delete specimen');
+                    }
+                } catch (error) {
+                    console.error('Error deleting specimen:', error);
+                    alert('Error deleting specimen: ' + error.message);
+                }
+            };
+
+            if (loading) {
+                return React.createElement('div', {
+                    className: 'min-h-screen bg-gray-50 flex items-center justify-center'
+                }, 
+                    React.createElement('div', { className: 'text-center' },
+                        React.createElement('div', { className: 'text-6xl mb-4' }, '🛡️'),
+                        React.createElement('h1', { className: 'text-2xl font-bold text-gray-800 mb-2' }, 'Admin Portal'),
+                        React.createElement('p', { className: 'text-gray-600' }, 'Loading data...')
+                    )
+                );
+            }
+
+            return React.createElement('div', { className: 'min-h-screen bg-gray-50' },
+                React.createElement(AdminHeader, { stats }),
+                React.createElement(AdminNavigation, { currentView, setCurrentView }),
+                React.createElement('main', { className: 'max-w-7xl mx-auto px-4 py-8' },
+                    currentView === 'dashboard' && React.createElement(Dashboard, { stats, specimens, speciesHints }),
+                    currentView === 'review' && React.createElement(ReviewQueue, { 
+                        specimens: specimens.filter(s => s.status === 'pending'),
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
+                        }
+                    }),
+                    currentView === 'species-hints' && React.createElement(SpeciesHintsManagement, {
+                        speciesHints,
+                        specimens,
+                        onSelectSpecies: setSelectedSpecies,
+                        generateAIHints,
+                        saveSpeciesHints
+                    }),
+                    currentView === 'approved' && React.createElement(ApprovedSpecimens, { 
+                        specimens: specimens.filter(s => s.status === 'approved'),
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
+                        }
+                    }),
+                    currentView === 'all' && React.createElement(AllSpecimens, { 
+                        specimens,
+                        onSelectSpecimen: (specimen) => {
+                            setSelectedSpecimen(specimen);
+                            loadSpecimenPhotos(specimen.inaturalist_id);
+                            loadTaxonomyInfo(specimen.species_name);
+                        }
+                    })
+                ),
+                
+                // Review Modal with Taxonomy
+                selectedSpecimen && React.createElement(SpecimenReviewModal, {
+                    specimen: selectedSpecimen,
+                    photos: specimenPhotos[selectedSpecimen.inaturalist_id] || [],
+                    taxonomy: taxonomyCache[selectedSpecimen.species_name] || null,
+                    onClose: () => setSelectedSpecimen(null),
+                    onApprove: (notes, selectedPhotoIds) => handleSpecimenApproval(selectedSpecimen, notes, selectedPhotoIds),
+                    onDelete: () => deleteSpecimen(selectedSpecimen.id, selectedSpecimen.species_name),
+                    onUpdateTaxonomy: (taxonomy) => updateSpecimenTaxonomy(selectedSpecimen.id, taxonomy),
+                    loadPhotos: () => loadSpecimenPhotos(selectedSpecimen.inaturalist_id),
+                    isFirstOfSpecies: isFirstOfSpecies(selectedSpecimen.species_name)
+                }),
+
+                // Species Hints Review Modal (for first-time species approval)
+                showSpeciesHintsReview && pendingApproval && React.createElement(SpeciesHintsReviewModal, {
+                    species: pendingApproval.specimen.species_name,
+                    specimen: pendingApproval.specimen,
+                    hints: speciesHints.find(h => h.species_name === pendingApproval.specimen.species_name),
+                    onClose: () => {
+                        setShowSpeciesHintsReview(false);
+                        setPendingApproval(null);
+                    },
+                    onApprove: completeApproval,
+                    generateAIHints,
+                    saveSpeciesHints
+                }),
+
+                // Species Hints Management Modal
+                selectedSpecies && React.createElement(SpeciesHintsModal, {
+                    species: selectedSpecies,
+                    hints: speciesHints.find(h => h.species_name === selectedSpecies),
+                    onClose: () => setSelectedSpecies(null),
+                    generateAIHints,
+                    saveSpeciesHints
+                })
+            );
         }
 
-        // Render the app
-        try {
-            console.log('🎬 About to render AdminPortal...');
-            const root = ReactDOM.createRoot(document.getElementById('admin-root'));
-            root.render(React.createElement(AdminPortal));
-            console.log('✅ AdminPortal rendered successfully');
-        } catch (error) {
-            console.error('❌ Error rendering AdminPortal:', error);
-            document.getElementById('admin-root').innerHTML = `
-                <div style="padding: 20px; color: red; text-align: center;">
-                    <h1>Rendering Error</h1>
-                    <p>Error: ${error.message}</p>
-                    <p>Check the console for details.</p>
-                </div>
-            `;
+        function AdminHeader({ stats }) {
+            return React.createElement('div', { className: 'bg-slate-800 text-white' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4 py-4' },
+                    React.createElement('div', { className: 'flex justify-between items-center' },
+                        React.createElement('div', { className: 'flex items-center gap-3' },
+                            React.createElement('div', { className: 'text-3xl' }, '🛡️'),
+                            React.createElement('div', null,
+                                React.createElement('h1', { className: 'text-xl font-bold' }, 'Admin Portal'),
+                                React.createElement('p', { className: 'text-slate-300 text-sm' }, 'Arizona Mushroom Study')
+                            )
+                        ),
+                        React.createElement('div', { className: 'flex items-center gap-6' },
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-orange-400' }, stats.pending || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Pending Review')
+                            ),
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-green-400' }, stats.approved || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'Approved')
+                            ),
+                            React.createElement('div', { className: 'text-center' },
+                                React.createElement('div', { className: 'text-2xl font-bold text-blue-400' }, stats.dnaVerified || 0),
+                                React.createElement('div', { className: 'text-xs text-slate-300' }, 'DNA Verified')
+                            )
+                        )
+                    )
+                )
+            );
         }
-    </script>
-</body>
-</html>
+
+        function AdminNavigation({ currentView, setCurrentView }) {
+            const navItems = [
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'review', label: 'Review Queue', icon: '⏳' },
+                { id: 'species-hints', label: 'Species Hints', icon: '🧬' },
+                { id: 'approved', label: 'Approved', icon: '✅' },
+                { id: 'all', label: 'All Specimens', icon: '🔧' }
+            ];
+
+            return React.createElement('div', { className: 'bg-white border-b shadow-sm' },
+                React.createElement('div', { className: 'max-w-7xl mx-auto px-4' },
+                    React.createElement('div', { className: 'flex gap-6' },
+                        ...navItems.map(item =>
+                            React.createElement('button', {
+                                key: item.id,
+                                onClick: () => setCurrentView(item.id),
+                                className: `flex items-center gap-2 px-4 py-4 border-b-2 transition-colors ${
+                                    currentView === item.id 
+                                        ? 'border-green-500 text-green-600' 
+                                        : 'border-transparent text-gray-600 hover:text-gray-800'
+                                }`
+                            },
+                                React.createElement('span', null, item.icon),
+                                item.label
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function Dashboard({ stats, specimens, speciesHints }) {
+            const recentSpecimens = specimens.slice(0, 5);
+            const speciesWithHints = new Set(speciesHints.map(h => h.species_name));
+            const uniqueSpecies = new Set(specimens.map(s => s.species_name));
+            const hintsCompleteness = uniqueSpecies.size > 0 ? Math.round((speciesWithHints.size / uniqueSpecies.size) * 100) : 0;
+
+            return React.createElement('div', { className: 'space-y-6' },
+                React.createElement('div', { className: 'grid md:grid-cols-4 gap-6' },
+                    React.createElement(StatCard, { title: 'Total Specimens', value: stats.total, color: 'text-blue-600' }),
+                    React.createElement(StatCard, { title: 'Pending Review', value: stats.pending, color: 'text-orange-600' }),
+                    React.createElement(StatCard, { title: 'Approved & Ready', value: stats.approved, color: 'text-green-600' }),
+                    React.createElement(StatCard, { title: 'Hints Coverage', value: `${hintsCompleteness}%`, color: 'text-indigo-600' })
+                ),
+                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Quick Actions'),
+                    React.createElement('div', { className: 'grid md:grid-cols-4 gap-4' },
+                        React.createElement(QuickActionCard, { 
+                            title: 'Review Pending',
+                            description: `${stats.pending} specimens need attention`,
+                            icon: '⏳',
+                            color: 'bg-orange-50 hover:bg-orange-100 border-orange-200'
+                        }),
+                        React.createElement(QuickActionCard, { 
+                            title: 'Species Hints',
+                            description: `${hintsCompleteness}% coverage`,
+                            icon: '🧬',
+                            color: 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200'
+                        }),
+                        React.createElement(QuickActionCard, { 
+                            title: 'Manage Approved',
+                            description: `${stats.approved} specimens ready for study`,
+                            icon: '✅',
+                            color: 'bg-green-50 hover:bg-green-100 border-green-200'
+                        }),
+                        React.createElement(QuickActionCard, { 
+                            title: 'View All Specimens',
+                            description: 'Search and organize database',
+                            icon: '🔧',
+                            color: 'bg-blue-50 hover:bg-blue-100 border-blue-200'
+                        })
+                    )
+                ),
+                React.createElement('div', { className: 'bg-white rounded-xl p-6 shadow-sm' },
+                    React.createElement('h3', { className: 'text-lg font-semibold mb-4' }, 'Recent Specimens'),
+                    React.createElement('div', { className: 'space-y-3' },
+                        ...recentSpecimens.map(specimen =>
+                            React.createElement('div', {
+                                key: specimen.id,
+                                className: 'flex items-center justify-between p-3 bg-gray-50 rounded-lg'
+                            },
+                                React.createElement('div', null,
+                                    React.createElement('h4', { className: 'font-medium' }, specimen.species_name),
+                                    React.createElement('p', { className: 'text-sm text-gray-600' }, specimen.location)
+                                ),
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    React.createElement(StatusBadge, { status: specimen.status }),
+                                    specimen.dna_sequenced && React.createElement('span', {
+                                        className: 'text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded'
+                                    }, 'DNA'),
+                                    speciesWithHints.has(specimen.species_name) && React.createElement('span', {
+                                        className: 'text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded'
+                                    }, 'Hints')
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        function SpeciesHintsManagement({ speciesHints, specimens, onSelectSpecies, generateAIHints, saveSpeciesHints }) {
+            const [filter, setFilter] = useState('all');
+            
+            const allSpecies = [...new Set(specimens.map(s => s.species_name))].sort();
+            const speciesWithHints = new Set(speciesHints.map(h => h.species_name));
+            
+            const filteredSpecies = allSpecies.filter(species => {
+                if (filter === 'with-hints') return speciesWithHints.has(species);
+                if (filter === 'missing-hints') return !speciesWithHints.has(species);
+                return true;
+            });
+
+            const handleGenerateHints = async (speciesName) => {
+                try {
+                    const result = await generateAIHints(speciesName);
+                    if (result.success && !result.error) {
+                        const specimen = specimens.find(s => s.species_name === spec
