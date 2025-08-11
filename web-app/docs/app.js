@@ -7,15 +7,20 @@ const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
 // Main App Component
 function App() {
+    console.log('🏁 App component rendering');
     const [currentView, setCurrentView] = useState('home');
     const [specimens, setSpecimens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
     const [specimenPhotos, setSpecimenPhotos] = useState({});
 
+    console.log('📊 App state:', { currentView, specimensCount: specimens.length, loading });
+
     useEffect(() => {
+        console.log('🚀 App useEffect triggered - starting data load');
         loadSpecimens();
         setUser({ id: 'demo-user', name: 'Demo User' });
+        console.log('👤 User set');
     }, []);
 
     const loadSpecimens = async () => {
