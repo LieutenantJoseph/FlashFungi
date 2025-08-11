@@ -300,16 +300,120 @@ function QuickStudy(props) {
         }
     }, [currentSpecimen, loadSpecimenPhotos, specimenPhotos]);
 
+    // Enhanced Hint Generation System
+    const generateEnhancedHints = React.useCallback((specimen) => {
+        if (!specimen) return [];
+
+        const hints = [];
+
+        // Level 1: Morphological/Physical Features (Most Educational)
+        const morphologicalHint = (() => {
+            const genus = specimen.genus.toLowerCase();
+            const family = specimen.family.toLowerCase();
+            
+            // Genus-specific morphological clues
+            const morphologyMap = {
+                'agaricus': 'Look for a mushroom with white to cream-colored cap that may have small scales, white gills that turn pink to brown with age, and a ring around the stem.',
+                'boletus': 'Examine the underside - this mushroom has pores instead of gills, and the cap is typically thick and fleshy. Check if the pores bruise blue when touched.',
+                'cantharellus': 'Look for funnel or trumpet-shaped mushrooms with false gills (ridges) that run down the stem, often bright yellow to orange in color.',
+                'amanita': 'Check for a bulbous base with a cup (volva), white gills, and often a ring around the stem. Handle with extreme caution.',
+                'pleurotus': 'Notice the oyster or fan-shaped cap growing from dead wood, with gills that run down into the stem (or where the stem would be).',
+                'polyporus': 'Look for bracket or shelf fungi growing on wood, with a tough texture and pores on the underside.',
+                'ganoderma': 'Identify the woody, shelf-like structure with a shiny, varnish-like surface and white to brown pores underneath.'
+            };
+
+            // Family-level backup clues
+            const familyMorphology = {
+                'agaricaceae': 'Look for mushrooms with white spores, gills that may change color with age, and often a ring on the stem.',
+                'boletaceae': 'Check for thick, fleshy caps with pores (not gills) underneath. Many bruise blue when cut or touched.',
+                'cantharellaceae': 'Look for funnel or trumpet shapes with ridges or false gills running down the stem.',
+                'amanitaceae': 'Look for white gills, often a ring, and a bulbous base. Exercise extreme caution with this family.',
+                'pleurotaceae': 'Look for mushrooms growing on wood with a lateral or absent stem and gills running down the attachment point.'
+            };
+
+            return morphologyMap[genus] || familyMorphology[family] || 
+                   `Examine the cap shape, gill/pore structure, stem characteristics, and overall growth pattern of this ${specimen.family} mushroom.`;
+        })();
+
+        hints.push({
+            level: 1,
+            type: 'morphological',
+            text: morphologicalHint,
+            educationalValue: 'high'
+        });
+
+        // Level 2: Comparative/Differential Features
+        const comparativeHint = (() => {
+            const genus = specimen.genus.toLowerCase();
+            
+            const comparativeMap = {
+                'agaricus': 'Compare to other white-capped mushrooms: Agaricus species have chocolate-brown spores (check gill color), while similar-looking Amanita species have white spores and bulbous bases.',
+                'boletus': 'Compare to other boletes: Look for specific bruising patterns, pore color, and stem characteristics. Some bruise instantly blue, others slowly, and some not at all.',
+                'cantharellus': 'Distinguish from false chanterelles: True chanterelles have ridges (false gills) while look-alikes have true, blade-like gills. Check the stem connection.',
+                'amanita': 'Critical identification: Compare to other white-gilled mushrooms by checking for the distinctive volva (cup) at the base and white spore print.',
+                'pleurotus': 'Compare to other wood-growing mushrooms: Check the gill attachment and spore color to distinguish from potentially harmful look-alikes.'
+            };
+
+            return comparativeMap[genus] || 
+                   `Compare this specimen to other ${specimen.family} members by examining key distinguishing features like spore color, gill attachment, and stem characteristics.`;
+        })();
+
+        hints.push({
+            level: 2,
+            type: 'comparative',
+            text: comparativeHint,
+            educationalValue: 'high'
+        });
+
+        // Level 3: Ecological/Contextual Information
+        const ecologicalHint = (() => {
+            let hint = `Found in ${specimen.location}`;
+            
+            if (specimen.habitat) {
+                const habitat = specimen.habitat.toLowerCase();
+                
+                // Extract key ecological information
+                if (habitat.includes('wood') || habitat.includes('log') || habitat.includes('tree')) {
+                    hint += '. This species grows on or near dead wood (saprotrophic), which is important for identification.';
+                } else if (habitat.includes('soil') || habitat.includes('ground') || habitat.includes('grass')) {
+                    hint += '. This terrestrial species grows from soil, often associated with specific tree partnerships (mycorrhizal).';
+                } else if (habitat.includes('dung') || habitat.includes('manure')) {
+                    hint += '. This coprophilous species specializes in growing on dung, a key identifying characteristic.';
+                } else {
+                    hint += `. Habitat: ${specimen.habitat.substring(0, 150)}${specimen.habitat.length > 150 ? '...' : ''}`;
+                }
+            }
+
+            // Add seasonal context if available
+            hint += ' Consider the season, substrate, and associated vegetation when making your identification.';
+            
+            return hint;
+        })();
+
+        hints.push({
+            level: 3,
+            type: 'ecological',
+            text: ecologicalHint,
+            educationalValue: 'medium'
+        });
+
+        // Level 4: Taxonomic Information (Last Resort)
+        const taxonomicHint = `This specimen belongs to the genus ${specimen.genus} in the family ${specimen.family}. Use this taxonomic information along with the physical and ecological clues to complete your identification.`;
+
+        hints.push({
+            level: 4,
+            type: 'taxonomic',
+            text: taxonomicHint,
+            educationalValue: 'low'
+        });
+
+        return hints;
+    }, []);
+
     // Generate hints for current specimen
     const hints = React.useMemo(() => {
-        if (!currentSpecimen) return [];
-        return [
-            { level: 1, type: 'family', text: `This mushroom belongs to the family ${currentSpecimen.family}.` },
-            { level: 2, type: 'morphological', text: `Look for key features typical of ${currentSpecimen.genus} species.` },
-            { level: 3, type: 'ecological', text: `Habitat: ${currentSpecimen.habitat?.substring(0, 100)}${currentSpecimen.habitat?.length > 100 ? '...' : ''}` },
-            { level: 4, type: 'genus', text: `The genus is ${currentSpecimen.genus}.` }
-        ];
-    }, [currentSpecimen]);
+        return generateEnhancedHints(currentSpecimen);
+    }, [currentSpecimen, generateEnhancedHints]);
 
     // Enhanced Answer Validation System
     const validateAnswer = React.useCallback((userInput, specimen) => {
@@ -786,12 +890,22 @@ function QuickStudy(props) {
                                         borderRadius: '0.5rem',
                                         border: 'none',
                                         cursor: hintsUsed < 4 ? 'pointer' : 'not-allowed',
-                                        fontSize: '0.875rem'
+                                        fontSize: '0.875rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.25rem'
                                     }
-                                }, `💡 Hint (${hintsUsed}/4)`)
+                                }, 
+                                    '💡 ',
+                                    hintsUsed === 0 ? 'Get Clue' :
+                                    hintsUsed === 1 ? 'Compare' :
+                                    hintsUsed === 2 ? 'Ecology' :
+                                    hintsUsed === 3 ? 'Taxonomy' : 'No More',
+                                    ` (${hintsUsed}/4)`
+                                )
                             ),
 
-                            // Hints Display
+                            // Enhanced Hints Display
                             showHints && hintsUsed > 0 && h('div', {
                                 style: {
                                     backgroundColor: '#fef3c7',
@@ -800,13 +914,59 @@ function QuickStudy(props) {
                                     padding: '1rem'
                                 }
                             },
-                                h('h4', { style: { fontWeight: '500', color: '#92400e', marginBottom: '0.5rem' } }, 'Hints Used:'),
-                                h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.5rem' } },
-                                    ...hints.slice(0, hintsUsed).map((hint, index) =>
-                                        h('div', { key: index, style: { fontSize: '0.875rem', color: '#92400e' } },
-                                            h('strong', null, `Level ${hint.level} (${hint.type}): `),
-                                            hint.text
-                                        )
+                                h('h4', { style: { fontWeight: '500', color: '#92400e', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' } }, 
+                                    '💡 Identification Clues',
+                                    h('span', { style: { fontSize: '0.75rem', backgroundColor: '#f59e0b', color: 'white', padding: '0.125rem 0.5rem', borderRadius: '0.25rem' } },
+                                        `${hintsUsed}/4 used`
+                                    )
+                                ),
+                                h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' } },
+                                    ...hints.slice(0, hintsUsed).map((hint, index) => {
+                                        const typeIcons = {
+                                            'morphological': '🔍',
+                                            'comparative': '⚖️', 
+                                            'ecological': '🌲',
+                                            'taxonomic': '📚'
+                                        };
+                                        
+                                        const typeColors = {
+                                            'morphological': '#065f46',
+                                            'comparative': '#7c2d12',
+                                            'ecological': '#064e3b', 
+                                            'taxonomic': '#4338ca'
+                                        };
+
+                                        return h('div', { 
+                                            key: index, 
+                                            style: { 
+                                                padding: '0.75rem',
+                                                backgroundColor: 'rgba(255,255,255,0.7)',
+                                                borderRadius: '0.375rem',
+                                                borderLeft: `4px solid ${typeColors[hint.type] || '#92400e'}`
+                                            } 
+                                        },
+                                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
+                                                h('span', { style: { fontSize: '1rem' } }, typeIcons[hint.type] || '💭'),
+                                                h('strong', { style: { fontSize: '0.875rem', color: typeColors[hint.type] || '#92400e', textTransform: 'capitalize' } }, 
+                                                    `${hint.type} Clue`
+                                                ),
+                                                hint.educationalValue === 'high' && h('span', { 
+                                                    style: { 
+                                                        fontSize: '0.625rem', 
+                                                        backgroundColor: '#10b981', 
+                                                        color: 'white', 
+                                                        padding: '0.125rem 0.375rem', 
+                                                        borderRadius: '0.25rem' 
+                                                    } 
+                                                }, 'Key Feature')
+                                            ),
+                                            h('p', { style: { fontSize: '0.875rem', color: '#374151', margin: 0, lineHeight: '1.4' } }, hint.text)
+                                        );
+                                    })
+                                ),
+                                hintsUsed < 4 && h('div', { style: { marginTop: '0.75rem', padding: '0.5rem', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '0.25rem' } },
+                                    h('p', { style: { fontSize: '0.75rem', color: '#92400e', margin: 0, fontStyle: 'italic' } },
+                                        `💡 ${4 - hintsUsed} more clue${4 - hintsUsed === 1 ? '' : 's'} available. Try using observation and comparison before taxonomic hints!`
                                     )
                                 )
                             )
