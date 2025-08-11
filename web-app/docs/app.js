@@ -724,7 +724,8 @@ function App() {
     );
 }
 
-// Render the app
+// Render the app using React 18 API
 console.log('🎬 About to render React app');
-ReactDOM.render(h(App), document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(h(App));
 console.log('✅ React app render called');
