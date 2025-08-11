@@ -30,8 +30,24 @@
         } else {
             console.log('✅ React loaded successfully');
         }
+        
+        // Test if app.js can be fetched
+        fetch('./app.js')
+            .then(response => {
+                console.log('📁 app.js fetch status:', response.status);
+                if (response.ok) {
+                    console.log('✅ app.js file exists and is accessible');
+                } else {
+                    console.error('❌ app.js file not found or not accessible');
+                }
+            })
+            .catch(error => {
+                console.error('❌ Error fetching app.js:', error);
+            });
     </script>
     
-    <script type="text/babel" src="app.js"></script>
+    <!-- Try different ways to load app.js -->
+    <script type="text/babel" src="./app.js"></script>
+    <script type="text/babel" src="/app.js"></script>
 </body>
 </html>
