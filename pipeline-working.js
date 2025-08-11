@@ -1,4 +1,5 @@
 // Enhanced Arizona Mushroom Pipeline with Species-Level Hint Management
+// Updated to use correct database field names
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
 
@@ -248,7 +249,7 @@ TAXONOMIC: [description]`;
       const content = response.choices[0].message.content;
       const hints = this.parseHintsFromAI(content);
 
-      // Save hints to database
+      // Save hints to database with correct field names
       const hintsData = {
         species_name: specimen.species_name,
         genus: specimen.genus,
@@ -257,7 +258,9 @@ TAXONOMIC: [description]`;
         hints: hints,
         source_quality: 'ai-generated',
         ai_confidence: 0.75,
-        admin_reviewed: false
+        admin_reviewed: false,
+        reference_url: null  // Using singular field name
+        // Note: created_at and updated_at are handled automatically by Supabase
       };
 
       const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
@@ -275,7 +278,8 @@ TAXONOMIC: [description]`;
         this.hintsCreatedCount++;
         return true;
       } else {
-        console.log(`   ⚠️  Failed to save hints for ${specimen.species_name}`);
+        const errorText = await saveResponse.text();
+        console.log(`   ⚠️  Failed to save hints for ${specimen.species_name}: ${errorText}`);
         return false;
       }
 
@@ -345,7 +349,8 @@ TAXONOMIC: [description]`;
       });
 
       if (!specimenResponse.ok) {
-        throw new Error(`Specimen save failed: ${specimenResponse.status}`);
+        const errorText = await specimenResponse.text();
+        throw new Error(`Specimen save failed: ${specimenResponse.status} - ${errorText}`);
       }
 
       const savedSpecimen = await specimenResponse.json();
@@ -427,6 +432,7 @@ TAXONOMIC: [description]`;
 
   async run() {
     console.log('🚀 Starting enhanced pipeline with species-level hint management...');
+    console.log('📅 Current date:', new Date().toISOString());
     
     try {
       const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
