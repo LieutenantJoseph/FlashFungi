@@ -10,8 +10,20 @@
       "dest": "/api/$1"
     },
     {
-      "src": "/(.*)",
+      "src": "/admin",
+      "dest": "/docs/admin.html"
+    },
+    {
+      "src": "/",
+      "dest": "/docs/index.html"
+    },
+    {
+      "src": "/(.*\\.(js|css|html|png|jpg|svg|ico))",
       "dest": "/docs/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/docs/index.html"
     }
   ],
   "env": {
