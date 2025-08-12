@@ -1,42 +1,92 @@
-// Arizona Mushroom Study App - Phase 1 Complete Implementation
-console.log('🔥 app.js executing - Phase 1 Complete Implementation');
+// Flash Fungi - Enhanced Implementation with QA Fixes and Phase 2 Features
+console.log('🍄 Flash Fungi v2.0 - Enhanced Implementation');
 
-// Check if React is available
+// Check React availability
 if (typeof React === 'undefined') {
-    console.error('❌ React not available in app.js');
+    console.error('❌ React not available');
     document.getElementById('root').innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React not loaded</h1></div>';
 } else {
-    console.log('✅ React available in app.js');
+    console.log('✅ React loaded successfully');
 }
 
 // Configuration
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
 
-// Helper function to create elements
 const h = React.createElement;
+
+// Utility Functions for Fuzzy Matching
+const calculateLevenshteinDistance = (str1, str2) => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => 
+        Array(str1.length + 1).fill(null)
+    );
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+        for (let i = 1; i <= str1.length; i++) {
+            const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1,
+                matrix[j - 1][i] + 1,
+                matrix[j - 1][i - 1] + substitutionCost
+            );
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+};
+
+const calculateSimilarity = (str1, str2) => {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = calculateLevenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+};
 
 // Loading Screen Component
 function LoadingScreen() {
-    console.log('🔄 LoadingScreen rendering');
     return h('div', {
-        style: { minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+        style: { 
+            minHeight: '100vh', 
+            backgroundColor: '#f9fafb', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+        }
     },
         h('div', { style: { textAlign: 'center' } },
             h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 'Arizona Mushroom Study'),
-            h('p', { style: { color: '#6b7280' } }, 'Loading specimens...')
+            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
+                'Flash Fungi'
+            ),
+            h('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
         )
     );
 }
 
-// Interactive Species Guide Component - NEW for Phase 1
-function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTryAgain }) {
+// Enhanced Interactive Species Guide with Reference Photos
+function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhotos, onClose, onTryAgain }) {
     const [activeTab, setActiveTab] = React.useState('overview');
+    const [comparisonMode, setComparisonMode] = React.useState(false);
     
-    // Get hints from database or use empty array
     const hints = speciesHints?.hints || [];
     
+    // Get admin-selected reference photos if available
+    const adminPhotos = React.useMemo(() => {
+        if (referencePhotos && referencePhotos.length > 0) {
+            return referencePhotos;
+        }
+        // Fallback to specimen's selected photos if no reference photos
+        return specimen.selected_photos ? 
+            photos.filter(p => specimen.selected_photos.includes(p.id)) : 
+            photos;
+    }, [referencePhotos, specimen.selected_photos, photos]);
+
     return h('div', {
         style: {
             position: 'fixed',
@@ -56,7 +106,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
             style: {
                 backgroundColor: 'white',
                 borderRadius: '1rem',
-                maxWidth: '56rem',
+                maxWidth: '64rem',
                 width: '100%',
                 maxHeight: '90vh',
                 overflow: 'hidden',
@@ -103,7 +153,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
                 }
             },
                 h('div', { style: { display: 'flex', gap: '2rem' } },
-                    ['overview', 'features', 'ecology', 'comparison'].map(tab =>
+                    ['overview', 'comparison', 'features', 'ecology'].map(tab =>
                         h('button', {
                             key: tab,
                             onClick: () => setActiveTab(tab),
@@ -117,7 +167,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
                                 borderBottom: activeTab === tab ? '2px solid #059669' : 'none',
                                 cursor: 'pointer'
                             }
-                        }, tab)
+                        }, tab === 'comparison' ? '🔍 Photo Comparison' : tab)
                     )
                 )
             ),
@@ -148,27 +198,152 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
                         )
                     ),
                     
-                    // Photos section
+                    // Reference Photos
                     h('div', null,
-                        h('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, 'Reference Photos'),
-                        photos.length > 0 ? 
-                            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                photos.slice(0, 4).map((photo, idx) =>
-                                    h('img', {
-                                        key: idx,
-                                        src: photo.medium_url,
-                                        alt: `Reference ${idx + 1}`,
-                                        style: {
-                                            width: '100%',
-                                            height: '150px',
-                                            objectFit: 'cover',
-                                            borderRadius: '0.5rem'
-                                        }
-                                    })
-                                )
+                        h('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, '📸 Reference Photos'),
+                        adminPhotos.length > 0 ? 
+                            h('div', null,
+                                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                    adminPhotos.slice(0, 4).map((photo, idx) =>
+                                        h('img', {
+                                            key: idx,
+                                            src: photo.medium_url || photo.url,
+                                            alt: `Reference ${idx + 1}`,
+                                            style: {
+                                                width: '100%',
+                                                height: '150px',
+                                                objectFit: 'cover',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer'
+                                            }
+                                        })
+                                    )
+                                ),
+                                h('p', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: '#6b7280', 
+                                        marginTop: '0.5rem',
+                                        fontStyle: 'italic'
+                                    } 
+                                }, 'Admin-curated reference images for accurate identification')
                             ) :
                             h('div', { style: { backgroundColor: '#f3f4f6', padding: '2rem', borderRadius: '0.5rem', textAlign: 'center' } },
-                                h('p', { style: { color: '#6b7280' } }, 'No photos available')
+                                h('p', { style: { color: '#6b7280' } }, 'No reference photos available')
+                            )
+                    )
+                ),
+                
+                // Photo Comparison Tab (NEW - addresses QA request)
+                activeTab === 'comparison' && h('div', null,
+                    h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 
+                        'Side-by-Side Comparison: Your Specimen vs. Reference'
+                    ),
+                    h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
+                        // Your Specimen Photos
+                        h('div', null,
+                            h('h5', { 
+                                style: { 
+                                    fontWeight: '500', 
+                                    marginBottom: '0.5rem',
+                                    padding: '0.5rem',
+                                    backgroundColor: '#fef3c7',
+                                    borderRadius: '0.25rem'
+                                } 
+                            }, '🔍 Your Specimen'),
+                            photos.length > 0 ?
+                                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                    photos.slice(0, 4).map((photo, idx) =>
+                                        h('div', { key: idx, style: { position: 'relative' } },
+                                            h('img', {
+                                                src: photo.medium_url,
+                                                alt: `Your specimen ${idx + 1}`,
+                                                style: {
+                                                    width: '100%',
+                                                    height: '150px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '0.5rem',
+                                                    border: '2px solid #fbbf24'
+                                                }
+                                            }),
+                                            h('span', {
+                                                style: {
+                                                    position: 'absolute',
+                                                    top: '0.25rem',
+                                                    left: '0.25rem',
+                                                    backgroundColor: '#fbbf24',
+                                                    color: 'white',
+                                                    fontSize: '0.625rem',
+                                                    padding: '0.125rem 0.375rem',
+                                                    borderRadius: '0.25rem'
+                                                }
+                                            }, 'Your Photo')
+                                        )
+                                    )
+                                ) :
+                                h('p', { style: { color: '#6b7280' } }, 'No specimen photos')
+                        ),
+                        
+                        // Reference Photos
+                        h('div', null,
+                            h('h5', { 
+                                style: { 
+                                    fontWeight: '500', 
+                                    marginBottom: '0.5rem',
+                                    padding: '0.5rem',
+                                    backgroundColor: '#dcfce7',
+                                    borderRadius: '0.25rem'
+                                } 
+                            }, '✅ Correct Identification'),
+                            adminPhotos.length > 0 ?
+                                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                    adminPhotos.slice(0, 4).map((photo, idx) =>
+                                        h('div', { key: idx, style: { position: 'relative' } },
+                                            h('img', {
+                                                src: photo.medium_url || photo.url,
+                                                alt: `Reference ${idx + 1}`,
+                                                style: {
+                                                    width: '100%',
+                                                    height: '150px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '0.5rem',
+                                                    border: '2px solid #10b981'
+                                                }
+                                            }),
+                                            h('span', {
+                                                style: {
+                                                    position: 'absolute',
+                                                    top: '0.25rem',
+                                                    left: '0.25rem',
+                                                    backgroundColor: '#10b981',
+                                                    color: 'white',
+                                                    fontSize: '0.625rem',
+                                                    padding: '0.125rem 0.375rem',
+                                                    borderRadius: '0.25rem'
+                                                }
+                                            }, 'Reference')
+                                        )
+                                    )
+                                ) :
+                                h('p', { style: { color: '#6b7280' } }, 'No reference photos')
+                        )
+                    ),
+                    h('div', {
+                        style: {
+                            marginTop: '1rem',
+                            padding: '1rem',
+                            backgroundColor: '#f0f9ff',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.875rem'
+                        }
+                    },
+                        h('p', { style: { marginBottom: '0.5rem' } },
+                            h('strong', null, '💡 Comparison Tip: '),
+                            'Look for key differences in cap shape, gill attachment, stem features, and overall coloration.'
+                        ),
+                        hints.filter(h => h.type === 'comparative').length > 0 &&
+                            h('p', { style: { color: '#0369a1' } },
+                                hints.find(h => h.type === 'comparative')?.text
                             )
                     )
                 ),
@@ -233,33 +408,6 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
                                 )
                             )
                         )
-                ),
-                
-                // Comparison Tab
-                activeTab === 'comparison' && h('div', null,
-                    h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Similar Species & Comparisons'),
-                    hints.filter(h => h.type === 'comparative').length > 0 ?
-                        hints.filter(h => h.type === 'comparative').map((hint, idx) =>
-                            h('div', {
-                                key: idx,
-                                style: {
-                                    backgroundColor: '#fef3c7',
-                                    border: '1px solid #fde047',
-                                    borderRadius: '0.5rem',
-                                    padding: '1rem',
-                                    marginBottom: '1rem'
-                                }
-                            },
-                                h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                    h('span', null, '⚖️'),
-                                    h('strong', { style: { color: '#a16207' } }, 'Distinguishing Features')
-                                ),
-                                h('p', { style: { color: '#374151' } }, hint.text)
-                            )
-                        ) :
-                        h('p', { style: { color: '#6b7280' } }, 
-                            'Comparison data will be added as the database grows.'
-                        )
                 )
             ),
             
@@ -308,29 +456,29 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTr
     );
 }
 
-// Quick Study Component - UPDATED with Phase 1 features
+// Enhanced Quick Study Component with Proper Scoring and Get Hint Button
 function QuickStudy(props) {
-    console.log('🎮 QuickStudy rendering with props:', props);
-    
     const specimens = props.specimens || [];
     const onBack = props.onBack;
     const loadSpecimenPhotos = props.loadSpecimenPhotos;
     const specimenPhotos = props.specimenPhotos || {};
     const speciesHintsMap = props.speciesHints || {};
+    const referencePhotos = props.referencePhotos || {};
     
-    // State for Phase 1 progressive hint system
+    // State
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [userAnswer, setUserAnswer] = React.useState('');
     const [currentHintLevel, setCurrentHintLevel] = React.useState(0);
+    const [hintsRevealedManually, setHintsRevealedManually] = React.useState(0);
     const [attemptCount, setAttemptCount] = React.useState(0);
     const [showResult, setShowResult] = React.useState(false);
     const [showGuide, setShowGuide] = React.useState(false);
-    const [score, setScore] = React.useState({ correct: 0, total: 0 });
-    const [lastAttemptFeedback, setLastAttemptFeedback] = React.useState(null);
+    const [score, setScore] = React.useState({ correct: 0, total: 0, totalScore: 0 });
+    const [lastAttemptScore, setLastAttemptScore] = React.useState(null);
     const [photosLoaded, setPhotosLoaded] = React.useState(false);
     const [selectedPhoto, setSelectedPhoto] = React.useState(null);
 
-    // Get 10 random approved specimens for study
+    // Get 10 random approved specimens
     const studySpecimens = React.useMemo(() => {
         const approved = specimens.filter(s => s.status === 'approved');
         const shuffled = [...approved].sort(() => Math.random() - 0.5);
@@ -340,6 +488,7 @@ function QuickStudy(props) {
     const currentSpecimen = studySpecimens[currentIndex];
     const currentPhotos = currentSpecimen ? specimenPhotos[currentSpecimen.inaturalist_id] || [] : [];
     const currentSpeciesHints = currentSpecimen ? speciesHintsMap[currentSpecimen.species_name] : null;
+    const currentReferencePhotos = currentSpecimen ? referencePhotos[currentSpecimen.species_name] || [] : [];
 
     // Load photos when specimen changes
     React.useEffect(() => {
@@ -356,90 +505,156 @@ function QuickStudy(props) {
     // Get hints from database or generate fallback
     const getHints = React.useCallback(() => {
         if (currentSpeciesHints && currentSpeciesHints.hints && currentSpeciesHints.hints.length > 0) {
-            console.log('Using database hints for:', currentSpecimen?.species_name);
             return currentSpeciesHints.hints;
         }
         
-        // Fallback hints if none in database
-        console.log('Generating fallback hints for:', currentSpecimen?.species_name);
+        // Fallback hints
         return [
             {
                 type: 'morphological',
                 level: 1,
-                text: `Look at the physical features of this ${currentSpecimen?.family || 'mushroom'} specimen - cap shape, gill structure, and stem characteristics are key identifying features.`
+                text: `Examine the physical features of this ${currentSpecimen?.family || 'mushroom'} specimen.`
             },
             {
                 type: 'comparative',
                 level: 2,
-                text: `Compare this to other ${currentSpecimen?.genus || 'similar'} species. Look for distinguishing features that set this species apart.`
+                text: `Compare to other ${currentSpecimen?.genus || 'similar'} species for distinguishing features.`
             },
             {
                 type: 'ecological',
                 level: 3,
-                text: `Consider the habitat: ${currentSpecimen?.location || 'Arizona'}. Note the substrate, season, and environmental conditions.`
+                text: `Consider the habitat: ${currentSpecimen?.location || 'Arizona'}.`
             },
             {
                 type: 'taxonomic',
                 level: 4,
-                text: `This specimen belongs to genus ${currentSpecimen?.genus || '[Unknown]'} in family ${currentSpecimen?.family || '[Unknown]'}. Use this taxonomic information to narrow down your identification.`
+                text: `This belongs to genus ${currentSpecimen?.genus || '[Unknown]'} in family ${currentSpecimen?.family || '[Unknown]'}.`
             }
         ];
     }, [currentSpeciesHints, currentSpecimen]);
 
     const hints = getHints();
 
-    // Check if answer is correct
-    const checkAnswer = (answer) => {
-        if (!answer || !currentSpecimen) return { isCorrect: false, feedback: '' };
+    // Enhanced answer validation with fuzzy matching and scoring
+    const validateAnswer = (answer) => {
+        if (!answer || !currentSpecimen) return { isCorrect: false, score: 0, feedback: '' };
         
         const cleaned = answer.toLowerCase().trim();
         const species = currentSpecimen.species_name.toLowerCase();
         const genus = currentSpecimen.genus.toLowerCase();
+        const family = currentSpecimen.family.toLowerCase();
         const common = (currentSpecimen.common_name || '').toLowerCase();
         
-        if (cleaned === species || species.includes(cleaned) || cleaned.includes(species)) {
-            return { isCorrect: true, feedback: 'Perfect! Complete species identification!' };
+        // Calculate base score based on match type
+        let baseScore = 0;
+        let feedback = '';
+        let isCorrect = false;
+        
+        // Perfect species match
+        if (cleaned === species) {
+            baseScore = 100;
+            feedback = 'Perfect! Complete species identification!';
+            isCorrect = true;
+        }
+        // Fuzzy species match (typos)
+        else if (calculateSimilarity(cleaned, species) > 0.85) {
+            baseScore = 95;
+            feedback = 'Correct! (Minor spelling variation accepted)';
+            isCorrect = true;
+        }
+        // Common name match
+        else if (common && cleaned === common) {
+            baseScore = 90;
+            feedback = 'Correct! You identified it by common name!';
+            isCorrect = true;
+        }
+        // Genus + wrong species
+        else if (cleaned.includes(genus) && cleaned.split(' ').length > 1) {
+            baseScore = 60;
+            feedback = `Good! Genus "${currentSpecimen.genus}" is correct, but wrong species epithet.`;
+        }
+        // Genus only
+        else if (cleaned === genus) {
+            baseScore = 50;
+            feedback = `Partial credit: Genus "${currentSpecimen.genus}" is correct. Need full species name.`;
+        }
+        // Family only
+        else if (cleaned === family || cleaned.includes(family)) {
+            baseScore = 30;
+            feedback = `You identified the family "${currentSpecimen.family}". Try to get more specific.`;
+        }
+        // No match
+        else {
+            baseScore = 0;
+            feedback = 'Not quite. Try using the hints!';
         }
         
-        if (common && cleaned === common) {
-            return { isCorrect: true, feedback: 'Correct! You identified it by common name!' };
-        }
+        // Apply hint penalty (-5% per hint used)
+        const totalHintsUsed = currentHintLevel + hintsRevealedManually;
+        const hintPenalty = Math.min(totalHintsUsed * 5, 40); // Max 40% penalty
+        const finalScore = Math.max(baseScore - hintPenalty, 0);
         
-        if (cleaned === genus || cleaned.includes(genus)) {
-            return { isCorrect: false, feedback: `Good! You got the genus "${currentSpecimen.genus}" correct. Can you get the full species?` };
-        }
-        
-        return { isCorrect: false, feedback: 'Not quite. Try again with the hint!' };
+        return {
+            isCorrect: isCorrect,
+            baseScore: baseScore,
+            finalScore: finalScore,
+            hintPenalty: hintPenalty,
+            feedback: feedback
+        };
     };
 
-    // Handle answer submission - Phase 1 progressive hint flow
+    // Handle answer submission with progressive hints
     const handleSubmitAnswer = () => {
         if (!userAnswer.trim()) return;
         
-        const result = checkAnswer(userAnswer);
+        const validation = validateAnswer(userAnswer);
         setAttemptCount(prev => prev + 1);
-        setLastAttemptFeedback(result.feedback);
         
-        if (result.isCorrect) {
+        if (validation.isCorrect) {
             // Correct answer
-            setScore(prev => ({ correct: prev.correct + 1, total: prev.total + 1 }));
+            setLastAttemptScore(validation);
+            setScore(prev => ({ 
+                correct: prev.correct + 1, 
+                total: prev.total + 1,
+                totalScore: prev.totalScore + validation.finalScore
+            }));
             setShowResult(true);
         } else {
-            // Wrong answer - show next hint progressively
+            // Wrong answer - show next hint progressively if not all revealed
+            setLastAttemptScore(validation);
             if (currentHintLevel < 4) {
                 setCurrentHintLevel(prev => prev + 1);
                 setUserAnswer(''); // Clear for retry
             } else {
-                // All hints exhausted - show Interactive Species Guide
-                setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }));
+                // All hints exhausted
+                setScore(prev => ({ 
+                    correct: prev.correct, 
+                    total: prev.total + 1,
+                    totalScore: prev.totalScore + validation.finalScore
+                }));
                 setShowGuide(true);
             }
         }
     };
 
-    // Handle "I Don't Know" button - Phase 1 feature
+    // Handle "Get Hint" button (QA request - separate from progressive hints)
+    const handleGetHint = () => {
+        if (currentHintLevel + hintsRevealedManually < 4) {
+            if (currentHintLevel === 0) {
+                setCurrentHintLevel(1);
+            } else if (currentHintLevel + hintsRevealedManually < 4) {
+                setHintsRevealedManually(prev => prev + 1);
+            }
+        }
+    };
+
+    // Handle "I Don't Know" button
     const handleIDontKnow = () => {
-        setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }));
+        setScore(prev => ({ 
+            correct: prev.correct, 
+            total: prev.total + 1,
+            totalScore: prev.totalScore + 0 // No points for giving up
+        }));
         setShowGuide(true);
     };
 
@@ -449,202 +664,148 @@ function QuickStudy(props) {
             setCurrentIndex(prev => prev + 1);
             setUserAnswer('');
             setCurrentHintLevel(0);
+            setHintsRevealedManually(0);
             setAttemptCount(0);
             setShowResult(false);
             setShowGuide(false);
-            setLastAttemptFeedback(null);
+            setLastAttemptScore(null);
             setSelectedPhoto(null);
         } else {
             // Study complete
+            const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
             const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-            alert(`Quick Study Complete!\n\n✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n\nGreat job studying Arizona mushrooms!`);
+            
+            alert(
+                `🍄 Study Complete!\n\n` +
+                `✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n` +
+                `📊 Average Score: ${avgScore}%\n` +
+                `${avgScore >= 80 ? '🌟 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
+            );
             onBack();
         }
     };
 
-    const handleKeyPress = (e) => {
-        if (e.key === 'Enter' && !showResult && !showGuide && userAnswer.trim()) {
-            handleSubmitAnswer();
-        }
-    };
-
     if (!currentSpecimen) {
-        return h('div', {
-            style: { minHeight: '100vh', backgroundColor: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-        },
-            h('div', { style: { textAlign: 'center' } },
-                h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '📭'),
-                h('h2', { style: { fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 'No Specimens Available'),
-                h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 'No approved specimens found for study.'),
-                h('button', {
-                    onClick: onBack,
-                    style: {
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        padding: '0.5rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: 'pointer'
-                    }
-                }, 'Back to Home')
-            )
+        return h('div', { style: { padding: '2rem', textAlign: 'center' } },
+            h('h2', null, 'No specimens available for study'),
+            h('button', { onClick: onBack }, 'Back to Home')
         );
     }
 
+    // Calculate current score display
+    const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
+
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-        // Header with Progress
-        h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
-            h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1rem' } },
+        // Header with enhanced scoring display
+        h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem' } },
+            h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
                 h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
                     h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
-                        h('button', {
-                            onClick: onBack,
-                            style: {
-                                color: '#6b7280',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '1rem'
-                            }
-                        }, '← Back'),
+                        h('button', { onClick: onBack, style: { background: 'none', border: 'none', cursor: 'pointer' } }, '← Back'),
                         h('div', null,
                             h('h1', { style: { fontSize: '1.25rem', fontWeight: 'bold' } }, 'Quick Study'),
-                            h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 
+                            h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } },
                                 `Question ${currentIndex + 1} of ${studySpecimens.length}`
                             )
                         )
                     ),
                     h('div', { style: { display: 'flex', alignItems: 'center', gap: '1.5rem' } },
                         h('div', { style: { textAlign: 'center' } },
-                            h('div', { style: { fontSize: '1.125rem', fontWeight: 'bold', color: '#10b981' } },
+                            h('div', { style: { fontSize: '1.125rem', fontWeight: 'bold' } },
                                 `${score.correct}/${score.total}`
                             ),
-                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Score')
+                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Correct')
                         ),
-                        currentSpecimen.dna_sequenced && h('div', {
+                        h('div', { style: { textAlign: 'center' } },
+                            h('div', { 
+                                style: { 
+                                    fontSize: '1.125rem', 
+                                    fontWeight: 'bold',
+                                    color: avgScore >= 80 ? '#10b981' : avgScore >= 60 ? '#f59e0b' : '#ef4444'
+                                } 
+                            },
+                                `${avgScore}%`
+                            ),
+                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Avg Score')
+                        ),
+                        currentSpecimen.dna_sequenced && h('span', {
                             style: {
-                                backgroundColor: '#f3f4f6',
+                                backgroundColor: '#f3e8ff',
                                 color: '#7c3aed',
                                 padding: '0.25rem 0.75rem',
                                 borderRadius: '9999px',
-                                fontSize: '0.875rem',
-                                fontWeight: '500'
+                                fontSize: '0.875rem'
                             }
-                        }, '🧬 DNA Verified')
+                        }, '🧬 DNA')
                     )
                 ),
-                // Progress Bar
-                h('div', { style: { marginTop: '1rem' } },
-                    h('div', { style: { width: '100%', backgroundColor: '#e5e7eb', borderRadius: '9999px', height: '0.5rem' } },
-                        h('div', {
-                            style: {
-                                backgroundColor: '#10b981',
-                                height: '0.5rem',
-                                borderRadius: '9999px',
-                                width: `${((currentIndex + 1) / studySpecimens.length) * 100}%`,
-                                transition: 'width 0.3s'
-                            }
-                        })
-                    )
+                // Progress bar
+                h('div', { style: { marginTop: '0.5rem', backgroundColor: '#e5e7eb', height: '0.25rem', borderRadius: '9999px' } },
+                    h('div', {
+                        style: {
+                            width: `${((currentIndex + 1) / studySpecimens.length) * 100}%`,
+                            height: '100%',
+                            backgroundColor: '#10b981',
+                            borderRadius: '9999px',
+                            transition: 'width 0.3s'
+                        }
+                    })
                 )
             )
         ),
 
-        // Main Flashcard Interface
+        // Main Content
         h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
             h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
-                
-                // Left Column - Photos and Specimen Info
-                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', padding: '1.5rem' } },
-                    // Specimen Info
-                    h('div', { style: { marginBottom: '1rem' } },
-                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Specimen Information'),
-                        h('div', { style: { fontSize: '0.875rem', color: '#6b7280', display: 'flex', flexDirection: 'column', gap: '0.25rem' } },
-                            h('p', null, h('strong', null, 'Location: '), currentSpecimen.location),
-                            currentSpecimen.description && h('p', null, 
-                                h('strong', null, 'Description: '), 
-                                currentSpecimen.description.substring(0, 200) + (currentSpecimen.description.length > 200 ? '...' : '')
-                            )
+                // Left: Photos
+                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.5rem' } },
+                    h('h3', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Specimen Photos'),
+                    
+                    // Specimen info
+                    h('div', { style: { marginBottom: '1rem', padding: '0.75rem', backgroundColor: '#f3f4f6', borderRadius: '0.5rem' } },
+                        h('p', { style: { fontSize: '0.875rem' } },
+                            h('strong', null, 'Location: '), currentSpecimen.location
+                        ),
+                        currentSpecimen.description && h('p', { style: { fontSize: '0.875rem', marginTop: '0.25rem' } },
+                            h('strong', null, 'Notes: '), currentSpecimen.description.substring(0, 100) + '...'
                         )
                     ),
-
-                    // Photo Display Section
-                    h('div', { style: { marginBottom: '1rem' } },
-                        h('h4', { style: { fontWeight: '500', marginBottom: '0.5rem' } }, 'Photos'),
-                        !photosLoaded ? 
-                            h('div', {
-                                style: {
-                                    backgroundColor: '#f3f4f6',
-                                    borderRadius: '0.5rem',
-                                    padding: '2rem',
-                                    textAlign: 'center'
-                                }
-                            },
-                                h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '⏳'),
-                                h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 'Loading photos...')
-                            ) :
-                        currentPhotos.length > 0 ?
-                            h('div', { style: { display: 'flex', flexDirection: 'column', gap: '0.75rem' } },
-                                h('div', { 
-                                    style: { 
-                                        display: 'grid', 
-                                        gridTemplateColumns: currentPhotos.length === 1 ? '1fr' : 'repeat(2, 1fr)',
-                                        gap: '0.5rem'
-                                    } 
-                                },
-                                    ...currentPhotos.slice(0, 6).map((photo, index) =>
-                                        h('div', {
-                                            key: photo.id,
-                                            style: {
-                                                position: 'relative',
-                                                paddingBottom: '100%',
-                                                backgroundColor: '#f3f4f6',
-                                                borderRadius: '0.5rem',
-                                                overflow: 'hidden',
-                                                cursor: 'pointer'
-                                            },
-                                            onClick: () => setSelectedPhoto(photo)
-                                        },
-                                            h('img', {
-                                                src: photo.medium_url,
-                                                alt: `Specimen view ${index + 1}`,
-                                                style: {
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    objectFit: 'contain',
-                                                    backgroundColor: '#f9fafb'
-                                                }
-                                            })
-                                        )
-                                    )
-                                ),
-                                h('p', { style: { fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' } },
-                                    `📸 ${currentPhotos.length} photos available • Click any photo to enlarge`
+                    
+                    // Photos grid
+                    !photosLoaded ? 
+                        h('div', { style: { textAlign: 'center', padding: '2rem' } }, 'Loading photos...') :
+                    currentPhotos.length > 0 ?
+                        h('div', null,
+                            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                currentPhotos.slice(0, 4).map((photo, idx) =>
+                                    h('img', {
+                                        key: idx,
+                                        src: photo.medium_url,
+                                        alt: `Photo ${idx + 1}`,
+                                        onClick: () => setSelectedPhoto(photo),
+                                        style: {
+                                            width: '100%',
+                                            height: '150px',
+                                            objectFit: 'cover',
+                                            borderRadius: '0.5rem',
+                                            cursor: 'pointer'
+                                        }
+                                    })
                                 )
-                            ) :
-                            h('div', {
-                                style: {
-                                    backgroundColor: '#f3f4f6',
-                                    borderRadius: '0.5rem',
-                                    padding: '2rem',
-                                    textAlign: 'center'
-                                }
-                            },
-                                h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '📸'),
-                                h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 'No photos available')
+                            ),
+                            h('p', { style: { fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', textAlign: 'center' } },
+                                'Click any photo to enlarge'
                             )
-                    )
+                        ) :
+                        h('div', { style: { textAlign: 'center', padding: '2rem' } }, 'No photos available')
                 ),
 
-                // Right Column - Answer Interface with Progressive Hints
-                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', padding: '1.5rem' } },
-                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' } }, 'Identify This Mushroom'),
+                // Right: Answer Interface with Hints
+                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.5rem' } },
+                    h('h3', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Identify This Mushroom'),
                     
-                    // Show progressive hints if wrong answer (Phase 1 feature)
-                    currentHintLevel > 0 && !showResult && !showGuide && h('div', {
+                    // Show hints if any revealed
+                    (currentHintLevel > 0 || hintsRevealedManually > 0) && !showResult && !showGuide && h('div', {
                         style: {
                             backgroundColor: '#fef3c7',
                             border: '1px solid #f59e0b',
@@ -655,20 +816,26 @@ function QuickStudy(props) {
                     },
                         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } },
                             h('h4', { style: { fontWeight: '500', color: '#92400e' } }, 
-                                `💡 Hint ${currentHintLevel} of 4`
+                                `💡 Hints (${currentHintLevel + hintsRevealedManually}/4)`
                             ),
-                            h('span', { style: { fontSize: '0.75rem', color: '#92400e' } }, 
-                                `Attempt ${attemptCount}`
-                            )
+                            (currentHintLevel + hintsRevealedManually) > 0 && h('span', { 
+                                style: { 
+                                    fontSize: '0.75rem', 
+                                    color: '#dc2626',
+                                    backgroundColor: '#fee2e2',
+                                    padding: '0.125rem 0.5rem',
+                                    borderRadius: '0.25rem'
+                                } 
+                            }, `-${(currentHintLevel + hintsRevealedManually) * 5}% penalty`)
                         ),
                         
-                        // Show all hints up to current level
-                        hints.slice(0, currentHintLevel).map((hint, idx) => {
-                            const isLatest = idx === currentHintLevel - 1;
+                        // Show all revealed hints
+                        hints.slice(0, currentHintLevel + hintsRevealedManually).map((hint, idx) => {
+                            const isLatest = idx === currentHintLevel + hintsRevealedManually - 1;
                             return h('div', {
                                 key: idx,
                                 style: {
-                                    marginBottom: idx < currentHintLevel - 1 ? '0.5rem' : 0,
+                                    marginBottom: idx < currentHintLevel + hintsRevealedManually - 1 ? '0.5rem' : 0,
                                     padding: '0.5rem',
                                     backgroundColor: isLatest ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)',
                                     borderRadius: '0.25rem',
@@ -681,31 +848,28 @@ function QuickStudy(props) {
                             );
                         }),
                         
-                        lastAttemptFeedback && h('div', {
+                        lastAttemptScore && !lastAttemptScore.isCorrect && h('div', {
                             style: {
                                 marginTop: '0.75rem',
                                 padding: '0.5rem',
-                                backgroundColor: lastAttemptFeedback.includes('Good!') ? '#059669' : '#dc2626',
+                                backgroundColor: lastAttemptScore.baseScore > 0 ? '#059669' : '#dc2626',
                                 color: 'white',
                                 borderRadius: '0.25rem',
                                 fontSize: '0.875rem'
                             }
-                        }, lastAttemptFeedback)
+                        }, lastAttemptScore.feedback)
                     ),
                     
                     !showResult && !showGuide ? 
                         // Question Mode
-                        h('div', { style: { display: 'flex', flexDirection: 'column', gap: '1rem' } },
-                            h('div', null,
-                                h('label', { style: { display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' } },
-                                    'What species is this mushroom?'
-                                ),
+                        h('div', null,
+                            h('div', { style: { marginBottom: '1rem' } },
                                 h('input', {
                                     type: 'text',
                                     value: userAnswer,
                                     onChange: (e) => setUserAnswer(e.target.value),
-                                    onKeyPress: handleKeyPress,
-                                    placeholder: 'Enter genus and species (e.g., Agaricus campestris)',
+                                    onKeyPress: (e) => e.key === 'Enter' && handleSubmitAnswer(),
+                                    placeholder: 'Enter species name (e.g., Agaricus campestris)',
                                     style: {
                                         width: '100%',
                                         padding: '0.75rem',
@@ -723,15 +887,29 @@ function QuickStudy(props) {
                                     disabled: !userAnswer.trim(),
                                     style: {
                                         flex: 1,
+                                        padding: '0.75rem',
                                         backgroundColor: userAnswer.trim() ? '#10b981' : '#d1d5db',
                                         color: 'white',
-                                        padding: '0.75rem',
                                         borderRadius: '0.5rem',
                                         border: 'none',
                                         cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
                                         fontWeight: '500'
                                     }
                                 }, currentHintLevel > 0 ? 'Try Again' : 'Submit Answer'),
+                                
+                                h('button', {
+                                    onClick: handleGetHint,
+                                    disabled: currentHintLevel + hintsRevealedManually >= 4,
+                                    style: {
+                                        padding: '0.75rem 1rem',
+                                        backgroundColor: currentHintLevel + hintsRevealedManually < 4 ? '#3b82f6' : '#d1d5db',
+                                        color: 'white',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: currentHintLevel + hintsRevealedManually < 4 ? 'pointer' : 'not-allowed',
+                                        fontWeight: '500'
+                                    }
+                                }, `💡 Get Hint`),
                                 
                                 h('button', {
                                     onClick: handleIDontKnow,
@@ -748,7 +926,7 @@ function QuickStudy(props) {
                             )
                         ) :
                         showResult ?
-                        // Correct Answer Display
+                        // Result Display with Scoring Details
                         h('div', null,
                             h('div', {
                                 style: {
@@ -761,13 +939,33 @@ function QuickStudy(props) {
                             },
                                 h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
                                     h('span', { style: { fontSize: '1.5rem' } }, '✅'),
-                                    h('strong', { style: { color: '#065f46' } }, lastAttemptFeedback || 'Correct!')
+                                    h('strong', { style: { color: '#065f46' } }, 'Correct!')
                                 ),
                                 h('p', null, h('strong', null, 'Species: '), h('em', null, currentSpecimen.species_name)),
                                 currentSpecimen.common_name && h('p', null, h('strong', null, 'Common: '), currentSpecimen.common_name),
                                 h('p', null, h('strong', null, 'Family: '), currentSpecimen.family),
-                                attemptCount > 1 && h('p', { style: { fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' } },
-                                    `Solved in ${attemptCount} attempts with ${currentHintLevel} hints`
+                                
+                                // Score breakdown
+                                h('div', {
+                                    style: {
+                                        marginTop: '0.75rem',
+                                        padding: '0.5rem',
+                                        backgroundColor: 'rgba(255,255,255,0.8)',
+                                        borderRadius: '0.25rem'
+                                    }
+                                },
+                                    h('p', { style: { fontSize: '0.875rem', marginBottom: '0.25rem' } },
+                                        h('strong', null, 'Score Breakdown:')
+                                    ),
+                                    h('div', { style: { fontSize: '0.75rem', color: '#374151' } },
+                                        h('p', null, `Base Score: ${lastAttemptScore.baseScore}%`),
+                                        lastAttemptScore.hintPenalty > 0 && h('p', null, 
+                                            `Hint Penalty: -${lastAttemptScore.hintPenalty}%`
+                                        ),
+                                        h('p', { style: { fontWeight: 'bold', marginTop: '0.25rem' } }, 
+                                            `Final Score: ${lastAttemptScore.finalScore}%`
+                                        )
+                                    )
                                 )
                             ),
                             
@@ -789,11 +987,12 @@ function QuickStudy(props) {
             )
         ),
 
-        // Interactive Species Guide Modal (Phase 1 feature)
+        // Enhanced Interactive Species Guide with Reference Photos
         showGuide && h(InteractiveSpeciesGuide, {
             specimen: currentSpecimen,
             speciesHints: currentSpeciesHints,
             photos: currentPhotos,
+            referencePhotos: currentReferencePhotos,
             onClose: () => {
                 setShowGuide(false);
                 handleNext();
@@ -804,7 +1003,7 @@ function QuickStudy(props) {
             }
         }),
 
-        // Photo Modal
+        // Photo modal
         selectedPhoto && h('div', {
             style: {
                 position: 'fixed',
@@ -816,278 +1015,208 @@ function QuickStudy(props) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '2rem',
                 zIndex: 50
             },
             onClick: () => setSelectedPhoto(null)
         },
-            h('div', { style: { maxWidth: '90vw', maxHeight: '90vh', position: 'relative' } },
-                h('img', {
-                    src: selectedPhoto.large_url || selectedPhoto.medium_url,
-                    alt: 'Full size specimen view',
-                    style: {
-                        maxWidth: '100%',
-                        maxHeight: '85vh',
-                        objectFit: 'contain',
-                        borderRadius: '0.5rem'
-                    }
-                }),
-                h('div', { style: { textAlign: 'center', marginTop: '1rem' } },
-                    h('p', { style: { color: 'white', fontSize: '0.875rem' } }, selectedPhoto.attribution),
-                    h('p', { style: { color: '#d1d5db', fontSize: '0.75rem', marginTop: '0.25rem' } }, 'Click anywhere to close')
-                )
-            )
+            h('img', {
+                src: selectedPhoto.large_url || selectedPhoto.medium_url,
+                alt: 'Enlarged photo',
+                style: {
+                    maxWidth: '90%',
+                    maxHeight: '90%',
+                    objectFit: 'contain'
+                }
+            })
         )
     );
 }
 
 // Home Page Component
 function HomePage(props) {
-    console.log('🏠 HomePage rendering with props:', props);
-    
     const specimens = props.specimens || [];
     const user = props.user || { name: 'Guest' };
     const onStudyModeSelect = props.onStudyModeSelect;
     
     const approvedCount = specimens.filter(s => s.status === 'approved').length;
     const dnaCount = specimens.filter(s => s.dna_sequenced).length;
-
-    console.log(`📊 Specimens: ${specimens.length}, Approved: ${approvedCount}, DNA: ${dnaCount}`);
+    const speciesWithHints = props.speciesWithHints || 0;
 
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
         // Header
-        h('header', { style: { backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', borderBottom: '1px solid #e5e7eb' } },
-            h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem 1rem' } },
+        h('header', { style: { backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
+            h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
                 h('div', { style: { textAlign: 'center' } },
                     h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '🍄'),
-                    h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold', color: '#1f2937' } }, 'Arizona Mushroom Study'),
+                    h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Flash Fungi'),
                     h('p', { style: { color: '#6b7280' } }, 'Master mushroom identification with DNA-verified specimens')
                 )
             )
         ),
 
         // Main content
-        h('main', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem 1rem' } },
-            // Welcome section
-            h('div', { 
-                style: { 
-                    background: 'linear-gradient(to right, #10b981, #059669)', 
-                    borderRadius: '0.75rem', 
-                    color: 'white', 
-                    padding: '1.5rem', 
-                    marginBottom: '2rem' 
-                } 
+        h('main', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
+            // Stats banner
+            h('div', {
+                style: {
+                    background: 'linear-gradient(to right, #10b981, #059669)',
+                    borderRadius: '0.75rem',
+                    color: 'white',
+                    padding: '1.5rem',
+                    marginBottom: '2rem'
+                }
             },
                 h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
-                    `Welcome, ${user.name || 'Mycologist'}! 🍄`
+                    `Welcome, ${user.name}! 🍄`
                 ),
-                h('p', { style: { opacity: 0.9, marginBottom: '1rem' } }, 'Ready to improve your mushroom identification skills?'),
-                h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '1rem' } },
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' } },
-                        h('span', { style: { fontSize: '0.875rem' } }, `📊 ${specimens.length} Total Specimens`)
+                h('p', { style: { marginBottom: '1rem' } }, 'Choose your study mode below'),
+                h('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `📊 ${specimens.length} Total`
                     ),
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' } },
-                        h('span', { style: { fontSize: '0.875rem' } }, `🧬 ${dnaCount} DNA-Verified`)
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `✅ ${approvedCount} Approved`
                     ),
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '0.5rem', padding: '0.5rem 0.75rem' } },
-                        h('span', { style: { fontSize: '0.875rem' } }, `✅ ${approvedCount} Ready for Study`)
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `🧬 ${dnaCount} DNA Verified`
+                    ),
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `💡 ${speciesWithHints} Species with Hints`
                     )
                 )
             ),
 
-            // Content based on specimens
-            approvedCount === 0 ? 
-                // No specimens message
-                h('div', { style: { textAlign: 'center', padding: '3rem 0' } },
-                    h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🔬'),
-                    h('h3', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 'Study Content Coming Soon'),
-                    h('div', { 
-                        style: { 
-                            backgroundColor: 'white', 
-                            borderRadius: '0.75rem', 
-                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)', 
-                            padding: '1.5rem', 
-                            maxWidth: '32rem', 
-                            margin: '0 auto' 
-                        } 
+            // Study modes
+            approvedCount > 0 ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' } },
+                // Quick Study
+                h('div', {
+                    style: {
+                        backgroundColor: 'white',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s',
+                        ':hover': { transform: 'scale(1.02)' }
                     },
-                        h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
-                            `The data pipeline has found ${specimens.length} specimens awaiting admin review.`
-                        ),
-                        h('div', { style: { padding: '0.75rem', backgroundColor: '#dbeafe', borderRadius: '0.5rem' } },
-                            h('p', { style: { fontSize: '0.875rem', color: '#1e40af' } },
-                                h('strong', null, 'Admin:'), ' Visit the admin portal to review and approve specimens for study.'
-                            )
-                        )
-                    )
-                ) :
-                // Study mode selection
-                h('div', { style: { display: 'flex', flexDirection: 'column', gap: '2rem' } },
-                    h('div', { style: { textAlign: 'center' } },
-                        h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 'Choose Your Study Mode'),
-                        h('p', { style: { color: '#6b7280' } }, `${approvedCount} specimens available for study`)
+                    onClick: () => onStudyModeSelect('quick-study')
+                },
+                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '⚡'),
+                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Quick Study'),
+                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 
+                        '10 questions with progressive hints and scoring system'
                     ),
-                    h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' } },
-                        // Quick Study Card
-                        h('div', { 
-                            style: { 
-                                backgroundColor: 'white', 
-                                borderRadius: '0.75rem', 
-                                padding: '1.5rem', 
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px solid transparent',
-                                cursor: approvedCount >= 1 ? 'pointer' : 'not-allowed',
-                                opacity: approvedCount >= 1 ? 1 : 0.5,
-                                transition: 'all 0.2s'
-                            },
-                            onClick: approvedCount >= 1 ? () => onStudyModeSelect('quick-study') : undefined
-                        },
-                            h('div', { 
-                                style: { 
-                                    backgroundColor: '#3b82f6', 
-                                    color: 'white', 
-                                    width: '3rem', 
-                                    height: '3rem', 
-                                    borderRadius: '0.5rem', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    marginBottom: '1rem', 
-                                    fontSize: '1.25rem' 
-                                } 
-                            }, '⚡'),
-                            h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Quick Study'),
-                            h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                '10 questions with progressive hints and interactive guides'
-                            )
-                        ),
-                        
-                        // Focused Study Card (Phase 2)
-                        h('div', { 
-                            style: { 
-                                backgroundColor: 'white', 
-                                borderRadius: '0.75rem', 
-                                padding: '1.5rem', 
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px solid transparent',
-                                cursor: 'not-allowed',
-                                opacity: 0.5
-                            }
-                        },
-                            h('div', { 
-                                style: { 
-                                    backgroundColor: '#8b5cf6', 
-                                    color: 'white', 
-                                    width: '3rem', 
-                                    height: '3rem', 
-                                    borderRadius: '0.5rem', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    marginBottom: '1rem', 
-                                    fontSize: '1.25rem' 
-                                } 
-                            }, '🎯'),
-                            h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Focused Study'),
-                            h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 'Coming in Phase 2'),
-                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '0.25rem', padding: '0.5rem' } },
-                                'Customize topics and difficulty'
-                            )
-                        ),
+                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#059669' } },
+                        '✓ Get Hint button • ✓ Progressive hints • ✓ Score tracking'
+                    )
+                ),
 
-                        // Marathon Study Card (Phase 2)
-                        h('div', { 
-                            style: { 
-                                backgroundColor: 'white', 
-                                borderRadius: '0.75rem', 
-                                padding: '1.5rem', 
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px solid transparent',
-                                cursor: 'not-allowed',
-                                opacity: 0.5
-                            }
-                        },
-                            h('div', { 
-                                style: { 
-                                    backgroundColor: '#ef4444', 
-                                    color: 'white', 
-                                    width: '3rem', 
-                                    height: '3rem', 
-                                    borderRadius: '0.5rem', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    marginBottom: '1rem', 
-                                    fontSize: '1.25rem' 
-                                } 
-                            }, '♾️'),
-                            h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Marathon Mode'),
-                            h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 'Coming in Phase 2'),
-                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280', backgroundColor: '#f9fafb', borderRadius: '0.25rem', padding: '0.5rem' } },
-                                'Unlimited questions, test endurance'
-                            )
-                        )
+                // Focused Study (Phase 2)
+                h('div', {
+                    style: {
+                        backgroundColor: 'white',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        opacity: 0.5,
+                        cursor: 'not-allowed'
+                    }
+                },
+                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎯'),
+                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Focused Study'),
+                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 'Coming in Phase 2'),
+                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' } },
+                        'Filter by family/genus • Custom difficulty'
+                    )
+                ),
+
+                // Marathon Mode (Phase 2)
+                h('div', {
+                    style: {
+                        backgroundColor: 'white',
+                        borderRadius: '0.75rem',
+                        padding: '1.5rem',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        opacity: 0.5,
+                        cursor: 'not-allowed'
+                    }
+                },
+                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '♾️'),
+                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Marathon Mode'),
+                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 'Coming in Phase 2'),
+                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' } },
+                        'Unlimited questions • Spaced repetition'
                     )
                 )
+            ) : h('div', { style: { textAlign: 'center', padding: '3rem' } },
+                h('p', null, 'No approved specimens available. Check the admin portal.')
+            )
         )
     );
 }
 
 // Main App Component
 function App() {
-    console.log('🏁 App component rendering');
-    
     const [currentView, setCurrentView] = React.useState('home');
     const [specimens, setSpecimens] = React.useState([]);
     const [speciesHints, setSpeciesHints] = React.useState({});
+    const [referencePhotos, setReferencePhotos] = React.useState({});
     const [loading, setLoading] = React.useState(true);
-    const [user, setUser] = React.useState(null);
+    const [user, setUser] = React.useState({ id: 'demo-user', name: 'Demo User' });
     const [specimenPhotos, setSpecimenPhotos] = React.useState({});
 
-    console.log('📊 App state:', { currentView, specimensCount: specimens.length, loading });
-
     React.useEffect(() => {
-        console.log('🚀 useEffect triggered - loading data');
         loadData();
-        setUser({ id: 'demo-user', name: 'Demo User' });
     }, []);
 
     const loadData = async () => {
         try {
-            console.log('🔍 Loading specimens from Supabase...');
+            // Load specimens
             const specResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
-            
-            console.log(`📊 Specimens response status: ${specResponse.status}`);
             
             if (specResponse.ok) {
                 const specData = await specResponse.json();
-                console.log(`✅ Loaded ${specData.length} specimens`);
                 setSpecimens(specData || []);
+                
+                // Load reference photos for approved species
+                const approvedSpecies = [...new Set(specData
+                    .filter(s => s.status === 'approved' && s.selected_photos)
+                    .map(s => s.species_name))];
+                
+                const refPhotos = {};
+                for (const species of approvedSpecies) {
+                    const specimensOfSpecies = specData.filter(s => 
+                        s.species_name === species && 
+                        s.status === 'approved' && 
+                        s.selected_photos
+                    );
+                    
+                    if (specimensOfSpecies.length > 0) {
+                        // Use the first approved specimen's selected photos as reference
+                        const bestSpecimen = specimensOfSpecies.find(s => s.dna_sequenced) || specimensOfSpecies[0];
+                        if (bestSpecimen.selected_photos) {
+                            refPhotos[species] = bestSpecimen.selected_photos;
+                        }
+                    }
+                }
+                setReferencePhotos(refPhotos);
             }
 
             // Load species hints
-            console.log('🔍 Loading species hints from Supabase...');
             const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*`, {
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 }
             });
             
-            console.log(`📊 Hints response status: ${hintsResponse.status}`);
-            
             if (hintsResponse.ok) {
                 const hintsData = await hintsResponse.json();
-                console.log(`✅ Loaded ${hintsData.length} species hints`);
-                
-                // Convert to object keyed by species_name for easy lookup
                 const hintsMap = {};
                 hintsData.forEach(hint => {
                     hintsMap[hint.species_name] = hint;
@@ -1095,7 +1224,7 @@ function App() {
                 setSpeciesHints(hintsMap);
             }
         } catch (error) {
-            console.error('❌ Error loading data:', error);
+            console.error('Error loading data:', error);
         } finally {
             setLoading(false);
         }
@@ -1107,7 +1236,6 @@ function App() {
         }
 
         try {
-            console.log(`📸 Loading photos for specimen: ${inaturalistId}`);
             const response = await fetch(`https://api.inaturalist.org/v1/observations/${inaturalistId}`);
             const data = await response.json();
             
@@ -1116,8 +1244,8 @@ function App() {
                     id: photo.id,
                     url: photo.url,
                     medium_url: photo.url.replace('square', 'medium'),
-                    large_url: photo.url.replace('square', 'large') || photo.url.replace('square', 'original'),
-                    attribution: photo.attribution || 'iNaturalist user'
+                    large_url: photo.url.replace('square', 'large'),
+                    attribution: photo.attribution
                 }));
                 
                 setSpecimenPhotos(prev => ({
@@ -1134,61 +1262,37 @@ function App() {
         return [];
     };
 
-    // Create a safe function reference for view changes
-    const handleViewChange = React.useCallback((newView) => {
-        console.log(`🔄 Changing view from ${currentView} to ${newView}`);
-        setCurrentView(newView);
-    }, [currentView]);
-
-    // Route to different views
     if (loading) {
         return h(LoadingScreen);
     }
 
     if (currentView === 'quick-study') {
-        console.log('🎮 Rendering QuickStudy component');
         return h(QuickStudy, {
             specimens: specimens,
             speciesHints: speciesHints,
-            onBack: () => handleViewChange('home'),
+            referencePhotos: referencePhotos,
+            onBack: () => setCurrentView('home'),
             loadSpecimenPhotos: loadSpecimenPhotos,
             specimenPhotos: specimenPhotos
         });
     }
 
-    console.log('🏠 Rendering HomePage component');
+    // Count species with hints for display
+    const speciesWithHints = Object.keys(speciesHints).length;
+
     return h(HomePage, {
         specimens: specimens,
         user: user,
-        onStudyModeSelect: handleViewChange
+        onStudyModeSelect: setCurrentView,
+        speciesWithHints: speciesWithHints
     });
 }
 
-// Render the app using React 18 API
-console.log('🎬 About to render React app');
+// Render the app
 try {
-    if (typeof ReactDOM === 'undefined') {
-        throw new Error('ReactDOM not available');
-    }
-    
-    const rootElement = document.getElementById('root');
-    if (!rootElement) {
-        throw new Error('Root element not found');
-    }
-    
-    const root = ReactDOM.createRoot(rootElement);
+    const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(h(App));
-    console.log('✅ Phase 1 Complete - React app rendered successfully');
+    console.log('✅ Flash Fungi Enhanced - App rendered successfully');
 } catch (error) {
-    console.error('❌ Failed to render React app:', error);
-    const rootElement = document.getElementById('root');
-    if (rootElement) {
-        rootElement.innerHTML = `
-            <div style="padding: 20px; text-align: center; color: red;">
-                <h1>App Rendering Error</h1>
-                <p>Error: ${error.message}</p>
-                <p>Please check the browser console for more details.</p>
-            </div>
-        `;
-    }
+    console.error('❌ Failed to render app:', error);
 }
