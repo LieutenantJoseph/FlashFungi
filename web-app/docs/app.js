@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-// Enhanced Arizona Mushroom Study App - Phase 1 Complete
-console.log('🔥 app.js executing - Phase 1 Complete version');
-=======
-// Flash Fungi - Enhanced Implementation with QA Fixes and Phase 2 Features
-console.log('🍄 Flash Fungi v2.0 - Enhanced Implementation');
+// Flash Fungi - Enhanced Implementation with Training Modules Integration
+// Version 2.1 - Complete merge resolution and training modules infrastructure
+console.log('🍄 Flash Fungi v2.1 - Training Modules Integration');
 
 // Check React availability
 if (typeof React === 'undefined') {
@@ -12,17 +9,95 @@ if (typeof React === 'undefined') {
 } else {
     console.log('✅ React loaded successfully');
 }
->>>>>>> test-branch
 
 // Configuration
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+const API_BASE = '/api';
 
-<<<<<<< HEAD
-// Helper function to create elements
-=======
->>>>>>> test-branch
 const h = React.createElement;
+
+// User Profile Management Hook
+function useUserProfile() {
+    const [user, setUser] = React.useState(() => {
+        // Check localStorage for existing user (temporary solution)
+        try {
+            const savedUser = localStorage.getItem('flashFungiUser');
+            if (savedUser) {
+                return JSON.parse(savedUser);
+            }
+        } catch (e) {
+            console.warn('Could not load saved user:', e);
+        }
+        // Create demo user if none exists
+        const demoUser = {
+            id: 'demo-' + Math.random().toString(36).substr(2, 9),
+            email: 'demo@flashfungi.com',
+            username: 'DemoUser',
+            display_name: 'Demo User',
+            created_at: new Date().toISOString()
+        };
+        try {
+            localStorage.setItem('flashFungiUser', JSON.stringify(demoUser));
+        } catch (e) {
+            console.warn('Could not save demo user:', e);
+        }
+        return demoUser;
+    });
+
+    const [userProgress, setUserProgress] = React.useState({});
+
+    // Load user progress
+    const loadUserProgress = React.useCallback(async () => {
+        if (!user?.id) return;
+        
+        try {
+            const response = await fetch(`${API_BASE}/user-progress?userId=${user.id}`);
+            if (response.ok) {
+                const data = await response.json();
+                const progressMap = {};
+                data.forEach(p => {
+                    if (p.module_id) {
+                        progressMap[p.module_id] = p;
+                    }
+                });
+                setUserProgress(progressMap);
+            }
+        } catch (error) {
+            console.error('Error loading user progress:', error);
+        }
+    }, [user]);
+
+    // Save progress
+    const saveProgress = React.useCallback(async (progressData) => {
+        if (!user?.id) return;
+
+        try {
+            const response = await fetch(`${API_BASE}/user-progress`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user.id,
+                    ...progressData
+                })
+            });
+            
+            if (response.ok) {
+                await loadUserProgress(); // Reload progress
+                return true;
+            }
+        } catch (error) {
+            console.error('Error saving progress:', error);
+        }
+        return false;
+    }, [user, loadUserProgress]);
+
+    React.useEffect(() => {
+        loadUserProgress();
+    }, [loadUserProgress]);
+
+    return { user, userProgress, saveProgress, loadUserProgress };
+}
 
 // Utility Functions for Fuzzy Matching
 const calculateLevenshteinDistance = (str1, str2) => {
@@ -78,29 +153,6 @@ function LoadingScreen() {
     );
 }
 
-<<<<<<< HEAD
-// Interactive Species Guide Component (New for Phase 1)
-function InteractiveSpeciesGuide({ specimen, speciesHints, photos, onClose, onTryAgain }) {
-    const [activeTab, setActiveTab] = React.useState('overview');
-    
-    // Parse hints if they exist
-    const hints = speciesHints?.hints || [];
-    
-    return h('div', {
-        style: {
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1rem',
-            zIndex: 100
-        }
-=======
 // Enhanced Interactive Species Guide with Reference Photos
 function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhotos, onClose, onTryAgain }) {
     const [activeTab, setActiveTab] = React.useState('overview');
@@ -133,17 +185,12 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
             padding: '1rem',
             zIndex: 100
         }
->>>>>>> test-branch
     },
         h('div', {
             style: {
                 backgroundColor: 'white',
                 borderRadius: '1rem',
-<<<<<<< HEAD
-                maxWidth: '56rem',
-=======
                 maxWidth: '64rem',
->>>>>>> test-branch
                 width: '100%',
                 maxHeight: '90vh',
                 overflow: 'hidden',
@@ -190,11 +237,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                 }
             },
                 h('div', { style: { display: 'flex', gap: '2rem' } },
-<<<<<<< HEAD
-                    ['overview', 'features', 'ecology', 'comparison'].map(tab =>
-=======
                     ['overview', 'comparison', 'features', 'ecology'].map(tab =>
->>>>>>> test-branch
                         h('button', {
                             key: tab,
                             onClick: () => setActiveTab(tab),
@@ -208,11 +251,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                                 borderBottom: activeTab === tab ? '2px solid #059669' : 'none',
                                 cursor: 'pointer'
                             }
-<<<<<<< HEAD
-                        }, tab)
-=======
                         }, tab === 'comparison' ? '🔍 Photo Comparison' : tab)
->>>>>>> test-branch
                     )
                 )
             ),
@@ -236,40 +275,13 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                             specimen.common_name && h('p', null, h('strong', null, 'Common: '), specimen.common_name)
                         ),
                         
-<<<<<<< HEAD
-                        h('h4', { style: { fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem' } }, 'Location & Habitat'),
-=======
                         h('h4', { style: { fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem' } }, 'Location & Context'),
->>>>>>> test-branch
                         h('div', { style: { backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' } },
                             h('p', null, h('strong', null, 'Location: '), specimen.location),
                             specimen.description && h('p', null, h('strong', null, 'Notes: '), specimen.description)
                         )
                     ),
                     
-<<<<<<< HEAD
-                    // Photos section
-                    h('div', null,
-                        h('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, 'Reference Photos'),
-                        photos.length > 0 ? 
-                            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                photos.slice(0, 4).map((photo, idx) =>
-                                    h('img', {
-                                        key: idx,
-                                        src: photo.medium_url,
-                                        alt: `Reference ${idx + 1}`,
-                                        style: {
-                                            width: '100%',
-                                            height: '150px',
-                                            objectFit: 'cover',
-                                            borderRadius: '0.5rem'
-                                        }
-                                    })
-                                )
-                            ) :
-                            h('div', { style: { backgroundColor: '#f3f4f6', padding: '2rem', borderRadius: '0.5rem', textAlign: 'center' } },
-                                h('p', { style: { color: '#6b7280' } }, 'No photos available')
-=======
                     // Reference Photos
                     h('div', null,
                         h('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, '📸 Reference Photos'),
@@ -302,38 +314,11 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                             ) :
                             h('div', { style: { backgroundColor: '#f3f4f6', padding: '2rem', borderRadius: '0.5rem', textAlign: 'center' } },
                                 h('p', { style: { color: '#6b7280' } }, 'No reference photos available')
->>>>>>> test-branch
                             )
                     )
                 ),
                 
-<<<<<<< HEAD
-                // Features Tab
-                activeTab === 'features' && h('div', null,
-                    h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Diagnostic Features'),
-                    hints.filter(h => h.type === 'morphological').map((hint, idx) =>
-                        h('div', {
-                            key: idx,
-                            style: {
-                                backgroundColor: '#f0fdf4',
-                                border: '1px solid #86efac',
-                                borderRadius: '0.5rem',
-                                padding: '1rem',
-                                marginBottom: '1rem'
-                            }
-                        },
-                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                h('span', null, '🔍'),
-                                h('strong', { style: { color: '#059669' } }, 'Physical Characteristics')
-                            ),
-                            h('p', { style: { color: '#374151' } }, hint.text)
-                        )
-                    ),
-                    hints.length === 0 && h('p', { style: { color: '#6b7280' } }, 
-                        'Detailed morphological features will be added as more data becomes available.'
-                    )
-=======
-                // Photo Comparison Tab (NEW - addresses QA request)
+                // Photo Comparison Tab
                 activeTab === 'comparison' && h('div', null,
                     h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 
                         'Side-by-Side Comparison: Your Specimen vs. Reference'
@@ -472,64 +457,11 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                         h('p', { style: { color: '#6b7280' } }, 
                             'Detailed morphological features will be added as more data becomes available.'
                         )
->>>>>>> test-branch
                 ),
                 
                 // Ecology Tab
                 activeTab === 'ecology' && h('div', null,
                     h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Ecological Information'),
-<<<<<<< HEAD
-                    hints.filter(h => h.type === 'ecological').map((hint, idx) =>
-                        h('div', {
-                            key: idx,
-                            style: {
-                                backgroundColor: '#f0fdf4',
-                                border: '1px solid #86efac',
-                                borderRadius: '0.5rem',
-                                padding: '1rem',
-                                marginBottom: '1rem'
-                            }
-                        },
-                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                h('span', null, '🌲'),
-                                h('strong', { style: { color: '#059669' } }, 'Habitat & Ecology')
-                            ),
-                            h('p', { style: { color: '#374151' } }, hint.text)
-                        )
-                    ),
-                    h('div', { style: { marginTop: '1rem' } },
-                        h('p', null, h('strong', null, 'Found in: '), specimen.location),
-                        specimen.description && h('p', { style: { marginTop: '0.5rem' } }, 
-                            h('strong', null, 'Field Notes: '), specimen.description
-                        )
-                    )
-                ),
-                
-                // Comparison Tab
-                activeTab === 'comparison' && h('div', null,
-                    h('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Similar Species & Comparisons'),
-                    hints.filter(h => h.type === 'comparative').map((hint, idx) =>
-                        h('div', {
-                            key: idx,
-                            style: {
-                                backgroundColor: '#fef3c7',
-                                border: '1px solid #fde047',
-                                borderRadius: '0.5rem',
-                                padding: '1rem',
-                                marginBottom: '1rem'
-                            }
-                        },
-                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                h('span', null, '⚖️'),
-                                h('strong', { style: { color: '#a16207' } }, 'Distinguishing Features')
-                            ),
-                            h('p', { style: { color: '#374151' } }, hint.text)
-                        )
-                    ),
-                    hints.length === 0 && h('p', { style: { color: '#6b7280' } }, 
-                        'Comparison data will be added as the database grows.'
-                    )
-=======
                     hints.filter(h => h.type === 'ecological').length > 0 ?
                         hints.filter(h => h.type === 'ecological').map((hint, idx) =>
                             h('div', {
@@ -560,7 +492,6 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                                 )
                             )
                         )
->>>>>>> test-branch
                 )
             ),
             
@@ -609,11 +540,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
     );
 }
 
-<<<<<<< HEAD
-// Enhanced Quick Study Component with Progressive Hints (Phase 1 Complete)
-=======
 // Enhanced Quick Study Component with Proper Scoring and Get Hint Button
->>>>>>> test-branch
 function QuickStudy(props) {
     const specimens = props.specimens || [];
     const speciesHints = props.speciesHints || {};
@@ -622,25 +549,19 @@ function QuickStudy(props) {
     const specimenPhotos = props.specimenPhotos || {};
     const speciesHintsMap = props.speciesHints || {};
     const referencePhotos = props.referencePhotos || {};
+    const user = props.user;
+    const saveProgress = props.saveProgress;
     
     // State
     const [currentIndex, setCurrentIndex] = React.useState(0);
     const [userAnswer, setUserAnswer] = React.useState('');
     const [currentHintLevel, setCurrentHintLevel] = React.useState(0);
-<<<<<<< HEAD
-    const [attemptCount, setAttemptCount] = React.useState(0);
-    const [showResult, setShowResult] = React.useState(false);
-    const [showGuide, setShowGuide] = React.useState(false);
-    const [score, setScore] = React.useState({ correct: 0, total: 0 });
-    const [lastAttemptFeedback, setLastAttemptFeedback] = React.useState(null);
-=======
     const [hintsRevealedManually, setHintsRevealedManually] = React.useState(0);
     const [attemptCount, setAttemptCount] = React.useState(0);
     const [showResult, setShowResult] = React.useState(false);
     const [showGuide, setShowGuide] = React.useState(false);
     const [score, setScore] = React.useState({ correct: 0, total: 0, totalScore: 0 });
     const [lastAttemptScore, setLastAttemptScore] = React.useState(null);
->>>>>>> test-branch
     const [photosLoaded, setPhotosLoaded] = React.useState(false);
     const [selectedPhoto, setSelectedPhoto] = React.useState(null);
 
@@ -653,12 +574,8 @@ function QuickStudy(props) {
 
     const currentSpecimen = studySpecimens[currentIndex];
     const currentPhotos = currentSpecimen ? specimenPhotos[currentSpecimen.inaturalist_id] || [] : [];
-<<<<<<< HEAD
-    const currentSpeciesHints = currentSpecimen ? speciesHints[currentSpecimen.species_name] : null;
-=======
     const currentSpeciesHints = currentSpecimen ? speciesHintsMap[currentSpecimen.species_name] : null;
     const currentReferencePhotos = currentSpecimen ? referencePhotos[currentSpecimen.species_name] || [] : [];
->>>>>>> test-branch
 
     // Load photos when specimen changes
     React.useEffect(() => {
@@ -674,46 +591,26 @@ function QuickStudy(props) {
 
     // Get hints from database or generate fallback
     const getHints = React.useCallback(() => {
-<<<<<<< HEAD
-        if (currentSpeciesHints && currentSpeciesHints.hints) {
-            return currentSpeciesHints.hints;
-        }
-        
-        // Fallback hints if none in database
-=======
         if (currentSpeciesHints && currentSpeciesHints.hints && currentSpeciesHints.hints.length > 0) {
             return currentSpeciesHints.hints;
         }
         
         // Fallback hints
->>>>>>> test-branch
         return [
             {
                 type: 'morphological',
                 level: 1,
-<<<<<<< HEAD
-                text: `Look at the physical features of this ${currentSpecimen?.family || 'mushroom'} specimen - cap shape, gill structure, and stem characteristics.`
-=======
                 text: `Examine the physical features of this ${currentSpecimen?.family || 'mushroom'} specimen.`
->>>>>>> test-branch
             },
             {
                 type: 'comparative',
                 level: 2,
-<<<<<<< HEAD
-                text: `Compare this to other ${currentSpecimen?.genus || 'similar'} species by examining distinguishing features.`
-=======
                 text: `Compare to other ${currentSpecimen?.genus || 'similar'} species for distinguishing features.`
->>>>>>> test-branch
             },
             {
                 type: 'ecological',
                 level: 3,
-<<<<<<< HEAD
-                text: `Consider the habitat: ${currentSpecimen?.location || 'Arizona'}. Note the substrate and environmental conditions.`
-=======
                 text: `Consider the habitat: ${currentSpecimen?.location || 'Arizona'}.`
->>>>>>> test-branch
             },
             {
                 type: 'taxonomic',
@@ -725,52 +622,13 @@ function QuickStudy(props) {
 
     const hints = getHints();
 
-<<<<<<< HEAD
-    // Check if answer is correct
-    const checkAnswer = (answer) => {
-        if (!answer || !currentSpecimen) return { isCorrect: false, feedback: '' };
-=======
     // Enhanced answer validation with fuzzy matching and scoring
     const validateAnswer = (answer) => {
         if (!answer || !currentSpecimen) return { isCorrect: false, score: 0, feedback: '' };
->>>>>>> test-branch
         
         const cleaned = answer.toLowerCase().trim();
         const species = currentSpecimen.species_name.toLowerCase();
         const genus = currentSpecimen.genus.toLowerCase();
-<<<<<<< HEAD
-        const common = (currentSpecimen.common_name || '').toLowerCase();
-        
-        if (cleaned === species || species.includes(cleaned) || cleaned.includes(species)) {
-            return { isCorrect: true, feedback: 'Perfect! Complete species identification!' };
-        }
-        
-        if (common && cleaned === common) {
-            return { isCorrect: true, feedback: 'Correct! You identified it by common name!' };
-        }
-        
-        if (cleaned === genus || cleaned.includes(genus)) {
-            return { isCorrect: false, feedback: `Good! You got the genus "${currentSpecimen.genus}" correct. Can you get the full species?` };
-        }
-        
-        return { isCorrect: false, feedback: 'Not quite. Try again with the hint!' };
-    };
-
-    // Handle answer submission
-    const handleSubmitAnswer = () => {
-        if (!userAnswer.trim()) return;
-        
-        const result = checkAnswer(userAnswer);
-        setAttemptCount(prev => prev + 1);
-        setLastAttemptFeedback(result.feedback);
-        
-        if (result.isCorrect) {
-            // Correct answer
-            setScore(prev => ({ correct: prev.correct + 1, total: prev.total + 1 }));
-            setShowResult(true);
-        } else {
-            // Wrong answer - show next hint
-=======
         const family = currentSpecimen.family.toLowerCase();
         const common = (currentSpecimen.common_name || '').toLowerCase();
         
@@ -848,36 +706,36 @@ function QuickStudy(props) {
                 totalScore: prev.totalScore + validation.finalScore
             }));
             setShowResult(true);
+            
+            // Save progress
+            if (saveProgress) {
+                saveProgress({
+                    specimenId: currentSpecimen.id,
+                    progressType: 'flashcard',
+                    score: validation.finalScore,
+                    hintsUsed: currentHintLevel + hintsRevealedManually,
+                    completed: true
+                });
+            }
         } else {
             // Wrong answer - show next hint progressively if not all revealed
             setLastAttemptScore(validation);
->>>>>>> test-branch
             if (currentHintLevel < 4) {
                 setCurrentHintLevel(prev => prev + 1);
                 setUserAnswer(''); // Clear for retry
             } else {
-<<<<<<< HEAD
-                // All hints exhausted - show guide
-                setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }));
-=======
                 // All hints exhausted
                 setScore(prev => ({ 
                     correct: prev.correct, 
                     total: prev.total + 1,
                     totalScore: prev.totalScore + validation.finalScore
                 }));
->>>>>>> test-branch
                 setShowGuide(true);
             }
         }
     };
 
-<<<<<<< HEAD
-    // Handle "I Don't Know" button
-    const handleIDontKnow = () => {
-        setScore(prev => ({ correct: prev.correct, total: prev.total + 1 }));
-=======
-    // Handle "Get Hint" button (QA request - separate from progressive hints)
+    // Handle "Get Hint" button
     const handleGetHint = () => {
         if (currentHintLevel + hintsRevealedManually < 4) {
             if (currentHintLevel === 0) {
@@ -895,7 +753,6 @@ function QuickStudy(props) {
             total: prev.total + 1,
             totalScore: prev.totalScore + 0 // No points for giving up
         }));
->>>>>>> test-branch
         setShowGuide(true);
     };
 
@@ -905,17 +762,6 @@ function QuickStudy(props) {
             setCurrentIndex(prev => prev + 1);
             setUserAnswer('');
             setCurrentHintLevel(0);
-<<<<<<< HEAD
-            setAttemptCount(0);
-            setShowResult(false);
-            setShowGuide(false);
-            setLastAttemptFeedback(null);
-            setSelectedPhoto(null);
-        } else {
-            // Study complete
-            const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-            alert(`Study Complete!\n\n✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n\nGreat job!`);
-=======
             setHintsRevealedManually(0);
             setAttemptCount(0);
             setShowResult(false);
@@ -933,7 +779,6 @@ function QuickStudy(props) {
                 `📊 Average Score: ${avgScore}%\n` +
                 `${avgScore >= 80 ? '🌟 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
             );
->>>>>>> test-branch
             onBack();
         }
     };
@@ -949,11 +794,7 @@ function QuickStudy(props) {
     const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
 
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-<<<<<<< HEAD
-        // Header
-=======
         // Header with enhanced scoring display
->>>>>>> test-branch
         h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem' } },
             h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
                 h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
@@ -970,8 +811,6 @@ function QuickStudy(props) {
                         h('div', { style: { textAlign: 'center' } },
                             h('div', { style: { fontSize: '1.125rem', fontWeight: 'bold' } },
                                 `${score.correct}/${score.total}`
-<<<<<<< HEAD
-=======
                             ),
                             h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Correct')
                         ),
@@ -984,7 +823,6 @@ function QuickStudy(props) {
                                 } 
                             },
                                 `${avgScore}%`
->>>>>>> test-branch
                             ),
                             h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Score')
                         ),
@@ -1030,76 +868,6 @@ function QuickStudy(props) {
                             h('strong', null, 'Notes: '), currentSpecimen.description.substring(0, 100) + '...'
                         )
                     ),
-<<<<<<< HEAD
-                    
-                    // Photos grid
-                    !photosLoaded ? 
-                        h('div', { style: { textAlign: 'center', padding: '2rem' } }, 'Loading photos...') :
-                    currentPhotos.length > 0 ?
-                        h('div', null,
-                            h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                currentPhotos.slice(0, 4).map((photo, idx) =>
-                                    h('img', {
-                                        key: idx,
-                                        src: photo.medium_url,
-                                        alt: `Photo ${idx + 1}`,
-                                        onClick: () => setSelectedPhoto(photo),
-                                        style: {
-                                            width: '100%',
-                                            height: '150px',
-                                            objectFit: 'cover',
-                                            borderRadius: '0.5rem',
-                                            cursor: 'pointer'
-                                        }
-                                    })
-                                )
-                            ),
-                            h('p', { style: { fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem', textAlign: 'center' } },
-                                'Click any photo to enlarge'
-                            )
-                        ) :
-                        h('div', { style: { textAlign: 'center', padding: '2rem' } }, 'No photos available')
-                ),
-
-                // Right: Answer Interface
-                h('div', { style: { backgroundColor: 'white', borderRadius: '0.75rem', padding: '1.5rem' } },
-                    h('h3', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Identify This Mushroom'),
-                    
-                    // Show progressive hints if wrong answer
-                    currentHintLevel > 0 && !showResult && !showGuide && h('div', {
-                        style: {
-                            backgroundColor: '#fef3c7',
-                            border: '1px solid #f59e0b',
-                            borderRadius: '0.5rem',
-                            padding: '1rem',
-                            marginBottom: '1rem'
-                        }
-                    },
-                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } },
-                            h('h4', { style: { fontWeight: '500', color: '#92400e' } }, 
-                                `💡 Hint ${currentHintLevel} of 4`
-                            ),
-                            h('span', { style: { fontSize: '0.75rem', color: '#92400e' } }, 
-                                `Attempt ${attemptCount}`
-                            )
-                        ),
-                        
-                        // Show only current hint
-                        hints.slice(0, currentHintLevel).map((hint, idx) => {
-                            const isLatest = idx === currentHintLevel - 1;
-                            return h('div', {
-                                key: idx,
-                                style: {
-                                    marginBottom: idx < currentHintLevel - 1 ? '0.5rem' : 0,
-                                    padding: '0.5rem',
-                                    backgroundColor: isLatest ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)',
-                                    borderRadius: '0.25rem',
-                                    opacity: isLatest ? 1 : 0.7
-                                }
-                            },
-                                h('p', { style: { fontSize: '0.875rem', color: '#374151', margin: 0 } }, 
-                                    `${idx + 1}. ${hint.text}`
-=======
                     
                     // Photos grid
                     !photosLoaded ? 
@@ -1296,135 +1064,33 @@ function QuickStudy(props) {
                                             `Final Score: ${lastAttemptScore.finalScore}%`
                                         )
                                     )
->>>>>>> test-branch
                                 )
-                            );
-                        }),
-                        
-                        lastAttemptFeedback && h('div', {
-                            style: {
-                                marginTop: '0.75rem',
-                                padding: '0.5rem',
-                                backgroundColor: '#dc2626',
-                                color: 'white',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.875rem'
-                            }
-                        }, lastAttemptFeedback)
-                    ),
-                    
-                    // Answer input or result
-                    !showResult && !showGuide ? h('div', null,
-                        h('div', { style: { marginBottom: '1rem' } },
-                            h('input', {
-                                type: 'text',
-                                value: userAnswer,
-                                onChange: (e) => setUserAnswer(e.target.value),
-                                onKeyPress: (e) => e.key === 'Enter' && handleSubmitAnswer(),
-                                placeholder: 'Enter species name (e.g., Agaricus campestris)',
+                            ),
+                            
+                            h('button', {
+                                onClick: handleNext,
                                 style: {
                                     width: '100%',
                                     padding: '0.75rem',
-<<<<<<< HEAD
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '0.5rem',
-                                    fontSize: '1rem',
-                                    boxSizing: 'border-box'
-                                }
-                            })
-                        ),
-                        
-                        h('div', { style: { display: 'flex', gap: '0.5rem' } },
-                            h('button', {
-                                onClick: handleSubmitAnswer,
-                                disabled: !userAnswer.trim(),
-                                style: {
-                                    flex: 1,
-                                    padding: '0.75rem',
-                                    backgroundColor: userAnswer.trim() ? '#10b981' : '#d1d5db',
-                                    color: 'white',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
-                                    fontWeight: '500'
-                                }
-                            }, currentHintLevel > 0 ? 'Try Again' : 'Submit Answer'),
-                            
-                            h('button', {
-                                onClick: handleIDontKnow,
-                                style: {
-                                    padding: '0.75rem 1rem',
-                                    backgroundColor: '#6b7280',
-=======
                                     backgroundColor: '#10b981',
->>>>>>> test-branch
                                     color: 'white',
                                     borderRadius: '0.5rem',
                                     border: 'none',
                                     cursor: 'pointer',
                                     fontWeight: '500'
                                 }
-<<<<<<< HEAD
-                            }, "I Don't Know")
-                        )
-                    ) : showResult ? h('div', null,
-                        // Correct answer display
-                        h('div', {
-                            style: {
-                                padding: '1rem',
-                                backgroundColor: '#f0fdf4',
-                                border: '2px solid #10b981',
-                                borderRadius: '0.5rem',
-                                marginBottom: '1rem'
-                            }
-                        },
-                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                h('span', { style: { fontSize: '1.5rem' } }, '✅'),
-                                h('strong', { style: { color: '#065f46' } }, lastAttemptFeedback || 'Correct!')
-                            ),
-                            h('p', null, h('strong', null, 'Species: '), h('em', null, currentSpecimen.species_name)),
-                            currentSpecimen.common_name && h('p', null, h('strong', null, 'Common: '), currentSpecimen.common_name),
-                            h('p', null, h('strong', null, 'Family: '), currentSpecimen.family),
-                            attemptCount > 1 && h('p', { style: { fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' } },
-                                `Solved in ${attemptCount} attempts with ${currentHintLevel} hints`
-                            )
-                        ),
-                        
-                        h('button', {
-                            onClick: handleNext,
-                            style: {
-                                width: '100%',
-                                padding: '0.75rem',
-                                backgroundColor: '#10b981',
-                                color: 'white',
-                                borderRadius: '0.5rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontWeight: '500'
-                            }
-                        }, currentIndex < studySpecimens.length - 1 ? 'Next Question →' : 'Finish Study')
-                    ) : null
-=======
                             }, currentIndex < studySpecimens.length - 1 ? 'Next Question →' : 'Finish Study')
                         ) : null
->>>>>>> test-branch
                 )
             )
         ),
 
-<<<<<<< HEAD
-        // Interactive Species Guide Modal
-=======
         // Enhanced Interactive Species Guide with Reference Photos
->>>>>>> test-branch
         showGuide && h(InteractiveSpeciesGuide, {
             specimen: currentSpecimen,
             speciesHints: currentSpeciesHints,
             photos: currentPhotos,
-<<<<<<< HEAD
-=======
             referencePhotos: currentReferencePhotos,
->>>>>>> test-branch
             onClose: () => {
                 setShowGuide(false);
                 handleNext();
@@ -1435,11 +1101,7 @@ function QuickStudy(props) {
             }
         }),
 
-<<<<<<< HEAD
-        // Photo enlargement modal
-=======
         // Photo modal
->>>>>>> test-branch
         selectedPhoto && h('div', {
             style: {
                 position: 'fixed',
@@ -1468,18 +1130,21 @@ function QuickStudy(props) {
     );
 }
 
-// Home Page Component
+// Enhanced Home Page with Training Modules Section
 function HomePage(props) {
     const specimens = props.specimens || [];
-    const user = props.user || { name: 'Guest' };
+    const user = props.user;
+    const userProgress = props.userProgress || {};
     const onStudyModeSelect = props.onStudyModeSelect;
+    const onTrainingModuleSelect = props.onTrainingModuleSelect;
     
     const approvedCount = specimens.filter(s => s.status === 'approved').length;
     const dnaCount = specimens.filter(s => s.dna_sequenced).length;
-<<<<<<< HEAD
-=======
     const speciesWithHints = props.speciesWithHints || 0;
->>>>>>> test-branch
+    
+    // Calculate training progress
+    const completedModules = Object.values(userProgress).filter(p => p.completed).length;
+    const totalModules = 5; // Foundation modules count
 
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
         // Header
@@ -1487,11 +1152,7 @@ function HomePage(props) {
             h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
                 h('div', { style: { textAlign: 'center' } },
                     h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '🍄'),
-<<<<<<< HEAD
-                    h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Arizona Mushroom Study'),
-=======
                     h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Flash Fungi'),
->>>>>>> test-branch
                     h('p', { style: { color: '#6b7280' } }, 'Master mushroom identification with DNA-verified specimens')
                 )
             )
@@ -1499,7 +1160,7 @@ function HomePage(props) {
 
         // Main content
         h('main', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
-            // Stats banner
+            // User Profile Banner
             h('div', {
                 style: {
                     background: 'linear-gradient(to right, #10b981, #059669)',
@@ -1510,14 +1171,10 @@ function HomePage(props) {
                 }
             },
                 h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
-                    `Welcome, ${user.name}! 🍄`
+                    `Welcome, ${user.display_name || user.username}! 🍄`
                 ),
-                h('p', { style: { marginBottom: '1rem' } }, 'Choose your study mode below'),
-<<<<<<< HEAD
-                h('div', { style: { display: 'flex', gap: '1rem' } },
-=======
+                h('p', { style: { marginBottom: '1rem' } }, 'Your learning journey continues...'),
                 h('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
->>>>>>> test-branch
                     h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
                         `📊 ${specimens.length} Total`
                     ),
@@ -1526,277 +1183,68 @@ function HomePage(props) {
                     ),
                     h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
                         `🧬 ${dnaCount} DNA Verified`
-<<<<<<< HEAD
-=======
                     ),
                     h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                        `💡 ${speciesWithHints} Species with Hints`
->>>>>>> test-branch
+                        `🎓 ${completedModules}/${totalModules} Modules`
                     )
                 )
             ),
 
-            // Study modes
-            approvedCount > 0 ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' } },
-                // Quick Study
-                h('div', {
-                    style: {
-                        backgroundColor: 'white',
-                        borderRadius: '0.75rem',
-                        padding: '1.5rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-<<<<<<< HEAD
-                        cursor: 'pointer'
-=======
-                        cursor: 'pointer',
-                        transition: 'transform 0.2s',
-                        ':hover': { transform: 'scale(1.02)' }
->>>>>>> test-branch
+            // Training Modules Section (NEW)
+            h('div', { style: { marginBottom: '2rem' } },
+                h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
+                    '🎓 Training Modules'
+                ),
+                h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
+                    'Build your foundation with structured lessons before practicing'
+                ),
+                
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' } },
+                    // Foundation Modules Card
+                    h('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            cursor: 'pointer',
+                            border: '2px solid transparent',
+                            transition: 'all 0.2s'
+                        },
+                        onClick: () => onTrainingModuleSelect('foundation'),
+                        onMouseEnter: (e) => e.currentTarget.style.borderColor = '#10b981',
+                        onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                     },
-                    onClick: () => onStudyModeSelect('quick-study')
-                },
-                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '⚡'),
-                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Quick Study'),
-<<<<<<< HEAD
-                    h('p', { style: { color: '#6b7280' } }, '10 questions with progressive hints')
-                ),
-
-                // Focused Study (disabled for now)
-=======
-                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 
-                        '10 questions with progressive hints and scoring system'
-                    ),
-                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#059669' } },
-                        '✓ Get Hint button • ✓ Progressive hints • ✓ Score tracking'
-                    )
-                ),
-
-                // Focused Study (Phase 2)
->>>>>>> test-branch
-                h('div', {
-                    style: {
-                        backgroundColor: 'white',
-                        borderRadius: '0.75rem',
-                        padding: '1.5rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                        opacity: 0.5,
-                        cursor: 'not-allowed'
-                    }
-                },
-                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎯'),
-                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Focused Study'),
-<<<<<<< HEAD
-                    h('p', { style: { color: '#6b7280' } }, 'Coming in Phase 2')
-                ),
-
-                // Marathon Mode (disabled for now)
-=======
-                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 'Coming in Phase 2'),
-                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' } },
-                        'Filter by family/genus • Custom difficulty'
-                    )
-                ),
-
-                // Marathon Mode (Phase 2)
->>>>>>> test-branch
-                h('div', {
-                    style: {
-                        backgroundColor: 'white',
-                        borderRadius: '0.75rem',
-                        padding: '1.5rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                        opacity: 0.5,
-                        cursor: 'not-allowed'
-                    }
-                },
-                    h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '♾️'),
-                    h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 'Marathon Mode'),
-<<<<<<< HEAD
-                    h('p', { style: { color: '#6b7280' } }, 'Coming in Phase 2')
-=======
-                    h('p', { style: { color: '#6b7280', fontSize: '0.875rem' } }, 'Coming in Phase 2'),
-                    h('div', { style: { marginTop: '0.5rem', fontSize: '0.75rem', color: '#6b7280' } },
-                        'Unlimited questions • Spaced repetition'
-                    )
->>>>>>> test-branch
-                )
-            ) : h('div', { style: { textAlign: 'center', padding: '3rem' } },
-                h('p', null, 'No approved specimens available. Check the admin portal.')
-            )
-        )
-    );
-}
-
-// Main App Component
-function App() {
-    const [currentView, setCurrentView] = React.useState('home');
-    const [specimens, setSpecimens] = React.useState([]);
-    const [speciesHints, setSpeciesHints] = React.useState({});
-<<<<<<< HEAD
-=======
-    const [referencePhotos, setReferencePhotos] = React.useState({});
->>>>>>> test-branch
-    const [loading, setLoading] = React.useState(true);
-    const [user, setUser] = React.useState({ id: 'demo-user', name: 'Demo User' });
-    const [specimenPhotos, setSpecimenPhotos] = React.useState({});
-
-    React.useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
-        try {
-            // Load specimens
-            const specResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*`, {
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                }
-            });
-            
-            if (specResponse.ok) {
-                const specData = await specResponse.json();
-                setSpecimens(specData || []);
-<<<<<<< HEAD
-            }
-
-            // Load species hints
-            const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*`, {
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                }
-=======
-                
-                // Load reference photos for approved species
-                const approvedSpecies = [...new Set(specData
-                    .filter(s => s.status === 'approved' && s.selected_photos)
-                    .map(s => s.species_name))];
-                
-                const refPhotos = {};
-                for (const species of approvedSpecies) {
-                    const specimensOfSpecies = specData.filter(s => 
-                        s.species_name === species && 
-                        s.status === 'approved' && 
-                        s.selected_photos
-                    );
-                    
-                    if (specimensOfSpecies.length > 0) {
-                        // Use the first approved specimen's selected photos as reference
-                        const bestSpecimen = specimensOfSpecies.find(s => s.dna_sequenced) || specimensOfSpecies[0];
-                        if (bestSpecimen.selected_photos) {
-                            refPhotos[species] = bestSpecimen.selected_photos;
-                        }
-                    }
-                }
-                setReferencePhotos(refPhotos);
-            }
-
-            // Load species hints
-            const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*`, {
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                }
->>>>>>> test-branch
-            });
-            
-            if (hintsResponse.ok) {
-                const hintsData = await hintsResponse.json();
-<<<<<<< HEAD
-                // Convert to object keyed by species_name for easy lookup
-=======
->>>>>>> test-branch
-                const hintsMap = {};
-                hintsData.forEach(hint => {
-                    hintsMap[hint.species_name] = hint;
-                });
-                setSpeciesHints(hintsMap);
-            }
-        } catch (error) {
-            console.error('Error loading data:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadSpecimenPhotos = async (inaturalistId) => {
-        if (specimenPhotos[inaturalistId]) {
-            return specimenPhotos[inaturalistId];
-        }
-
-        try {
-            const response = await fetch(`https://api.inaturalist.org/v1/observations/${inaturalistId}`);
-            const data = await response.json();
-            
-            if (data.results && data.results[0] && data.results[0].photos) {
-                const photos = data.results[0].photos.map(photo => ({
-                    id: photo.id,
-                    url: photo.url,
-                    medium_url: photo.url.replace('square', 'medium'),
-                    large_url: photo.url.replace('square', 'large'),
-                    attribution: photo.attribution
-                }));
-                
-                setSpecimenPhotos(prev => ({
-                    ...prev,
-                    [inaturalistId]: photos
-                }));
-                
-                return photos;
-            }
-        } catch (error) {
-            console.error('Error loading photos:', error);
-        }
-        
-        return [];
-    };
-
-    if (loading) {
-        return h(LoadingScreen);
-    }
-
-    if (currentView === 'quick-study') {
-        return h(QuickStudy, {
-            specimens: specimens,
-            speciesHints: speciesHints,
-<<<<<<< HEAD
-=======
-            referencePhotos: referencePhotos,
->>>>>>> test-branch
-            onBack: () => setCurrentView('home'),
-            loadSpecimenPhotos: loadSpecimenPhotos,
-            specimenPhotos: specimenPhotos
-        });
-    }
-
-<<<<<<< HEAD
-    return h(HomePage, {
-        specimens: specimens,
-        user: user,
-        onStudyModeSelect: setCurrentView
-=======
-    // Count species with hints for display
-    const speciesWithHints = Object.keys(speciesHints).length;
-
-    return h(HomePage, {
-        specimens: specimens,
-        user: user,
-        onStudyModeSelect: setCurrentView,
-        speciesWithHints: speciesWithHints
->>>>>>> test-branch
-    });
-}
-
-// Render the app
-try {
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(h(App));
-<<<<<<< HEAD
-    console.log('✅ Phase 1 Complete - App rendered successfully');
-=======
-    console.log('✅ Flash Fungi Enhanced - App rendered successfully');
->>>>>>> test-branch
-} catch (error) {
-    console.error('❌ Failed to render app:', error);
-}
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🏗️'),
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'Foundation Modules'
+                        ),
+                        h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            'Essential knowledge for beginners'
+                        ),
+                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                            h('span', { style: { fontSize: '0.75rem', color: '#059669' } }, 
+                                `${completedModules}/5 Complete`
+                            ),
+                            h('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                                '20-25 min each'
+                            )
+                        ),
+                        // Progress bar
+                        h('div', { 
+                            style: { 
+                                marginTop: '0.5rem', 
+                                height: '4px', 
+                                backgroundColor: '#e5e7eb', 
+                                borderRadius: '2px' 
+                            } 
+                        },
+                            h('div', {
+                                style: {
+                                    width: `${(completedModules / 5) * 100}%`,
+                                    height: '100%',
+                                    backgroundColor: '#10b981',
+                                    borderRadius: '2px',
+                                    transition: 'width 0.3s'
+                                }
+                            })
