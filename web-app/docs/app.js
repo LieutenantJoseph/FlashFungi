@@ -1,4 +1,4 @@
-// Flash Fungi - Enhanced Implementation with Training Modules Integration
+// Flash Fungi - Complete Implementation with Training Modules Integration
 // Version 2.1 - Complete merge resolution and training modules infrastructure
 console.log('🍄 Flash Fungi v2.1 - Training Modules Integration');
 
@@ -52,7 +52,7 @@ function useUserProfile() {
         if (!user?.id) return;
         
         try {
-            const response = await fetch(`${API_BASE}/user-progress?userId=${user.id}`);
+            const response = await fetch(`${API_BASE}/user-progress-api?userId=${user.id}`);
             if (response.ok) {
                 const data = await response.json();
                 const progressMap = {};
@@ -73,7 +73,7 @@ function useUserProfile() {
         if (!user?.id) return;
 
         try {
-            const response = await fetch(`${API_BASE}/user-progress`, {
+            const response = await fetch(`${API_BASE}/user-progress-api`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1130,6 +1130,434 @@ function QuickStudy(props) {
     );
 }
 
+// Training Modules Component (Integrated)
+function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
+    const [selectedCategory, setSelectedCategory] = React.useState('foundation');
+    
+    // Foundation modules data
+    const foundationModules = [
+        {
+            id: 'foundation-1',
+            title: 'Basic Diagnostic Features',
+            description: 'Learn to identify key mushroom parts: cap, stem, gills, and spores',
+            duration: '20 min',
+            difficulty: 'Beginner',
+            icon: '🔍',
+            completed: userProgress['foundation-1']?.completed || false
+        },
+        {
+            id: 'foundation-2',
+            title: 'Spore Print Basics',
+            description: 'Master the essential skill of collecting and interpreting spore prints',
+            duration: '15 min',
+            difficulty: 'Beginner',
+            icon: '🎨',
+            completed: userProgress['foundation-2']?.completed || false
+        },
+        {
+            id: 'foundation-3',
+            title: 'Safety First: Deadly Species',
+            description: 'Critical knowledge about poisonous mushrooms in Arizona',
+            duration: '25 min',
+            difficulty: 'Beginner',
+            icon: '⚠️',
+            completed: userProgress['foundation-3']?.completed || false
+        },
+        {
+            id: 'foundation-4',
+            title: 'Mycological Terminology',
+            description: 'Essential vocabulary for accurate mushroom identification',
+            duration: '18 min',
+            difficulty: 'Beginner',
+            icon: '📚',
+            completed: userProgress['foundation-4']?.completed || false
+        },
+        {
+            id: 'foundation-5',
+            title: 'Arizona Fungal Families',
+            description: 'Overview of major mushroom families found in Arizona',
+            duration: '22 min',
+            difficulty: 'Beginner',
+            icon: '🌵',
+            completed: userProgress['foundation-5']?.completed || false
+        }
+    ];
+
+    const handleStartModule = (module) => {
+        onModuleSelect(module);
+    };
+
+    return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
+        // Header
+        h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem' } },
+            h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
+                h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
+                    h('button', { 
+                        onClick: onBack, 
+                        style: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' } 
+                    }, '← Back'),
+                    h('div', null,
+                        h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold' } }, '🎓 Training Modules'),
+                        h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } },
+                            'Build your foundation with structured lessons'
+                        )
+                    )
+                )
+            )
+        ),
+
+        // Main Content
+        h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
+            // Progress overview
+            h('div', {
+                style: {
+                    background: 'linear-gradient(to right, #10b981, #059669)',
+                    borderRadius: '0.75rem',
+                    color: 'white',
+                    padding: '1.5rem',
+                    marginBottom: '2rem'
+                }
+            },
+                h('h2', { style: { fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
+                    'Your Learning Progress'
+                ),
+                h('p', { style: { marginBottom: '1rem', opacity: 0.9 } }, 
+                    `Welcome, ${user.display_name}! Complete foundation modules to unlock advanced features.`
+                ),
+                h('div', { style: { display: 'flex', gap: '1rem' } },
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `📊 ${foundationModules.filter(m => m.completed).length}/5 Complete`
+                    ),
+                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                        `⏱️ ~90 min total`
+                    )
+                )
+            ),
+
+            // Foundation Modules Grid
+            h('div', null,
+                h('h3', { style: { fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
+                    '🏗️ Foundation Modules'
+                ),
+                h('p', { style: { color: '#6b7280', marginBottom: '1.5rem' } }, 
+                    'Essential knowledge for safe and accurate mushroom identification'
+                ),
+                
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' } },
+                    foundationModules.map((module, idx) =>
+                        h('div', {
+                            key: module.id,
+                            style: {
+                                backgroundColor: 'white',
+                                borderRadius: '0.75rem',
+                                padding: '1.5rem',
+                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                                border: '2px solid transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                position: 'relative'
+                            },
+                            onClick: () => handleStartModule(module),
+                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#10b981',
+                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
+                        },
+                            // Completion indicator
+                            module.completed && h('div', {
+                                style: {
+                                    position: 'absolute',
+                                    top: '1rem',
+                                    right: '1rem',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    width: '24px',
+                                    height: '24px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem'
+                                }
+                            }, '✓'),
+
+                            h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' } },
+                                h('div', { style: { fontSize: '2rem' } }, module.icon),
+                                h('div', null,
+                                    h('h4', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' } }, 
+                                        module.title
+                                    ),
+                                    h('div', { style: { display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: '#6b7280' } },
+                                        h('span', null, module.duration),
+                                        h('span', null, '•'),
+                                        h('span', null, module.difficulty)
+                                    )
+                                )
+                            ),
+                            
+                            h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem', lineHeight: '1.5' } }, 
+                                module.description
+                            ),
+                            
+                            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                                h('span', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: module.completed ? '#059669' : '#6b7280',
+                                        fontWeight: module.completed ? '600' : '400'
+                                    } 
+                                }, 
+                                    module.completed ? 'Completed ✓' : 'Not Started'
+                                ),
+                                h('button', {
+                                    style: {
+                                        padding: '0.5rem 1rem',
+                                        backgroundColor: module.completed ? '#059669' : '#3b82f6',
+                                        color: 'white',
+                                        borderRadius: '0.375rem',
+                                        border: 'none',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '500',
+                                        cursor: 'pointer'
+                                    }
+                                }, module.completed ? 'Review' : 'Start')
+                            )
+                        )
+                    )
+                )
+            ),
+
+            // Coming Soon Section
+            h('div', { style: { marginTop: '3rem', padding: '2rem', backgroundColor: '#f8fafc', borderRadius: '0.75rem', border: '2px dashed #e2e8f0' } },
+                h('h3', { style: { fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: '#64748b' } }, 
+                    '🚀 Coming Soon'
+                ),
+                h('p', { style: { color: '#64748b', marginBottom: '1rem' } }, 
+                    'Advanced modules will be unlocked as you complete the foundation'
+                ),
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' } },
+                    [
+                        { title: 'Genus-Specific Modules', icon: '🧬' },
+                        { title: 'Advanced Techniques', icon: '🔬' },
+                        { title: 'Regional Specialties', icon: '🏔️' },
+                        { title: 'Chemical Testing', icon: '⚗️' }
+                    ].map((item, idx) =>
+                        h('div', {
+                            key: idx,
+                            style: {
+                                padding: '1rem',
+                                backgroundColor: 'white',
+                                borderRadius: '0.5rem',
+                                textAlign: 'center',
+                                opacity: 0.7
+                            }
+                        },
+                            h('div', { style: { fontSize: '1.5rem', marginBottom: '0.5rem' } }, item.icon),
+                            h('p', { style: { fontSize: '0.875rem', color: '#64748b' } }, item.title)
+                        )
+                    )
+                )
+            )
+        )
+    );
+}
+
+// Module Player Component (Placeholder for future development)
+function ModulePlayer({ module, onComplete, onBack, saveProgress, user }) {
+    const [currentSlide, setCurrentSlide] = React.useState(0);
+    const [completed, setCompleted] = React.useState(false);
+
+    // Sample module content structure
+    const moduleContent = {
+        'foundation-1': {
+            slides: [
+                {
+                    type: 'intro',
+                    title: 'Basic Diagnostic Features',
+                    content: 'Welcome to mushroom identification! In this module, you\'ll learn to identify the key parts of a mushroom that are essential for accurate identification.',
+                    image: '🍄'
+                },
+                {
+                    type: 'content',
+                    title: 'The Four Main Parts',
+                    content: 'Every mushroom has four main diagnostic areas:\n\n1. **Cap (Pileus)** - The top part\n2. **Stem (Stipe)** - The stalk\n3. **Gills/Pores** - Under the cap\n4. **Spore Print** - The reproductive dust',
+                    image: '🔍'
+                },
+                {
+                    type: 'quiz',
+                    title: 'Quick Check',
+                    question: 'What are the four main diagnostic parts of a mushroom?',
+                    options: [
+                        'Cap, Stem, Gills, Spores',
+                        'Top, Bottom, Middle, Side',
+                        'Head, Body, Arms, Legs',
+                        'Color, Size, Shape, Smell'
+                    ],
+                    correct: 0
+                },
+                {
+                    type: 'completion',
+                    title: 'Module Complete!',
+                    content: 'Congratulations! You\'ve learned the basic diagnostic features. You\'re now ready to start identifying mushrooms with confidence.',
+                    image: '🎉'
+                }
+            ]
+        }
+        // Add more modules here as needed
+    };
+
+    const content = moduleContent[module.id] || {
+        slides: [
+            {
+                type: 'placeholder',
+                title: 'Module Coming Soon',
+                content: `The ${module.title} module is currently under development. Check back soon for comprehensive content!`,
+                image: '🚧'
+            }
+        ]
+    };
+
+    const handleNext = () => {
+        if (currentSlide < content.slides.length - 1) {
+            setCurrentSlide(prev => prev + 1);
+        } else {
+            handleComplete();
+        }
+    };
+
+    const handleComplete = async () => {
+        setCompleted(true);
+        
+        // Save progress
+        if (saveProgress) {
+            await saveProgress({
+                moduleId: module.id,
+                progressType: 'training_module',
+                score: 100,
+                completed: true
+            });
+        }
+        
+        setTimeout(() => {
+            onComplete(module);
+        }, 2000);
+    };
+
+    const currentSlideData = content.slides[currentSlide];
+
+    return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
+        // Header
+        h('div', { style: { backgroundColor: 'white', borderBottom: '1px solid #e5e7eb', padding: '1rem' } },
+            h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
+                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                    h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
+                        h('button', { 
+                            onClick: onBack, 
+                            style: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' } 
+                        }, '← Back to Modules'),
+                        h('div', null,
+                            h('h1', { style: { fontSize: '1.25rem', fontWeight: 'bold' } }, module.title),
+                            h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } },
+                                `${module.icon} ${module.duration} • ${module.difficulty}`
+                            )
+                        )
+                    ),
+                    h('div', { style: { fontSize: '0.875rem', color: '#6b7280' } },
+                        `${currentSlide + 1} / ${content.slides.length}`
+                    )
+                ),
+                // Progress bar
+                h('div', { style: { marginTop: '0.5rem', backgroundColor: '#e5e7eb', height: '0.25rem', borderRadius: '9999px' } },
+                    h('div', {
+                        style: {
+                            width: `${((currentSlide + 1) / content.slides.length) * 100}%`,
+                            height: '100%',
+                            backgroundColor: '#10b981',
+                            borderRadius: '9999px',
+                            transition: 'width 0.3s'
+                        }
+                    })
+                )
+            )
+        ),
+
+        // Module Content
+        h('div', { style: { maxWidth: '48rem', margin: '0 auto', padding: '2rem' } },
+            h('div', {
+                style: {
+                    backgroundColor: 'white',
+                    borderRadius: '0.75rem',
+                    padding: '3rem',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    textAlign: 'center',
+                    minHeight: '400px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center'
+                }
+            },
+                // Slide content based on type
+                currentSlideData.type === 'intro' && h('div', null,
+                    h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, currentSlideData.image),
+                    h('h2', { style: { fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem' } }, currentSlideData.title),
+                    h('p', { style: { fontSize: '1.125rem', color: '#6b7280', lineHeight: '1.6' } }, currentSlideData.content)
+                ),
+
+                currentSlideData.type === 'content' && h('div', null,
+                    h('div', { style: { fontSize: '3rem', marginBottom: '1rem' } }, currentSlideData.image),
+                    h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, currentSlideData.title),
+                    h('div', { 
+                        style: { 
+                            fontSize: '1rem', 
+                            color: '#374151', 
+                            lineHeight: '1.6', 
+                            textAlign: 'left', 
+                            maxWidth: '32rem', 
+                            margin: '0 auto',
+                            whiteSpace: 'pre-line'
+                        } 
+                    }, currentSlideData.content)
+                ),
+
+                currentSlideData.type === 'completion' && h('div', null,
+                    h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, completed ? '🏆' : currentSlideData.image),
+                    h('h2', { style: { fontSize: '2rem', fontWeight: 'bold', marginBottom: '1rem', color: '#059669' } }, 
+                        completed ? 'Module Completed!' : currentSlideData.title
+                    ),
+                    h('p', { style: { fontSize: '1.125rem', color: '#6b7280', lineHeight: '1.6' } }, 
+                        completed ? `Great job! You've completed the ${module.title} module.` : currentSlideData.content
+                    )
+                ),
+
+                currentSlideData.type === 'placeholder' && h('div', null,
+                    h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, currentSlideData.image),
+                    h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, currentSlideData.title),
+                    h('p', { style: { fontSize: '1rem', color: '#6b7280', lineHeight: '1.6' } }, currentSlideData.content)
+                )
+            ),
+
+            // Navigation
+            h('div', { style: { display: 'flex', justifyContent: 'center', marginTop: '2rem' } },
+                h('button', {
+                    onClick: handleNext,
+                    disabled: completed,
+                    style: {
+                        padding: '0.75rem 2rem',
+                        backgroundColor: completed ? '#10b981' : '#3b82f6',
+                        color: 'white',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: completed ? 'default' : 'pointer',
+                        fontWeight: '500',
+                        fontSize: '1rem'
+                    }
+                }, 
+                    completed ? 'Returning to modules...' :
+                    currentSlide < content.slides.length - 1 ? 'Next →' : 'Complete Module'
+                )
+            )
+        )
+    );
+}
+
 // Enhanced Home Page with Training Modules Section
 function HomePage(props) {
     const specimens = props.specimens || [];
@@ -1248,3 +1676,416 @@ function HomePage(props) {
                                     transition: 'width 0.3s'
                                 }
                             })
+                        )
+                    ),
+
+                    // Coming Soon Card
+                    h('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            border: '2px dashed #e5e7eb',
+                            opacity: 0.7
+                        }
+                    },
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🚀'),
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'Advanced Modules'
+                        ),
+                        h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            'Genus-specific and advanced techniques'
+                        ),
+                        h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                            'Unlocked after foundation completion'
+                        )
+                    )
+                )
+            ),
+
+            // Study Modes Section
+            h('div', { style: { marginBottom: '2rem' } },
+                h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
+                    '📚 Study Modes'
+                ),
+                h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
+                    'Practice identification with real specimens'
+                ),
+                
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' } },
+                    // Quick Study
+                    h('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            cursor: 'pointer',
+                            border: '2px solid transparent',
+                            transition: 'all 0.2s'
+                        },
+                        onClick: () => onStudyModeSelect('quick'),
+                        onMouseEnter: (e) => e.currentTarget.style.borderColor = '#3b82f6',
+                        onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
+                    },
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '⚡'),
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'Quick Study'
+                        ),
+                        h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            '10 random specimens with progressive hints'
+                        ),
+                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                            h('span', { style: { fontSize: '0.75rem', color: '#3b82f6' } }, 
+                                `${approvedCount} Available`
+                            ),
+                            h('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                                '~15 min'
+                            )
+                        )
+                    ),
+
+                    // Focused Study (Coming Soon)
+                    h('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            border: '2px dashed #e5e7eb',
+                            opacity: 0.7
+                        }
+                    },
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎯'),
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'Focused Study'
+                        ),
+                        h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            'Filter by family, genus, or features'
+                        ),
+                        h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                            'Coming in Phase 3'
+                        )
+                    ),
+
+                    // Marathon Mode (Coming Soon)
+                    h('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            border: '2px dashed #e5e7eb',
+                            opacity: 0.7
+                        }
+                    },
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🏃'),
+                        h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'Marathon Mode'
+                        ),
+                        h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            'Unlimited questions with spaced repetition'
+                        ),
+                        h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                            'Coming in Phase 3'
+                        )
+                    )
+                )
+            ),
+
+            // Quick Stats Section
+            h('div', {
+                style: {
+                    backgroundColor: 'white',
+                    borderRadius: '0.75rem',
+                    padding: '1.5rem',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                }
+            },
+                h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' } }, 
+                    '📊 Database Statistics'
+                ),
+                h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' } },
+                    [
+                        { label: 'Total Specimens', value: specimens.length, icon: '🔬' },
+                        { label: 'DNA Verified', value: dnaCount, icon: '🧬' },
+                        { label: 'Arizona Families', value: new Set(specimens.map(s => s.family)).size, icon: '🏔️' },
+                        { label: 'Species Available', value: new Set(specimens.map(s => s.species_name)).size, icon: '🍄' }
+                    ].map((stat, idx) =>
+                        h('div', {
+                            key: idx,
+                            style: {
+                                textAlign: 'center',
+                                padding: '1rem',
+                                backgroundColor: '#f8fafc',
+                                borderRadius: '0.5rem'
+                            }
+                        },
+                            h('div', { style: { fontSize: '1.5rem', marginBottom: '0.25rem' } }, stat.icon),
+                            h('div', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937' } }, stat.value),
+                            h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, stat.label)
+                        )
+                    )
+                )
+            )
+        )
+    );
+}
+
+// Main App Component
+function App() {
+    // User profile management
+    const { user, userProgress, saveProgress, loadUserProgress } = useUserProfile();
+    
+    // App state
+    const [currentView, setCurrentView] = React.useState('loading');
+    const [specimens, setSpecimens] = React.useState([]);
+    const [speciesHints, setSpeciesHints] = React.useState({});
+    const [referencePhotos, setReferencePhotos] = React.useState({});
+    const [specimenPhotos, setSpecimenPhotos] = React.useState({});
+    const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState(null);
+    const [currentModule, setCurrentModule] = React.useState(null);
+
+    // Load initial data
+    React.useEffect(() => {
+        const loadData = async () => {
+            try {
+                // Load specimens
+                const specimensResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (specimensResponse.ok) {
+                    const specimensData = await specimensResponse.json();
+                    setSpecimens(specimensData);
+                }
+
+                // Load species hints
+                const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (hintsResponse.ok) {
+                    const hintsData = await hintsResponse.json();
+                    const hintsMap = {};
+                    hintsData.forEach(hint => {
+                        hintsMap[hint.species_name] = hint;
+                    });
+                    setSpeciesHints(hintsMap);
+                }
+
+                // Load field guides (for reference photos)
+                const guidesResponse = await fetch(`${SUPABASE_URL}/rest/v1/field_guides?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (guidesResponse.ok) {
+                    const guidesData = await guidesResponse.json();
+                    const photosMap = {};
+                    guidesData.forEach(guide => {
+                        if (guide.reference_photos && guide.reference_photos.length > 0) {
+                            photosMap[guide.species_name] = guide.reference_photos;
+                        }
+                    });
+                    setReferencePhotos(photosMap);
+                }
+
+                setCurrentView('home');
+            } catch (err) {
+                console.error('Error loading data:', err);
+                setError('Failed to load application data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
+    // Load specimen photos on demand
+    const loadSpecimenPhotos = React.useCallback(async (inaturalistId) => {
+        if (specimenPhotos[inaturalistId]) {
+            return specimenPhotos[inaturalistId];
+        }
+
+        try {
+            const response = await fetch(`https://api.inaturalist.org/v1/observations/${inaturalistId}`);
+            const data = await response.json();
+            
+            if (data.results && data.results[0] && data.results[0].photos) {
+                const photos = data.results[0].photos.map(photo => ({
+                    id: photo.id,
+                    url: photo.url,
+                    medium_url: photo.url.replace('square', 'medium'),
+                    large_url: photo.url.replace('square', 'large')
+                }));
+                
+                setSpecimenPhotos(prev => ({
+                    ...prev,
+                    [inaturalistId]: photos
+                }));
+                
+                return photos;
+            }
+        } catch (error) {
+            console.error(`Error loading photos for ${inaturalistId}:`, error);
+        }
+        
+        return [];
+    }, [specimenPhotos]);
+
+    const handleStudyModeSelect = (mode) => {
+        setCurrentView(`study-${mode}`);
+    };
+
+    const handleTrainingModuleSelect = (category) => {
+        if (category === 'foundation') {
+            setCurrentView('training-modules');
+        }
+    };
+
+    const handleModuleSelect = (module) => {
+        setCurrentModule(module);
+        setCurrentView('module-player');
+    };
+
+    const handleModuleComplete = async (module) => {
+        console.log(`Module ${module.id} completed!`);
+        await loadUserProgress(); // Refresh progress
+        setCurrentView('training-modules');
+        setCurrentModule(null);
+    };
+
+    const handleBackToHome = () => {
+        setCurrentView('home');
+        setCurrentModule(null);
+    };
+
+    // Error state
+    if (error) {
+        return h('div', { style: { padding: '2rem', textAlign: 'center' } },
+            h('h1', { style: { color: '#ef4444' } }, 'Error'),
+            h('p', null, error),
+            h('button', { 
+                onClick: () => window.location.reload(),
+                style: {
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer'
+                }
+            }, 'Retry')
+        );
+    }
+
+    // Loading state
+    if (loading || currentView === 'loading') {
+        return h(LoadingScreen);
+    }
+
+    // Route to appropriate component
+    switch (currentView) {
+        case 'home':
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect
+            });
+
+        case 'study-quick':
+            return h(QuickStudy, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            });
+
+        case 'training-modules':
+            return h(TrainingModules, {
+                userProgress,
+                user,
+                onBack: handleBackToHome,
+                onModuleSelect: handleModuleSelect
+            });
+
+        case 'module-player':
+            return h(ModulePlayer, {
+                module: currentModule,
+                user,
+                saveProgress,
+                onComplete: handleModuleComplete,
+                onBack: () => setCurrentView('training-modules')
+            });
+
+        default:
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect
+            });
+    }
+}
+
+// Initialize the app
+console.log('🚀 Initializing Flash Fungi App...');
+
+// Wait for DOM to be ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
+
+function initializeApp() {
+    const rootElement = document.getElementById('root');
+    
+    if (!rootElement) {
+        console.error('❌ Root element not found');
+        return;
+    }
+
+    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+        console.error('❌ React not available');
+        rootElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React libraries not loaded</h1></div>';
+        return;
+    }
+
+    try {
+        // Use React 18 createRoot API
+        if (ReactDOM.createRoot) {
+            const root = ReactDOM.createRoot(rootElement);
+            root.render(h(App));
+        } else {
+            // Fallback for older React versions
+            ReactDOM.render(h(App), rootElement);
+        }
+        
+        console.log('✅ Flash Fungi initialized successfully!');
+    } catch (error) {
+        console.error('❌ Error initializing app:', error);
+        rootElement.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h1>Error initializing app</h1><p>${error.message}</p></div>`;
+    }
+}
