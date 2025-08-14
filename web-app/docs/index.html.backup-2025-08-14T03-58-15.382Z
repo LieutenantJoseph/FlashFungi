@@ -9,13 +9,6 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="manifest" href="/manifest.json">
-    <!-- PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Flash Fungi">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
 </head>
 <body>
     <div id="root">
@@ -54,19 +47,6 @@
     </script>
     
     <!-- Try different ways to load app.js -->
-        <script src="./focused-study.js"></script>
-        <script src="./marathon-mode.js"></script>
     <script src="./app.js"></script>
-
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('✅ Service Worker registered:', reg.scope))
-                    .catch(err => console.error('❌ Service Worker registration failed:', err));
-            });
-        }
-    </script>
 </body>
 </html>
