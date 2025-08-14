@@ -12,11 +12,10 @@ if (typeof React === 'undefined') {
 
 // Configuration
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
 // Export configuration for use by Phase 3 components
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
 const API_BASE = '/api';
 
 const h = React.createElement;
@@ -2046,17 +2045,6 @@ function App() {
 
         case 'study-marathon':
             return h(window.MarathonMode, {
-                specimens,
-                speciesHints,
-                referencePhotos,
-                specimenPhotos,
-                user,
-                saveProgress,
-                loadSpecimenPhotos,
-                onBack: handleBackToHome
-            });
-
-        , {
                 specimens,
                 speciesHints,
                 referencePhotos,
