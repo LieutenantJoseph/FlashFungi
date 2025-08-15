@@ -1,6 +1,6 @@
-// Flash Fungi - Complete Implementation with Training Modules Integration
-// Version 2.1 - Complete merge resolution and training modules infrastructure
-console.log('🍄 Flash Fungi v2.1 - Training Modules Integration');
+// Flash Fungi - Complete Implementation with Authentication Integration
+// Version 3.0 - Authentication, Training Modules, and Public Profiles
+console.log('🍄 Flash Fungi v3.0 - Authentication Integration');
 
 // Check React availability
 if (typeof React === 'undefined') {
@@ -9,6 +9,16 @@ if (typeof React === 'undefined') {
 } else {
     console.log('✅ React loaded successfully');
 }
+
+// Load auth system
+const authScript = document.createElement('script');
+authScript.src = './auth.js';
+document.head.appendChild(authScript);
+
+// Load public profile component
+const profileScript = document.createElement('script');
+profileScript.src = './public-profile.js';
+document.head.appendChild(profileScript);
 
 // Configuration
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
@@ -20,42 +30,16 @@ const API_BASE = '/api';
 
 const h = React.createElement;
 
-// User Profile Management Hook
-function useUserProfile() {
-    const [user, setUser] = React.useState(() => {
-        // Check localStorage for existing user (temporary solution)
-        try {
-            const savedUser = localStorage.getItem('flashFungiUser');
-            if (savedUser) {
-                return JSON.parse(savedUser);
-            }
-        } catch (e) {
-            console.warn('Could not load saved user:', e);
-        }
-        // Create demo user if none exists
-        const demoUser = {
-            id: 'demo-' + Math.random().toString(36).substr(2, 9),
-            email: 'demo@flashfungi.com',
-            username: 'DemoUser',
-            display_name: 'Demo User',
-            created_at: new Date().toISOString()
-        };
-        try {
-            localStorage.setItem('flashFungiUser', JSON.stringify(demoUser));
-        } catch (e) {
-            console.warn('Could not save demo user:', e);
-        }
-        return demoUser;
-    });
-
+// User Profile Management Hook (Updated for Auth)
+function useUserProfile(authUser) {
     const [userProgress, setUserProgress] = React.useState({});
 
     // Load user progress
     const loadUserProgress = React.useCallback(async () => {
-        if (!user?.id) return;
+        if (!authUser?.id) return;
         
         try {
-            const response = await fetch(`${API_BASE}/user-progress-api?userId=${user.id}`);
+            const response = await fetch(`${API_BASE}/user-progress-api?userId=${authUser.id}`);
             if (response.ok) {
                 const data = await response.json();
                 const progressMap = {};
@@ -69,18 +53,18 @@ function useUserProfile() {
         } catch (error) {
             console.error('Error loading user progress:', error);
         }
-    }, [user]);
+    }, [authUser]);
 
     // Save progress
     const saveProgress = React.useCallback(async (progressData) => {
-        if (!user?.id) return;
+        if (!authUser?.id) return;
 
         try {
             const response = await fetch(`${API_BASE}/user-progress-api`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user.id,
+                    userId: authUser.id,
                     ...progressData
                 })
             });
@@ -93,13 +77,13 @@ function useUserProfile() {
             console.error('Error saving progress:', error);
         }
         return false;
-    }, [user, loadUserProgress]);
+    }, [authUser, loadUserProgress]);
 
     React.useEffect(() => {
         loadUserProgress();
     }, [loadUserProgress]);
 
-    return { user, userProgress, saveProgress, loadUserProgress };
+    return { userProgress, saveProgress, loadUserProgress };
 }
 
 // Utility Functions for Fuzzy Matching
@@ -1225,7 +1209,7 @@ function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
                     'Your Learning Progress'
                 ),
                 h('p', { style: { marginBottom: '1rem', opacity: 0.9 } }, 
-                    `Welcome, ${user.display_name}! Complete foundation modules to unlock advanced features.`
+                    `Welcome, ${user?.display_name || user?.username || 'Learner'}! Complete foundation modules to unlock advanced features.`
                 ),
                 h('div', { style: { display: 'flex', gap: '1rem' } },
                     h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
@@ -1240,7 +1224,7 @@ function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
             // Foundation Modules Grid
             h('div', null,
                 h('h3', { style: { fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
-                    '🏗️ Foundation Modules'
+                    '🗿 Foundation Modules'
                 ),
                 h('p', { style: { color: '#6b7280', marginBottom: '1.5rem' } }, 
                     'Essential knowledge for safe and accurate mushroom identification'
@@ -1561,13 +1545,16 @@ function ModulePlayer({ module, onComplete, onBack, saveProgress, user }) {
     );
 }
 
-// Enhanced Home Page with Training Modules Section
+// Enhanced Home Page with Training Modules Section and Auth
 function HomePage(props) {
     const specimens = props.specimens || [];
     const user = props.user;
     const userProgress = props.userProgress || {};
     const onStudyModeSelect = props.onStudyModeSelect;
     const onTrainingModuleSelect = props.onTrainingModuleSelect;
+    const onAuthRequired = props.onAuthRequired;
+    const onProfileClick = props.onProfileClick;
+    const onSignOut = props.onSignOut;
     
     const approvedCount = specimens.filter(s => s.status === 'approved').length;
     const dnaCount = specimens.filter(s => s.dna_sequenced).length;
@@ -1578,50 +1565,125 @@ function HomePage(props) {
     const totalModules = 5; // Foundation modules count
 
     return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-        // Header
+        // Header with Auth Status
         h('header', { style: { backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
             h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
-                h('div', { style: { textAlign: 'center' } },
-                    h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '🍄'),
-                    h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Flash Fungi'),
-                    h('p', { style: { color: '#6b7280' } }, 'Master mushroom identification with DNA-verified specimens')
+                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                    h('div', { style: { textAlign: 'center', flex: 1 } },
+                        h('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '🍄'),
+                        h('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Flash Fungi'),
+                        h('p', { style: { color: '#6b7280' } }, 'Master mushroom identification with DNA-verified specimens')
+                    ),
+                    // Auth buttons
+                    h('div', { style: { position: 'absolute', right: '1.5rem' } },
+                        user ? 
+                            h('div', { style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } },
+                                h('button', {
+                                    onClick: onProfileClick,
+                                    style: {
+                                        padding: '0.5rem 1rem',
+                                        backgroundColor: '#3b82f6',
+                                        color: 'white',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontWeight: '500'
+                                    }
+                                }, '👤 Profile'),
+                                h('button', {
+                                    onClick: onSignOut,
+                                    style: {
+                                        padding: '0.5rem 1rem',
+                                        backgroundColor: '#6b7280',
+                                        color: 'white',
+                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        fontWeight: '500'
+                                    }
+                                }, 'Sign Out')
+                            ) :
+                            h('button', {
+                                onClick: onAuthRequired,
+                                style: {
+                                    padding: '0.5rem 1rem',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    borderRadius: '0.5rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontWeight: '500'
+                                }
+                            }, 'Sign In / Sign Up')
+                    )
                 )
             )
         ),
 
         // Main content
         h('main', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
-            // User Profile Banner
-            h('div', {
-                style: {
-                    background: 'linear-gradient(to right, #10b981, #059669)',
-                    borderRadius: '0.75rem',
-                    color: 'white',
-                    padding: '1.5rem',
-                    marginBottom: '2rem'
-                }
-            },
-                h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
-                    `Welcome, ${user.display_name || user.username}! 🍄`
-                ),
-                h('p', { style: { marginBottom: '1rem' } }, 'Your learning journey continues...'),
-                h('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                        `📊 ${specimens.length} Total`
+            // User Profile Banner or Sign In Prompt
+            user ? 
+                h('div', {
+                    style: {
+                        background: 'linear-gradient(to right, #10b981, #059669)',
+                        borderRadius: '0.75rem',
+                        color: 'white',
+                        padding: '1.5rem',
+                        marginBottom: '2rem'
+                    }
+                },
+                    h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
+                        `Welcome, ${user.display_name || user.username}! 🍄`
                     ),
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                        `✅ ${approvedCount} Approved`
-                    ),
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                        `🧬 ${dnaCount} DNA Verified`
-                    ),
-                    h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                        `🎓 ${completedModules}/${totalModules} Modules`
+                    h('p', { style: { marginBottom: '1rem' } }, 'Your learning journey continues...'),
+                    h('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
+                        h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                            `📊 ${specimens.length} Total`
+                        ),
+                        h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                            `✅ ${approvedCount} Approved`
+                        ),
+                        h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                            `🧬 ${dnaCount} DNA Verified`
+                        ),
+                        h('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
+                            `🎓 ${completedModules}/${totalModules} Modules`
+                        )
                     )
-                )
-            ),
+                ) :
+                h('div', {
+                    style: {
+                        background: 'linear-gradient(to right, #f59e0b, #dc2626)',
+                        borderRadius: '0.75rem',
+                        color: 'white',
+                        padding: '1.5rem',
+                        marginBottom: '2rem',
+                        textAlign: 'center'
+                    }
+                },
+                    h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
+                        '🔒 Sign in to Track Your Progress'
+                    ),
+                    h('p', { style: { marginBottom: '1rem' } }, 
+                        'Create an account to save your learning progress and unlock all features'
+                    ),
+                    h('button', {
+                        onClick: onAuthRequired,
+                        style: {
+                            padding: '0.75rem 2rem',
+                            backgroundColor: 'white',
+                            color: '#dc2626',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '1rem'
+                        }
+                    }, 'Get Started Free')
+                ),
 
-            // Training Modules Section (NEW)
+            // Training Modules Section
             h('div', { style: { marginBottom: '2rem' } },
                 h('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
                     '🎓 Training Modules'
@@ -1642,44 +1704,50 @@ function HomePage(props) {
                             border: '2px solid transparent',
                             transition: 'all 0.2s'
                         },
-                        onClick: () => onTrainingModuleSelect('foundation'),
+                        onClick: () => user ? onTrainingModuleSelect('foundation') : onAuthRequired(),
                         onMouseEnter: (e) => e.currentTarget.style.borderColor = '#10b981',
                         onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                     },
-                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🏗️'),
+                        h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🗿'),
                         h('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
                             'Foundation Modules'
                         ),
                         h('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
                             'Essential knowledge for beginners'
                         ),
-                        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                            h('span', { style: { fontSize: '0.75rem', color: '#059669' } }, 
-                                `${completedModules}/5 Complete`
-                            ),
-                            h('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                '20-25 min each'
+                        user ? 
+                            h('div', null,
+                                h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                                    h('span', { style: { fontSize: '0.75rem', color: '#059669' } }, 
+                                        `${completedModules}/5 Complete`
+                                    ),
+                                    h('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                                        '20-25 min each'
+                                    )
+                                ),
+                                // Progress bar
+                                h('div', { 
+                                    style: { 
+                                        marginTop: '0.5rem', 
+                                        height: '4px', 
+                                        backgroundColor: '#e5e7eb', 
+                                        borderRadius: '2px' 
+                                    } 
+                                },
+                                    h('div', {
+                                        style: {
+                                            width: `${(completedModules / 5) * 100}%`,
+                                            height: '100%',
+                                            backgroundColor: '#10b981',
+                                            borderRadius: '2px',
+                                            transition: 'width 0.3s'
+                                        }
+                                    })
+                                )
+                            ) :
+                            h('div', { style: { fontSize: '0.75rem', color: '#f59e0b' } }, 
+                                '🔒 Sign in to access'
                             )
-                        ),
-                        // Progress bar
-                        h('div', { 
-                            style: { 
-                                marginTop: '0.5rem', 
-                                height: '4px', 
-                                backgroundColor: '#e5e7eb', 
-                                borderRadius: '2px' 
-                            } 
-                        },
-                            h('div', {
-                                style: {
-                                    width: `${(completedModules / 5) * 100}%`,
-                                    height: '100%',
-                                    backgroundColor: '#10b981',
-                                    borderRadius: '2px',
-                                    transition: 'width 0.3s'
-                                }
-                            })
-                        )
                     ),
 
                     // Coming Soon Card
@@ -1728,7 +1796,7 @@ function HomePage(props) {
                             border: '2px solid transparent',
                             transition: 'all 0.2s'
                         },
-                        onClick: () => onStudyModeSelect('quick'),
+                        onClick: () => user ? onStudyModeSelect('quick') : onAuthRequired(),
                         onMouseEnter: (e) => e.currentTarget.style.borderColor = '#3b82f6',
                         onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                     },
@@ -1746,6 +1814,9 @@ function HomePage(props) {
                             h('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
                                 '~15 min'
                             )
+                        ),
+                        !user && h('div', { style: { fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' } }, 
+                            '🔒 Sign in to play'
                         )
                     ),
 
@@ -1760,7 +1831,7 @@ function HomePage(props) {
                             border: '2px solid transparent',
                             transition: 'all 0.2s'
                         },
-                        onClick: () => onStudyModeSelect('focused'),
+                        onClick: () => user ? onStudyModeSelect('focused') : onAuthRequired(),
                         onMouseEnter: (e) => e.currentTarget.style.borderColor = '#8b5cf6',
                         onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                     },
@@ -1787,7 +1858,7 @@ function HomePage(props) {
                             border: '2px solid transparent',
                             transition: 'all 0.2s'
                         },
-                        onClick: () => onStudyModeSelect('marathon'),
+                        onClick: () => user ? onStudyModeSelect('marathon') : onAuthRequired(),
                         onMouseEnter: (e) => e.currentTarget.style.borderColor = '#f59e0b',
                         onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                     },
@@ -1844,13 +1915,14 @@ function HomePage(props) {
     );
 }
 
-// Main App Component
-function App() {
-    // User profile management
-    const { user, userProgress, saveProgress, loadUserProgress } = useUserProfile();
+// Main Authenticated App Component
+function AuthenticatedApp() {
+    const { user, loading: authLoading, signOut } = window.useAuth ? window.useAuth() : { user: null, loading: true };
+    const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user);
     
-    // App state
     const [currentView, setCurrentView] = React.useState('loading');
+    const [showAuthModal, setShowAuthModal] = React.useState(false);
+    const [profileUsername, setProfileUsername] = React.useState(null);
     const [specimens, setSpecimens] = React.useState([]);
     const [speciesHints, setSpeciesHints] = React.useState({});
     const [referencePhotos, setReferencePhotos] = React.useState({});
@@ -1858,7 +1930,26 @@ function App() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
     const [currentModule, setCurrentModule] = React.useState(null);
-
+    
+    // Handle URL routing for public profiles
+    React.useEffect(() => {
+        const handleRoute = () => {
+            const path = window.location.pathname;
+            const match = path.match(/^\/profile\/(.+)$/);
+            
+            if (match) {
+                const username = match[1];
+                setProfileUsername(username);
+                setCurrentView('public-profile');
+            }
+        };
+        
+        handleRoute();
+        window.addEventListener('popstate', handleRoute);
+        
+        return () => window.removeEventListener('popstate', handleRoute);
+    }, []);
+    
     // Load initial data
     React.useEffect(() => {
         const loadData = async () => {
@@ -1921,8 +2012,10 @@ function App() {
             }
         };
 
-        loadData();
-    }, []);
+        if (!authLoading) {
+            loadData();
+        }
+    }, [authLoading]);
 
     // Load specimen photos on demand
     const loadSpecimenPhotos = React.useCallback(async (inaturalistId) => {
@@ -1983,6 +2076,45 @@ function App() {
         setCurrentModule(null);
     };
 
+    const handleAuthRequired = () => {
+        setShowAuthModal(true);
+    };
+
+    const handleProfileClick = () => {
+        if (window.ProfilePage) {
+            setCurrentView('profile');
+        }
+    };
+
+    const handleSignOut = async () => {
+        if (signOut) {
+            await signOut();
+            setCurrentView('home');
+        }
+    };
+    
+    // Show loading while auth is loading
+    if (authLoading) {
+        return h(LoadingScreen);
+    }
+    
+    // Show public profile if viewing one
+    if (currentView === 'public-profile' && profileUsername && window.PublicProfile) {
+        return h(window.PublicProfile, {
+            username: profileUsername,
+            onBack: () => {
+                window.history.pushState({}, '', '/');
+                setCurrentView('home');
+                setProfileUsername(null);
+            },
+            onClose: () => {
+                if (user && user.username === profileUsername) {
+                    setCurrentView('profile');
+                }
+            }
+        });
+    }
+
     // Error state
     if (error) {
         return h('div', { style: { padding: '2rem', textAlign: 'center' } },
@@ -2007,6 +2139,26 @@ function App() {
         return h(LoadingScreen);
     }
 
+    // Show auth modal over current content
+    if (showAuthModal && window.AuthModal) {
+        return h('div', null,
+            currentView === 'home' && h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            }),
+            h(window.AuthModal, {
+                onClose: () => setShowAuthModal(false)
+            })
+        );
+    }
+
     // Route to appropriate component
     switch (currentView) {
         case 'home':
@@ -2016,8 +2168,18 @@ function App() {
                 userProgress,
                 speciesWithHints: Object.keys(speciesHints).length,
                 onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
             });
+
+        case 'profile':
+            return window.ProfilePage ? h(window.ProfilePage, {
+                user,
+                userProgress,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
 
         case 'study-quick':
             return h(QuickStudy, {
@@ -2032,7 +2194,7 @@ function App() {
             });
 
         case 'study-focused':
-            return h(window.FocusedStudy, {
+            return window.FocusedStudy ? h(window.FocusedStudy, {
                 specimens,
                 speciesHints,
                 referencePhotos,
@@ -2041,10 +2203,10 @@ function App() {
                 saveProgress,
                 loadSpecimenPhotos,
                 onBack: handleBackToHome
-            });
+            }) : handleBackToHome();
 
         case 'study-marathon':
-            return h(window.MarathonMode, {
+            return window.MarathonMode ? h(window.MarathonMode, {
                 specimens,
                 speciesHints,
                 referencePhotos,
@@ -2053,7 +2215,7 @@ function App() {
                 saveProgress,
                 loadSpecimenPhotos,
                 onBack: handleBackToHome
-            });
+            }) : handleBackToHome();
 
         case 'training-modules':
             return h(TrainingModules, {
@@ -2079,13 +2241,41 @@ function App() {
                 userProgress,
                 speciesWithHints: Object.keys(speciesHints).length,
                 onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
             });
     }
 }
 
+// Main App Component with Auth Wrapper
+function App() {
+    const [appReady, setAppReady] = React.useState(false);
+    
+    // Wait for auth to be loaded
+    React.useEffect(() => {
+        const checkReady = () => {
+            if (window.AuthProvider && window.useAuth) {
+                setAppReady(true);
+            } else {
+                setTimeout(checkReady, 100);
+            }
+        };
+        checkReady();
+    }, []);
+    
+    if (!appReady) {
+        return h(LoadingScreen);
+    }
+    
+    return h(window.AuthProvider, null,
+        h(AuthenticatedApp)
+    );
+}
+
 // Initialize the app
-console.log('🚀 Initializing Flash Fungi App...');
+console.log('🚀 Initializing Flash Fungi App with Authentication...');
 
 // Wait for DOM to be ready
 if (document.readyState === 'loading') {
