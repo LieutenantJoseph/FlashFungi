@@ -1,4 +1,5 @@
 // auth.js - Basic authentication system for Flash Fungi
+// Updated to use API endpoints instead of direct Supabase calls
 (function() {
     'use strict';
     
@@ -54,7 +55,8 @@
         
         const login = async (username, password) => {
             try {
-                // Check if user exists
+                // For demo purposes, we'll check if user exists and accept any password
+                // In production, you should implement proper password hashing
                 const response = await fetch(
                     `${window.SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username}`,
                     {
@@ -71,7 +73,6 @@
                         const user = users[0];
                         
                         // Simple password check (in production, use proper hashing)
-                        // For demo, we'll accept any password or check against a simple hash
                         if (password) {
                             setUser(user);
                             
@@ -81,21 +82,19 @@
                                 timestamp: Date.now()
                             }));
                             
-                            // Update last login
-                            await fetch(
-                                `${window.SUPABASE_URL}/rest/v1/user_profiles?id=eq.${user.id}`,
-                                {
-                                    method: 'PATCH',
-                                    headers: {
-                                        'apikey': window.SUPABASE_ANON_KEY,
-                                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                                        'Content-Type': 'application/json'
-                                    },
+                            // Update last login (using service key via API)
+                            try {
+                                await fetch('/api/auth', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({
-                                        last_login: new Date().toISOString()
+                                        action: 'update_login',
+                                        userId: user.id
                                     })
-                                }
-                            );
+                                });
+                            } catch (error) {
+                                console.warn('Could not update last login:', error);
+                            }
                             
                             return { success: true, user };
                         }
@@ -111,76 +110,43 @@
         
         const register = async (username, email, password, displayName) => {
             try {
-                // Check if username already exists
-                const checkResponse = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username}`,
-                    {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    }
-                );
-                
-                if (checkResponse.ok) {
-                    const existing = await checkResponse.json();
-                    if (existing.length > 0) {
-                        return { success: false, error: 'Username already taken' };
-                    }
-                }
-                
-                // Create new user
-                const newUser = {
-                    id: crypto.randomUUID ? crypto.randomUUID() : 
-                        'user-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now(),
-                    username: username.toLowerCase(),
-                    email: email,
-                    display_name: displayName || username,
-                    bio: '',
-                    avatar_url: null,
-                    privacy_settings: {
-                        show_stats: true,
-                        show_achievements: true,
-                        allow_messages: false
+                // Use the API endpoint for registration
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
                     },
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
-                    last_login: new Date().toISOString()
-                };
+                    body: JSON.stringify({
+                        action: 'register',
+                        username: username.toLowerCase(),
+                        email: email,
+                        password: password, // In production, hash this client-side first
+                        displayName: displayName || username
+                    })
+                });
                 
-                const createResponse = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_profiles`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json',
-                            'Prefer': 'return=representation'
-                        },
-                        body: JSON.stringify(newUser)
-                    }
-                );
+                const result = await response.json();
                 
-                if (createResponse.ok) {
-                    const createdUser = await createResponse.json();
-                    setUser(createdUser[0]);
+                if (response.ok && result.success) {
+                    const newUser = result.user;
+                    setUser(newUser);
                     
                     // Save session
                     localStorage.setItem('flashFungiSession', JSON.stringify({
-                        user: createdUser[0],
+                        user: newUser,
                         timestamp: Date.now()
                     }));
                     
-                    return { success: true, user: createdUser[0] };
+                    return { success: true, user: newUser };
                 } else {
-                    const errorText = await createResponse.text();
-                    console.error('Registration failed:', errorText);
-                    return { success: false, error: 'Registration failed' };
+                    return { 
+                        success: false, 
+                        error: result.error || 'Registration failed' 
+                    };
                 }
             } catch (error) {
                 console.error('Registration error:', error);
-                return { success: false, error: 'Registration failed' };
+                return { success: false, error: 'Registration failed. Please try again.' };
             }
         };
         
@@ -189,15 +155,37 @@
             localStorage.removeItem('flashFungiSession');
         };
         
-        const updateProfile = (updates) => {
+        const updateProfile = async (updates) => {
             if (user) {
-                setUser(prev => ({ ...prev, ...updates }));
-                
-                // Update session storage
-                const session = JSON.parse(localStorage.getItem('flashFungiSession') || '{}');
-                session.user = { ...session.user, ...updates };
-                localStorage.setItem('flashFungiSession', JSON.stringify(session));
+                try {
+                    // Update via API endpoint
+                    const response = await fetch('/api/auth', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'update_profile',
+                            userId: user.id,
+                            updates: updates
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const updatedUser = { ...user, ...updates };
+                        setUser(updatedUser);
+                        
+                        // Update session storage
+                        const session = JSON.parse(localStorage.getItem('flashFungiSession') || '{}');
+                        session.user = updatedUser;
+                        localStorage.setItem('flashFungiSession', JSON.stringify(session));
+                        
+                        return { success: true };
+                    }
+                } catch (error) {
+                    console.error('Profile update error:', error);
+                    return { success: false, error: 'Failed to update profile' };
+                }
             }
+            return { success: false, error: 'No user logged in' };
         };
         
         const value = {
@@ -206,6 +194,7 @@
             login,
             register,
             logout,
+            signOut: logout, // Alias for compatibility
             updateProfile,
             isAuthenticated: !!user
         };
@@ -224,7 +213,8 @@
                 login: () => Promise.resolve({ success: false }),
                 register: () => Promise.resolve({ success: false }),
                 logout: () => {},
-                updateProfile: () => {},
+                signOut: () => {},
+                updateProfile: () => Promise.resolve({ success: false }),
                 isAuthenticated: false
             };
         }
@@ -253,6 +243,23 @@
                 if (mode === 'login') {
                     result = await login(username, password);
                 } else {
+                    // Basic validation
+                    if (!username || username.length < 3) {
+                        setError('Username must be at least 3 characters');
+                        setLoading(false);
+                        return;
+                    }
+                    if (!email || !email.includes('@')) {
+                        setError('Please enter a valid email');
+                        setLoading(false);
+                        return;
+                    }
+                    if (!password || password.length < 6) {
+                        setError('Password must be at least 6 characters');
+                        setLoading(false);
+                        return;
+                    }
+                    
                     result = await register(username, email, password, displayName);
                 }
                 
@@ -262,7 +269,8 @@
                     setError(result.error || 'Operation failed');
                 }
             } catch (err) {
-                setError('An error occurred');
+                setError('An unexpected error occurred. Please try again.');
+                console.error('Auth error:', err);
             } finally {
                 setLoading(false);
             }
@@ -319,6 +327,7 @@
                             value: username,
                             onChange: (e) => setUsername(e.target.value),
                             required: true,
+                            disabled: loading,
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
@@ -343,6 +352,7 @@
                             value: email,
                             onChange: (e) => setEmail(e.target.value),
                             required: true,
+                            disabled: loading,
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
@@ -367,6 +377,7 @@
                             value: displayName,
                             onChange: (e) => setDisplayName(e.target.value),
                             placeholder: username || 'Your display name',
+                            disabled: loading,
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
@@ -391,6 +402,8 @@
                             value: password,
                             onChange: (e) => setPassword(e.target.value),
                             required: true,
+                            disabled: loading,
+                            minLength: mode === 'register' ? 6 : 1,
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
@@ -398,7 +411,14 @@
                                 borderRadius: '0.375rem',
                                 fontSize: '1rem'
                             }
-                        })
+                        }),
+                        mode === 'register' && h('p', {
+                            style: {
+                                fontSize: '0.75rem',
+                                color: '#6b7280',
+                                marginTop: '0.25rem'
+                            }
+                        }, 'Must be at least 6 characters')
                     ),
                     
                     error && h('div', {
@@ -444,6 +464,10 @@
                             onClick: () => {
                                 setMode(mode === 'login' ? 'register' : 'login');
                                 setError('');
+                                setUsername('');
+                                setEmail('');
+                                setPassword('');
+                                setDisplayName('');
                             },
                             style: {
                                 color: '#3b82f6',
@@ -456,7 +480,7 @@
                     )
                 ),
                 
-                // Demo account info
+                // Demo account info for login mode only
                 mode === 'login' && h('div', {
                     style: {
                         marginTop: '1rem',
@@ -467,7 +491,7 @@
                         fontSize: '0.75rem',
                         color: '#1e40af'
                     }
-                }, '💡 Demo: Use any username with any password to test')
+                }, '💡 Demo: Use any existing username with any password to test')
             )
         );
     };
