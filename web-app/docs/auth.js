@@ -1,5 +1,6 @@
-// auth.js - Basic authentication system for Flash Fungi
-// Updated to use API endpoints instead of direct Supabase calls
+// auth.js - Fixed client-side authentication system for Flash Fungi
+// This file should be placed at: web-app/docs/auth.js
+
 (function() {
     'use strict';
     
@@ -38,13 +39,15 @@
                             const users = await response.json();
                             if (users.length > 0) {
                                 setUser(users[0]);
+                                console.log('[Auth] Session restored for:', users[0].username);
                             } else {
                                 localStorage.removeItem('flashFungiSession');
+                                console.log('[Auth] Session invalid, cleared');
                             }
                         }
                     }
                 } catch (error) {
-                    console.error('Error checking session:', error);
+                    console.error('[Auth] Error checking session:', error);
                 } finally {
                     setLoading(false);
                 }
@@ -55,61 +58,68 @@
         
         const login = async (username, password) => {
             try {
-                // For demo purposes, we'll check if user exists and accept any password
-                // In production, you should implement proper password hashing
-                const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username}`,
-                    {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    }
-                );
+                console.log('[Auth] Attempting login for:', username);
                 
-                if (response.ok) {
-                    const users = await response.json();
-                    if (users.length > 0) {
-                        const user = users[0];
-                        
-                        // Simple password check (in production, use proper hashing)
-                        if (password) {
-                            setUser(user);
-                            
-                            // Save session
-                            localStorage.setItem('flashFungiSession', JSON.stringify({
-                                user: user,
-                                timestamp: Date.now()
-                            }));
-                            
-                            // Update last login (using service key via API)
-                            try {
-                                await fetch('/api/auth', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        action: 'update_login',
-                                        userId: user.id
-                                    })
-                                });
-                            } catch (error) {
-                                console.warn('Could not update last login:', error);
-                            }
-                            
-                            return { success: true, user };
-                        }
+                // Call the API endpoint for login
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        username: username.toLowerCase(),
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('[Auth] Login response:', result);
+                
+                if (response.ok && result.success) {
+                    const user = result.user;
+                    setUser(user);
+                    
+                    // Save session
+                    localStorage.setItem('flashFungiSession', JSON.stringify({
+                        user: user,
+                        timestamp: Date.now()
+                    }));
+                    
+                    // Update last login
+                    try {
+                        await fetch('/api/auth', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'update_login',
+                                userId: user.id
+                            })
+                        });
+                    } catch (error) {
+                        console.warn('[Auth] Could not update last login:', error);
                     }
+                    
+                    return { success: true, user };
+                } else {
+                    return { 
+                        success: false, 
+                        error: result.error || 'Invalid username or password' 
+                    };
                 }
-                
-                return { success: false, error: 'Invalid username or password' };
             } catch (error) {
-                console.error('Login error:', error);
-                return { success: false, error: 'Login failed' };
+                console.error('[Auth] Login error:', error);
+                return { 
+                    success: false, 
+                    error: 'Network error. Please check your connection and try again.' 
+                };
             }
         };
         
         const register = async (username, email, password, displayName) => {
             try {
+                console.log('[Auth] Attempting registration for:', username);
+                
                 // Use the API endpoint for registration
                 const response = await fetch('/api/auth', {
                     method: 'POST',
@@ -120,12 +130,13 @@
                         action: 'register',
                         username: username.toLowerCase(),
                         email: email,
-                        password: password, // In production, hash this client-side first
+                        password: password,
                         displayName: displayName || username
                     })
                 });
                 
                 const result = await response.json();
+                console.log('[Auth] Registration response:', result);
                 
                 if (response.ok && result.success) {
                     const newUser = result.user;
@@ -139,18 +150,33 @@
                     
                     return { success: true, user: newUser };
                 } else {
+                    // Handle specific error messages
+                    let errorMessage = result.error || 'Registration failed';
+                    
+                    if (result.details) {
+                        if (result.details.includes('permission') || result.details.includes('denied')) {
+                            errorMessage = 'Registration is temporarily unavailable. Please try again later or contact support.';
+                        } else if (result.details.includes('duplicate key')) {
+                            errorMessage = 'This username or email is already registered.';
+                        }
+                    }
+                    
                     return { 
                         success: false, 
-                        error: result.error || 'Registration failed' 
+                        error: errorMessage
                     };
                 }
             } catch (error) {
-                console.error('Registration error:', error);
-                return { success: false, error: 'Registration failed. Please try again.' };
+                console.error('[Auth] Registration error:', error);
+                return { 
+                    success: false, 
+                    error: 'Network error. Please check your connection and try again.' 
+                };
             }
         };
         
         const logout = async () => {
+            console.log('[Auth] Logging out user');
             setUser(null);
             localStorage.removeItem('flashFungiSession');
         };
@@ -158,6 +184,8 @@
         const updateProfile = async (updates) => {
             if (user) {
                 try {
+                    console.log('[Auth] Updating profile for:', user.username);
+                    
                     // Update via API endpoint
                     const response = await fetch('/api/auth', {
                         method: 'POST',
@@ -169,7 +197,9 @@
                         })
                     });
                     
-                    if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
                         const updatedUser = { ...user, ...updates };
                         setUser(updatedUser);
                         
@@ -179,10 +209,18 @@
                         localStorage.setItem('flashFungiSession', JSON.stringify(session));
                         
                         return { success: true };
+                    } else {
+                        return { 
+                            success: false, 
+                            error: result.error || 'Failed to update profile' 
+                        };
                     }
                 } catch (error) {
-                    console.error('Profile update error:', error);
-                    return { success: false, error: 'Failed to update profile' };
+                    console.error('[Auth] Profile update error:', error);
+                    return { 
+                        success: false, 
+                        error: 'Network error. Please try again.' 
+                    };
                 }
             }
             return { success: false, error: 'No user logged in' };
@@ -238,6 +276,8 @@
             setError('');
             setLoading(true);
             
+            console.log(`[AuthModal] Submitting ${mode} form`);
+            
             try {
                 let result;
                 if (mode === 'login') {
@@ -263,14 +303,18 @@
                     result = await register(username, email, password, displayName);
                 }
                 
+                console.log(`[AuthModal] ${mode} result:`, result);
+                
                 if (result.success) {
+                    console.log(`[AuthModal] ${mode} successful, closing modal`);
                     onClose();
                 } else {
+                    console.error(`[AuthModal] ${mode} failed:`, result.error);
                     setError(result.error || 'Operation failed');
                 }
             } catch (err) {
+                console.error(`[AuthModal] Unexpected error during ${mode}:`, err);
                 setError('An unexpected error occurred. Please try again.');
-                console.error('Auth error:', err);
             } finally {
                 setLoading(false);
             }
@@ -328,12 +372,14 @@
                             onChange: (e) => setUsername(e.target.value),
                             required: true,
                             disabled: loading,
+                            autoComplete: 'username',
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '0.375rem',
-                                fontSize: '1rem'
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
                             }
                         })
                     ),
@@ -353,12 +399,14 @@
                             onChange: (e) => setEmail(e.target.value),
                             required: true,
                             disabled: loading,
+                            autoComplete: 'email',
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '0.375rem',
-                                fontSize: '1rem'
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
                             }
                         })
                     ),
@@ -378,12 +426,14 @@
                             onChange: (e) => setDisplayName(e.target.value),
                             placeholder: username || 'Your display name',
                             disabled: loading,
+                            autoComplete: 'name',
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '0.375rem',
-                                fontSize: '1rem'
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
                             }
                         })
                     ),
@@ -404,12 +454,14 @@
                             required: true,
                             disabled: loading,
                             minLength: mode === 'register' ? 6 : 1,
+                            autoComplete: mode === 'register' ? 'new-password' : 'current-password',
                             style: {
                                 width: '100%',
                                 padding: '0.5rem',
                                 border: '1px solid #d1d5db',
                                 borderRadius: '0.375rem',
-                                fontSize: '1rem'
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
                             }
                         }),
                         mode === 'register' && h('p', {
@@ -480,19 +532,32 @@
                     )
                 ),
                 
-                // Demo account info for login mode only
-                mode === 'login' && h('div', {
+                // Note about the demo
+                h('div', {
                     style: {
                         marginTop: '1rem',
                         padding: '0.75rem',
-                        backgroundColor: '#f0f9ff',
-                        border: '1px solid #3b82f6',
+                        backgroundColor: '#fef3c7',
+                        border: '1px solid #f59e0b',
                         borderRadius: '0.375rem',
                         fontSize: '0.75rem',
-                        color: '#1e40af'
+                        color: '#92400e'
                     }
-                }, '💡 Demo: Use any existing username with any password to test')
+                }, 
+                    h('p', { style: { marginBottom: '0.5rem' } }, 
+                        '⚠️ Note: This is a demo application.'
+                    ),
+                    h('p', null,
+                        'If registration fails due to database permissions, you can test with these demo accounts:'
+                    ),
+                    h('ul', { style: { marginTop: '0.5rem', paddingLeft: '1.5rem' } },
+                        h('li', null, 'Username: demo_user / Password: any'),
+                        h('li', null, 'Username: test_student / Password: any')
+                    )
+                )
             )
         );
     };
+    
+    console.log('[Auth] Client-side auth system loaded');
 })();

@@ -1,51 +1,83 @@
-// /api/auth.js - Authentication API endpoint for Flash Fungi
+// /api/auth.js - Fixed Authentication API endpoint for Flash Fungi
+// This file should be placed at: web-app/api/auth.js
+
 export default async function handler(req, res) {
-  // Enable CORS
+  // Enable CORS for all origins
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
   
+  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+    return res.status(200).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+  // Configuration
   const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+  
+  // For operations that require service key, check if it exists
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+  
+  // Log request details for debugging
+  console.log(`[Auth API] ${req.method} request received`);
+  console.log('[Auth API] Body:', req.body);
+  console.log('[Auth API] Service Key Available:', !!SUPABASE_SERVICE_KEY);
 
-  if (!SUPABASE_SERVICE_KEY) {
-    console.error('SUPABASE_SERVICE_KEY not configured');
-    return res.status(500).json({ error: 'Service key not configured' });
+  // Only allow POST requests for auth operations
+  if (req.method !== 'POST') {
+    console.log(`[Auth API] Method not allowed: ${req.method}`);
+    return res.status(405).json({ 
+      error: 'Method not allowed',
+      method: req.method,
+      allowed: ['POST', 'OPTIONS']
+    });
   }
 
   const { action } = req.body;
+  
+  if (!action) {
+    return res.status(400).json({ 
+      error: 'Missing action in request body',
+      required: 'action',
+      validActions: ['register', 'login', 'update_login', 'update_profile']
+    });
+  }
+
+  console.log(`[Auth API] Action: ${action}`);
 
   try {
     switch (action) {
       case 'register':
-        return await handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleRegister(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY);
+      case 'login':
+        return await handleLogin(req, res, SUPABASE_URL, SUPABASE_ANON_KEY);
       case 'update_login':
-        return await handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY);
       case 'update_profile':
-        return await handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY);
       default:
-        return res.status(400).json({ error: 'Invalid action' });
+        return res.status(400).json({ 
+          error: 'Invalid action',
+          provided: action,
+          validActions: ['register', 'login', 'update_login', 'update_profile']
+        });
     }
   } catch (error) {
-    console.error('Auth API error:', error);
-    res.status(500).json({ 
+    console.error('[Auth API] Error:', error);
+    return res.status(500).json({ 
       error: 'Internal server error',
-      details: error.message 
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 }
 
-async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
+async function handleRegister(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY) {
   const { username, email, password, displayName } = req.body;
+
+  console.log('[Auth API] Processing registration for:', username);
 
   // Validate input
   if (!username || username.length < 3) {
@@ -58,21 +90,28 @@ async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
   }
 
+  // Use service key if available, otherwise use anon key
+  const authKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
+
   try {
     // Check if username already exists
     const checkResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username.toLowerCase()}`,
+      `${SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username.toLowerCase()}&select=id`,
       {
         headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`
         }
       }
     );
 
     if (!checkResponse.ok) {
-      console.error('Failed to check username:', await checkResponse.text());
-      return res.status(500).json({ error: 'Failed to check username availability' });
+      const errorText = await checkResponse.text();
+      console.error('[Auth API] Failed to check username:', errorText);
+      return res.status(500).json({ 
+        error: 'Failed to check username availability',
+        details: errorText
+      });
     }
 
     const existing = await checkResponse.json();
@@ -82,11 +121,11 @@ async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
 
     // Check if email already exists
     const emailCheckResponse = await fetch(
-      `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${email.toLowerCase()}`,
+      `${SUPABASE_URL}/rest/v1/user_profiles?email=eq.${email.toLowerCase()}&select=id`,
       {
         headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`
         }
       }
     );
@@ -98,7 +137,7 @@ async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
       }
     }
 
-    // Generate a unique ID (you can use UUID or another method)
+    // Generate a unique ID
     const userId = generateUUID();
 
     // Create new user profile
@@ -127,8 +166,8 @@ async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
       {
         method: 'POST',
         headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         },
@@ -138,34 +177,93 @@ async function handleRegister(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
 
     if (createResponse.ok) {
       const createdUser = await createResponse.json();
-      console.log('User registered successfully:', username);
-      res.status(201).json({ 
+      console.log('[Auth API] User registered successfully:', username);
+      return res.status(201).json({ 
         success: true, 
         user: createdUser[0] || newUser
       });
     } else {
       const errorText = await createResponse.text();
-      console.error('Failed to create user:', errorText);
-      res.status(500).json({ 
+      console.error('[Auth API] Failed to create user:', errorText);
+      
+      // Check if it's a permission issue
+      if (errorText.includes('permission') || errorText.includes('denied')) {
+        return res.status(500).json({ 
+          error: 'Database permission error. Please contact support.',
+          details: 'The database may require additional configuration for user registration.'
+        });
+      }
+      
+      return res.status(500).json({ 
         error: 'Registration failed',
         details: errorText 
       });
     }
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ 
+    console.error('[Auth API] Registration error:', error);
+    return res.status(500).json({ 
       error: 'Registration failed',
-      details: error.message 
+      message: error.message 
     });
   }
 }
 
-async function handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
+async function handleLogin(req, res, SUPABASE_URL, SUPABASE_ANON_KEY) {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  try {
+    // For demo purposes, check if user exists and accept any password
+    // In production, implement proper password verification
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/user_profiles?username=eq.${username.toLowerCase()}`,
+      {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      }
+    );
+    
+    if (response.ok) {
+      const users = await response.json();
+      if (users.length > 0) {
+        const user = users[0];
+        
+        // Simple password check (in production, use proper hashing)
+        if (password) {
+          console.log('[Auth API] User logged in successfully:', username);
+          return res.status(200).json({ 
+            success: true, 
+            user: user 
+          });
+        }
+      }
+    }
+    
+    return res.status(401).json({ 
+      error: 'Invalid username or password' 
+    });
+  } catch (error) {
+    console.error('[Auth API] Login error:', error);
+    return res.status(500).json({ 
+      error: 'Login failed',
+      message: error.message 
+    });
+  }
+}
+
+async function handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY) {
   const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'User ID required' });
   }
+
+  const authKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
 
   try {
     const updateResponse = await fetch(
@@ -173,8 +271,8 @@ async function handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
       {
         method: 'PATCH',
         headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -184,23 +282,32 @@ async function handleUpdateLogin(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
     );
 
     if (updateResponse.ok) {
-      res.status(200).json({ success: true });
+      return res.status(200).json({ success: true });
     } else {
-      console.error('Failed to update last login');
-      res.status(500).json({ error: 'Failed to update last login' });
+      const errorText = await updateResponse.text();
+      console.error('[Auth API] Failed to update last login:', errorText);
+      return res.status(500).json({ 
+        error: 'Failed to update last login',
+        details: errorText 
+      });
     }
   } catch (error) {
-    console.error('Update login error:', error);
-    res.status(500).json({ error: 'Failed to update last login' });
+    console.error('[Auth API] Update login error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to update last login',
+      message: error.message 
+    });
   }
 }
 
-async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
+async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_KEY) {
   const { userId, updates } = req.body;
 
   if (!userId) {
     return res.status(400).json({ error: 'User ID required' });
   }
+
+  const authKey = SUPABASE_SERVICE_KEY || SUPABASE_ANON_KEY;
 
   try {
     // Whitelist allowed fields
@@ -220,8 +327,8 @@ async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY)
       {
         method: 'PATCH',
         headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(filteredUpdates)
@@ -229,26 +336,32 @@ async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY)
     );
 
     if (updateResponse.ok) {
-      res.status(200).json({ success: true });
+      return res.status(200).json({ success: true });
     } else {
       const errorText = await updateResponse.text();
-      console.error('Failed to update profile:', errorText);
-      res.status(500).json({ error: 'Failed to update profile' });
+      console.error('[Auth API] Failed to update profile:', errorText);
+      return res.status(500).json({ 
+        error: 'Failed to update profile',
+        details: errorText 
+      });
     }
   } catch (error) {
-    console.error('Update profile error:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    console.error('[Auth API] Update profile error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to update profile',
+      message: error.message 
+    });
   }
 }
 
 // Helper function to generate UUID
 function generateUUID() {
-  // Simple UUID v4 generator
+  // Use crypto.randomUUID if available (Node.js 16.7+)
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   
-  // Fallback for older Node versions
+  // Fallback UUID v4 generator
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c == 'x' ? r : (r & 0x3 | 0x8);
