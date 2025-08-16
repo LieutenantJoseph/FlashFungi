@@ -1967,32 +1967,13 @@ function HomePage(props) {
     );
 }
 
-// Main Authenticated App Component
-function AuthenticatedApp() {
-    console.log('🔍 AuthenticatedApp rendering...');
-    console.log('🔍 window.useAuth available?', !!window.useAuth);
+// Main Authenticated App Component - NOW PROPERLY USES AUTH CONTEXT
+function AuthenticatedApp({ authData }) {
+    console.log('🔍 AuthenticatedApp rendering with authData:', authData);
     
-    // Try to use the auth hook, but handle if it's not working properly
-    let authData = { user: null, loading: false, signOut: null };
-    try {
-        if (window.useAuth) {
-            const hookResult = window.useAuth();
-            console.log('🔍 useAuth hook result:', hookResult);
-            // If the hook returns something, use it, otherwise use defaults
-            if (hookResult) {
-                authData = hookResult;
-            }
-        }
-    } catch (error) {
-        console.error('🔍 Error calling useAuth:', error);
-    }
-    
-    console.log('🔍 Auth data:', { user: authData.user, loading: authData.loading });
-    
-    const { user, loading: authLoading, signOut } = authData;
-    
-    // WORKAROUND: If authLoading is undefined or null, treat as false
-    const isAuthLoading = authLoading === true;
+    // Use the auth data passed from AppWithAuth
+    const { user, loading: authLoading, signOut } = authData || { user: null, loading: false, signOut: null };
+    console.log('🔍 Auth data from props:', { user, authLoading });
     
     const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user, () => '');
     
@@ -2008,7 +1989,7 @@ function AuthenticatedApp() {
     const [currentModule, setCurrentModule] = React.useState(null);
     const [authCheckComplete, setAuthCheckComplete] = React.useState(false);
     
-    console.log('🔍 Component state:', { currentView, loading, isAuthLoading, authCheckComplete });
+    console.log('🔍 Component state:', { currentView, loading, authLoading, authCheckComplete });
     
     // WORKAROUND: Force auth check to complete after 2 seconds
     React.useEffect(() => {
@@ -2253,28 +2234,48 @@ function AuthenticatedApp() {
         );
     }
 
-    // Show auth modal over current content
+    // Show auth modal over current content - MUST BE INSIDE AUTHPROVIDER
     if (showAuthModal && window.AuthModal) {
         return h('div', null,
-            currentView === 'home' && h(HomePage, {
-                specimens,
-                user,
-                userProgress,
-                speciesWithHints: Object.keys(speciesHints).length,
-                onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect,
-                onAuthRequired: handleAuthRequired,
-                onProfileClick: handleProfileClick,
-                onSignOut: handleSignOut
-            }),
+            renderCurrentView(),
             h(window.AuthModal, {
                 onClose: () => setShowAuthModal(false)
             })
         );
     }
+    
+    // Helper function to render current view
+    function renderCurrentView() {
+        switch (currentView) {
+            case 'home':
+                return h(HomePage, {
+                    specimens,
+                    user,
+                    userProgress,
+                    speciesWithHints: Object.keys(speciesHints).length,
+                    onStudyModeSelect: handleStudyModeSelect,
+                    onTrainingModuleSelect: handleTrainingModuleSelect,
+                    onAuthRequired: handleAuthRequired,
+                    onProfileClick: handleProfileClick,
+                    onSignOut: handleSignOut
+                });
+            default:
+                return h(HomePage, {
+                    specimens,
+                    user,
+                    userProgress,
+                    speciesWithHints: Object.keys(speciesHints).length,
+                    onStudyModeSelect: handleStudyModeSelect,
+                    onTrainingModuleSelect: handleTrainingModuleSelect,
+                    onAuthRequired: handleAuthRequired,
+                    onProfileClick: handleProfileClick,
+                    onSignOut: handleSignOut
+                });
+        }
+    }
 
     // Route to appropriate component
-    switch (currentView) {
+    return renderCurrentView();
         case 'home':
             return h(HomePage, {
                 specimens,
@@ -2363,6 +2364,17 @@ function AuthenticatedApp() {
     }
 }
 
+// Wrapper component that ensures everything is inside AuthProvider
+function AppWithAuth() {
+    console.log('🔍 AppWithAuth rendering (inside AuthProvider)');
+    
+    // NOW we're inside AuthProvider, so useAuth will work
+    const authData = window.useAuth();
+    console.log('🔍 Auth from context:', authData);
+    
+    return h(AuthenticatedApp, { authData });
+}
+
 // Main App Component with Auth Wrapper
 function App() {
     const [appReady, setAppReady] = React.useState(false);
@@ -2411,9 +2423,9 @@ function App() {
         return h(LoadingScreen);
     }
     
-    console.log('🔍 App ready, rendering AuthProvider');
+    console.log('🔍 App ready, rendering AuthProvider with AppWithAuth');
     return h(window.AuthProvider, null,
-        h(AuthenticatedApp)
+        h(AppWithAuth)
     );
 }
 
