@@ -93,44 +93,6 @@ function useUserProfile(authUser, getAuthToken) {
     return { userProgress, saveProgress, loadUserProgress };
 }
 
-// In AuthenticatedApp component, update the profile update call
-const handleProfileClick = () => {
-    if (window.ProfilePage) {
-        setCurrentView('profile');
-    }
-};
-
-    // Save progress
-    const saveProgress = React.useCallback(async (progressData) => {
-        if (!authUser?.id) return;
-
-        try {
-            const response = await fetch(`${API_BASE}/user-progress-api`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: authUser.id,
-                    ...progressData
-                })
-            });
-            
-            if (response.ok) {
-                await loadUserProgress(); // Reload progress
-                return true;
-            }
-        } catch (error) {
-            console.error('Error saving progress:', error);
-        }
-        return false;
-    }, [authUser, loadUserProgress]);
-
-    React.useEffect(() => {
-        loadUserProgress();
-    }, [loadUserProgress]);
-
-    return { userProgress, saveProgress, loadUserProgress };
-}
-
 // Utility Functions for Fuzzy Matching
 const calculateLevenshteinDistance = (str1, str2) => {
     const matrix = Array(str2.length + 1).fill(null).map(() => 
@@ -149,7 +111,7 @@ const calculateLevenshteinDistance = (str1, str2) => {
                 matrix[j - 1][i - 1] + substitutionCost
             );
         }
-    }
+    } // <-- Add this closing brace to end the main else block
     
     return matrix[str2.length][str1.length];
 };
@@ -764,7 +726,7 @@ function QuickStudy(props) {
                 }));
                 setShowGuide(true);
             }
-        }
+        }} // <-- Add this closing brace to end the main else block
     };
 
     // Handle "Get Hint" button
