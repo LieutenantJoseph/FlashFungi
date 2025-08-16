@@ -9,10 +9,29 @@ if (typeof React === 'undefined') {
 } else {
     console.log('✅ React loaded successfully');
 
-// Load auth system
-const authScript = document.createElement('script');
-authScript.src = './auth.js';
-document.head.appendChild(authScript);
+// Load Supabase client library first
+const supabaseScript = document.createElement('script');
+supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+supabaseScript.onload = () => {
+    console.log('✅ Supabase client library loaded');
+    
+    // Now load auth system - USE SUPABASE AUTH
+    const authScript = document.createElement('script');
+    authScript.src = './supabase-auth.js';  // Changed from auth.js to supabase-auth.js
+    authScript.onload = () => {
+        console.log('✅ Supabase auth system loaded');
+    };
+    authScript.onerror = (error) => {
+        console.error('❌ Failed to load supabase-auth.js:', error);
+    };
+    document.head.appendChild(authScript);
+};
+supabaseScript.onerror = (error) => {
+    console.error('❌ Failed to load Supabase client library:', error);
+};
+document.head.appendChild(supabaseScript);
+
+console.log('📌 Loading Supabase client library and auth system...');
 
 // Load public profile component
 const profileScript = document.createElement('script');
@@ -22,6 +41,26 @@ document.head.appendChild(profileScript);
 // Configuration
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+
+// Debug: Verify Supabase configuration
+console.log('🔍 Supabase Config:', {
+    url: SUPABASE_URL,
+    hasKey: !!SUPABASE_ANON_KEY,
+    keyLength: SUPABASE_ANON_KEY.length
+});
+
+// Test Supabase connection
+fetch(`${SUPABASE_URL}/rest/v1/`, {
+    headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+    }
+}).then(response => {
+    console.log('🔍 Supabase connection test:', response.ok ? 'SUCCESS' : 'FAILED', response.status);
+}).catch(error => {
+    console.error('🔍 Supabase connection error:', error);
+});
+
 // Export configuration for use by Phase 3 components
 window.SUPABASE_URL = SUPABASE_URL;
 window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
@@ -2331,6 +2370,7 @@ function App() {
     console.log('🔍 App component rendering, appReady:', appReady);
     console.log('🔍 window.AuthProvider available?', !!window.AuthProvider);
     console.log('🔍 window.useAuth available?', !!window.useAuth);
+    console.log('🔍 window.supabase available?', !!window.supabase);
     
     // Wait for auth to be loaded
     React.useEffect(() => {
@@ -2338,10 +2378,11 @@ function App() {
         const checkReady = () => {
             checkCount++;
             console.log(`🔍 Checking auth availability (attempt ${checkCount})...`);
+            console.log('  - Supabase client:', !!window.supabase);
             console.log('  - AuthProvider:', !!window.AuthProvider);
             console.log('  - useAuth:', !!window.useAuth);
             
-            if (window.AuthProvider && window.useAuth) {
+            if (window.supabase && window.AuthProvider && window.useAuth) {
                 console.log('🔍 Auth system ready!');
                 setAppReady(true);
             } else {
@@ -2350,10 +2391,15 @@ function App() {
                 } else {
                     console.error('🔍 Auth system failed to load after 5 seconds');
                     console.log('🔍 Final window state:', {
+                        supabase: !!window.supabase,
                         AuthProvider: !!window.AuthProvider,
-                        useAuth: !!window.useAuth,
-                        SupabaseAuth: !!window.SupabaseAuth
+                        useAuth: !!window.useAuth
                     });
+                    // Try to proceed anyway in case there's a timing issue
+                    if (window.AuthProvider && window.useAuth) {
+                        console.log('🔍 Auth functions available, proceeding anyway...');
+                        setAppReady(true);
+                    }
                 }
             }
         };
