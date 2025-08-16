@@ -1,13 +1,31 @@
-// supabase-auth.js - Supabase Auth implementation
+// supabase-auth.js - Supabase Auth implementation with enhanced debugging
 (function() {
     'use strict';
+    
+    console.log('[Supabase Auth Debug] Starting initialization...');
     
     // Initialize Supabase client
     const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
     
+    // Check if Supabase is available
+    if (!window.supabase) {
+        console.error('[Supabase Auth Debug] CRITICAL: window.supabase not found!');
+        return;
+    }
+    
     const { createClient } = window.supabase;
+    
+    console.log('[Supabase Auth Debug] Creating client with URL:', SUPABASE_URL);
     const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('[Supabase Auth Debug] Supabase client created:', !!supabaseClient);
+    
+    // Test the connection
+    supabaseClient.from('user_profiles').select('count').limit(1).then(result => {
+        console.log('[Supabase Auth Debug] Connection test result:', result);
+    }).catch(error => {
+        console.error('[Supabase Auth Debug] Connection test error:', error);
+    });
     
     const { useState, useEffect, useContext, createContext } = React;
     const h = React.createElement;
@@ -52,6 +70,7 @@
         const checkSession = async () => {
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
+                console.log('[Supabase Auth Debug] Current session:', session);
                 setSession(session);
                 
                 if (session?.user) {
@@ -67,13 +86,18 @@
         
         const loadUserProfile = async (userId) => {
             try {
+                console.log('[Supabase Auth Debug] Loading profile for user:', userId);
                 const { data, error } = await supabaseClient
                     .from('user_profiles')
                     .select('*')
                     .eq('id', userId)
                     .single();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('[Supabase Auth Debug] Profile load error:', error);
+                    throw error;
+                }
+                console.log('[Supabase Auth Debug] Profile loaded:', data);
                 setUserProfile(data);
             } catch (error) {
                 console.error('[Supabase Auth] Error loading profile:', error);
@@ -81,20 +105,34 @@
         };
         
         const login = async (email, password) => {
+            console.log('[Supabase Auth Debug] Login attempt for email:', email);
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email.toLowerCase(),
                     password: password
                 });
                 
-                if (error) throw error;
+                console.log('[Supabase Auth Debug] Login response:', { data, error });
+                
+                if (error) {
+                    console.error('[Supabase Auth Debug] Login error details:', {
+                        message: error.message,
+                        status: error.status,
+                        code: error.code,
+                        details: error
+                    });
+                    throw error;
+                }
                 
                 // Update last login
                 if (data.user) {
-                    await supabaseClient
+                    console.log('[Supabase Auth Debug] Updating last login for user:', data.user.id);
+                    const updateResult = await supabaseClient
                         .from('user_profiles')
                         .update({ last_login: new Date().toISOString() })
                         .eq('id', data.user.id);
+                    
+                    console.log('[Supabase Auth Debug] Last login update result:', updateResult);
                 }
                 
                 return { success: true, user: data.user };
@@ -108,15 +146,21 @@
         };
         
         const register = async (email, password, username, displayName) => {
+            console.log('[Supabase Auth Debug] Register attempt:', { email, username, displayName });
+            
             try {
                 // Check if username is already taken
-                const { data: existingUser } = await supabaseClient
+                console.log('[Supabase Auth Debug] Checking username availability:', username);
+                const { data: existingUser, error: checkError } = await supabaseClient
                     .from('user_profiles')
                     .select('username')
                     .eq('username', username.toLowerCase())
                     .single();
                 
+                console.log('[Supabase Auth Debug] Username check result:', { existingUser, checkError });
+                
                 if (existingUser) {
+                    console.log('[Supabase Auth Debug] Username already taken');
                     return {
                         success: false,
                         error: 'Username already taken'
@@ -124,6 +168,7 @@
                 }
                 
                 // Sign up with Supabase Auth
+                console.log('[Supabase Auth Debug] Attempting signup...');
                 const { data, error } = await supabaseClient.auth.signUp({
                     email: email.toLowerCase(),
                     password: password,
@@ -131,21 +176,35 @@
                         data: {
                             username: username.toLowerCase(),
                             display_name: displayName || username
-                        }
+                        },
+                        emailRedirectTo: window.location.origin
                     }
                 });
                 
-                if (error) throw error;
+                console.log('[Supabase Auth Debug] Signup response:', { data, error });
+                
+                if (error) {
+                    console.error('[Supabase Auth Debug] Signup error details:', {
+                        message: error.message,
+                        status: error.status,
+                        code: error.code,
+                        details: error
+                    });
+                    throw error;
+                }
                 
                 // Update the user profile with username (the trigger creates basic profile)
                 if (data.user) {
-                    await supabaseClient
+                    console.log('[Supabase Auth Debug] Updating profile for new user:', data.user.id);
+                    const profileUpdate = await supabaseClient
                         .from('user_profiles')
                         .update({
                             username: username.toLowerCase(),
                             display_name: displayName || username
                         })
                         .eq('id', data.user.id);
+                    
+                    console.log('[Supabase Auth Debug] Profile update result:', profileUpdate);
                 }
                 
                 return { 
@@ -164,9 +223,15 @@
         
         const logout = async () => {
             try {
+                console.log('[Supabase Auth Debug] Logging out...');
                 const { error } = await supabaseClient.auth.signOut();
-                if (error) throw error;
                 
+                if (error) {
+                    console.error('[Supabase Auth Debug] Logout error:', error);
+                    throw error;
+                }
+                
+                console.log('[Supabase Auth Debug] Logout successful');
                 setUser(null);
                 setUserProfile(null);
                 setSession(null);
@@ -224,17 +289,17 @@
         };
         
         const value = {
-            user: userProfile || user, // Use profile if available, fallback to auth user
+            user: userProfile || user,
             loading,
             session,
             login,
             register,
             logout,
-            signOut: logout, // Alias for compatibility
+            signOut: logout,
             updateProfile,
             resetPassword,
             isAuthenticated: !!user,
-            supabaseClient // Expose client for direct access if needed
+            supabaseClient
         };
         
         return h(AuthContext.Provider, { value }, children);
@@ -244,6 +309,7 @@
     window.useAuth = function() {
         const context = useContext(AuthContext);
         if (!context) {
+            console.warn('[Supabase Auth Debug] useAuth called outside of AuthProvider');
             return {
                 user: null,
                 loading: true,
@@ -259,7 +325,7 @@
         return context;
     };
     
-    // Enhanced Auth Modal with Password Reset
+    // Keep the AuthModal the same as before...
     window.AuthModal = function AuthModal({ onClose }) {
         const [mode, setMode] = useState('login');
         const [email, setEmail] = useState('');
@@ -277,6 +343,8 @@
             setError('');
             setSuccess('');
             setLoading(true);
+            
+            console.log('[AuthModal Debug] Form submission:', { mode, email, username });
             
             try {
                 let result;
@@ -305,6 +373,8 @@
                 } else if (mode === 'forgot') {
                     result = await resetPassword(email);
                 }
+                
+                console.log('[AuthModal Debug] Operation result:', result);
                 
                 if (result.success) {
                     if (result.message) {
@@ -368,7 +438,7 @@
                 }, 
                     mode === 'login' ? '🍄 Welcome Back!' : 
                     mode === 'register' ? '🍄 Join Flash Fungi' :
-                    '🔑 Reset Password'
+                    '🔐 Reset Password'
                 ),
                 
                 success && h('div', {
