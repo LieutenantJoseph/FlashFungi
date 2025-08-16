@@ -1,4 +1,6 @@
-// /api/study-sessions.js - Study session management API
+// /api/study-sessions.js - Study session management with Supabase Auth
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,21 +12,37 @@ export default async function handler(req, res) {
     return;
   }
 
-  const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oxgedcncrettasrbmwsl.supabase.co';
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   if (!SUPABASE_SERVICE_KEY) {
     return res.status(500).json({ error: 'Service key not configured' });
   }
 
+  // Initialize Supabase client
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  // Verify authentication
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ error: 'No authorization token provided' });
+  }
+
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+  if (authError || !user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   try {
     switch (req.method) {
       case 'POST':
-        return await handleStartSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleStartSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, user.id);
       case 'PUT':
-        return await handleUpdateSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleUpdateSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, user.id);
       case 'GET':
-        return await handleGetSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        return await handleGetSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, user.id);
       default:
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -34,11 +52,13 @@ export default async function handler(req, res) {
   }
 }
 
-async function handleStartSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
-  const { userId, mode, filters } = req.body;
+async function handleStartSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
+  const { mode, filters } = req.body;
+  // Use authenticated user ID
+  const userId = authenticatedUserId;
 
-  if (!userId || !mode) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  if (!mode) {
+    return res.status(400).json({ error: 'Mode is required' });
   }
 
   const sessionData = {
@@ -79,11 +99,27 @@ async function handleStartSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
   }
 }
 
-async function handleUpdateSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
+async function handleUpdateSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
   const { sessionId, queue, stats, isActive } = req.body;
 
   if (!sessionId) {
     return res.status(400).json({ error: 'Session ID required' });
+  }
+
+  // Verify session belongs to authenticated user
+  const checkResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/study_sessions?id=eq.${sessionId}&user_id=eq.${authenticatedUserId}`,
+    {
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
+      }
+    }
+  );
+
+  const sessions = await checkResponse.json();
+  if (sessions.length === 0) {
+    return res.status(403).json({ error: 'Session not found or access denied' });
   }
 
   const updateData = {};
@@ -116,21 +152,21 @@ async function handleUpdateSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY)
   }
 }
 
-async function handleGetSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
-  const { userId, sessionId, active } = req.query;
+async function handleGetSession(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
+  const { sessionId, active } = req.query;
+  // Use authenticated user ID
+  const userId = authenticatedUserId;
 
   let url = `${SUPABASE_URL}/rest/v1/study_sessions?`;
   
   if (sessionId) {
-    url += `id=eq.${sessionId}`;
-  } else if (userId) {
+    url += `id=eq.${sessionId}&user_id=eq.${userId}`;
+  } else {
     url += `user_id=eq.${userId}`;
     if (active === 'true') {
       url += `&is_active=eq.true`;
     }
     url += `&order=started_at.desc&limit=1`;
-  } else {
-    return res.status(400).json({ error: 'User ID or Session ID required' });
   }
 
   const response = await fetch(url, {

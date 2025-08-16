@@ -1,6 +1,3 @@
-// /api/generate-hints.js - Working hint generation API
-// Create this file in your /api folder
-
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +22,7 @@ export default async function handler(req, res) {
   try {
     console.log(`Generating hints for: ${species_name}`);
 
-    // For now, generate template hints - you can enhance this with OpenAI later
+    // Template hints generation (replace with OpenAI when ready)
     const genus = species_name.split(' ')[0];
     const specificEpithet = species_name.split(' ')[1] || '';
 
@@ -56,7 +53,6 @@ export default async function handler(req, res) {
       }
     ];
 
-    // Add reference URL context if provided
     if (reference_url) {
       hints[0].text += ` Reference additional morphological details from the provided source.`;
     }

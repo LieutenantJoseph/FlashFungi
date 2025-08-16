@@ -1,4 +1,6 @@
-// /api/profiles.js - Public profile management API
+// /api/profiles.js - Profile management with Supabase Auth
+import { createClient } from '@supabase/supabase-js';
+
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,19 +12,36 @@ export default async function handler(req, res) {
     return;
   }
 
-  const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://oxgedcncrettasrbmwsl.supabase.co';
   const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
   if (!SUPABASE_SERVICE_KEY) {
     return res.status(500).json({ error: 'Service key not configured' });
   }
 
+  // Initialize Supabase client
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
   try {
     switch (req.method) {
       case 'GET':
+        // Public profile viewing doesn't require auth
         return await handleGetProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
       case 'PUT':
-        return await handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        // Profile editing requires auth
+        const token = req.headers.authorization?.replace('Bearer ', '');
+        if (!token) {
+          return res.status(401).json({ error: 'No authorization token provided' });
+        }
+
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        return await handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, user.id);
       default:
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -65,7 +84,6 @@ async function handleGetProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
 
   // Get user statistics
   const statsPromises = [
-    // Get progress data
     fetch(
       `${SUPABASE_URL}/rest/v1/user_progress?user_id=eq.${profile.id}&select=*`,
       {
@@ -75,7 +93,6 @@ async function handleGetProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
         }
       }
     ),
-    // Get achievements
     fetch(
       `${SUPABASE_URL}/rest/v1/user_achievements?user_id=eq.${profile.id}&select=*`,
       {
@@ -108,7 +125,7 @@ async function handleGetProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
     avatar_url: profile.avatar_url,
     bio: profile.bio,
     stats: stats,
-    achievements: achievements.filter(a => a.earned_at).slice(0, 10), // Top 10 achievements
+    achievements: achievements.filter(a => a.earned_at).slice(0, 10),
     privacy_settings: profile.privacy_settings || {
       show_stats: true,
       show_achievements: true
@@ -118,12 +135,10 @@ async function handleGetProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
   res.status(200).json(publicProfile);
 }
 
-async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) {
-  const { userId, updates } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ error: 'User ID required' });
-  }
+async function handleUpdateProfile(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
+  const { updates } = req.body;
+  // Use authenticated user ID
+  const userId = authenticatedUserId;
 
   // Validate allowed updates
   const allowedFields = ['display_name', 'bio', 'avatar_url', 'privacy_settings'];

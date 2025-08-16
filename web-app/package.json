@@ -9,6 +9,7 @@
     "start": "serve ."
   },
   "dependencies": {
-    "serve": "^14.0.0"
+    "serve": "^14.0.0",
+    "@supabase/supabase-js": "^2.39.0"
   }
 }
