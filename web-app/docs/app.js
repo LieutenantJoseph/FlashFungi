@@ -32,10 +32,16 @@ const h = React.createElement;
 // User Profile Management Hook (Updated for SupabaseAuth)
 function useUserProfile(authUser, getAuthToken) {
     const [userProgress, setUserProgress] = React.useState({});
+    
+    console.log('🔍 useUserProfile called with user:', authUser ? authUser.id : 'no user');
 
     const loadUserProgress = React.useCallback(async () => {
-        if (!authUser?.id) return;
+        if (!authUser?.id) {
+            console.log('🔍 No user ID, skipping user progress load');
+            return;
+        }
         const token = getAuthToken();
+        console.log('🔍 Loading user progress for user:', authUser.id);
         
         try {
             const response = await fetch(`${API_BASE}/user-progress-api?userId=${authUser.id}`, {
@@ -514,6 +520,7 @@ const calculateSimilarity = (str1, str2) => {
 
 // Loading Screen Component
 function LoadingScreen() {
+    console.log('🔍 LoadingScreen rendering');
     return h('div', {
         style: { 
             minHeight: '100vh', 
@@ -1923,7 +1930,13 @@ function HomePage(props) {
 
 // Main Authenticated App Component
 function AuthenticatedApp() {
-    const { user, loading: authLoading, signOut } = window.useAuth ? window.useAuth() : { user: null, loading: true };
+    console.log('🔍 AuthenticatedApp rendering...');
+    console.log('🔍 window.useAuth available?', !!window.useAuth);
+    
+    const authData = window.useAuth ? window.useAuth() : { user: null, loading: true, signOut: null };
+    console.log('🔍 Auth data:', { user: authData.user, loading: authData.loading });
+    
+    const { user, loading: authLoading, signOut } = authData;
     const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user, () => '');
     
     const [currentView, setCurrentView] = React.useState('loading');
@@ -1936,6 +1949,8 @@ function AuthenticatedApp() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
     const [currentModule, setCurrentModule] = React.useState(null);
+    
+    console.log('🔍 Component state:', { currentView, loading, authLoading });
     
     // Handle URL routing for public profiles
     React.useEffect(() => {
@@ -1958,31 +1973,40 @@ function AuthenticatedApp() {
     
     // Load initial data
     React.useEffect(() => {
+        console.log('🔍 Data loading useEffect triggered, authLoading:', authLoading);
+        
         const loadData = async () => {
+            console.log('🔍 Starting data load...');
             try {
                 // Load specimens
+                console.log('🔍 Fetching specimens...');
                 const specimensResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
+                console.log('🔍 Specimens response:', specimensResponse.ok, specimensResponse.status);
 
                 if (specimensResponse.ok) {
                     const specimensData = await specimensResponse.json();
+                    console.log('🔍 Specimens loaded:', specimensData.length);
                     setSpecimens(specimensData);
                 }
 
                 // Load species hints
+                console.log('🔍 Fetching species hints...');
                 const hintsResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?select=*`, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
+                console.log('🔍 Hints response:', hintsResponse.ok, hintsResponse.status);
 
                 if (hintsResponse.ok) {
                     const hintsData = await hintsResponse.json();
+                    console.log('🔍 Hints loaded:', hintsData.length);
                     const hintsMap = {};
                     hintsData.forEach(hint => {
                         hintsMap[hint.species_name] = hint;
@@ -1991,15 +2015,18 @@ function AuthenticatedApp() {
                 }
 
                 // Load field guides (for reference photos)
+                console.log('🔍 Fetching field guides...');
                 const guidesResponse = await fetch(`${SUPABASE_URL}/rest/v1/field_guides?select=*`, {
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
+                console.log('🔍 Guides response:', guidesResponse.ok, guidesResponse.status);
 
                 if (guidesResponse.ok) {
                     const guidesData = await guidesResponse.json();
+                    console.log('🔍 Guides loaded:', guidesData.length);
                     const photosMap = {};
                     guidesData.forEach(guide => {
                         if (guide.reference_photos && guide.reference_photos.length > 0) {
@@ -2009,17 +2036,22 @@ function AuthenticatedApp() {
                     setReferencePhotos(photosMap);
                 }
 
+                console.log('🔍 Setting currentView to home...');
                 setCurrentView('home');
             } catch (err) {
-                console.error('Error loading data:', err);
+                console.error('🔍 Error loading data:', err);
                 setError('Failed to load application data');
             } finally {
+                console.log('🔍 Setting loading to false...');
                 setLoading(false);
             }
         };
 
         if (!authLoading) {
+            console.log('🔍 Auth not loading, starting data load...');
             loadData();
+        } else {
+            console.log('🔍 Auth still loading, waiting...');
         }
     }, [authLoading]);
 
@@ -2099,8 +2131,21 @@ function AuthenticatedApp() {
         }
     };
     
+    // Debug: Add timeout check for authLoading
+    React.useEffect(() => {
+        const timeout = setTimeout(() => {
+            console.log('🔍 WARNING: authLoading has been true for over 5 seconds');
+            console.log('🔍 Current authLoading state:', authLoading);
+            console.log('🔍 Current loading state:', loading);
+            console.log('🔍 Current view:', currentView);
+        }, 5000);
+        
+        return () => clearTimeout(timeout);
+    }, []);
+    
     // Show loading while auth is loading
     if (authLoading) {
+        console.log('🔍 Showing LoadingScreen because authLoading is true');
         return h(LoadingScreen);
     }
     
@@ -2142,6 +2187,7 @@ function AuthenticatedApp() {
 
     // Loading state
     if (loading || currentView === 'loading') {
+        console.log('🔍 Showing LoadingScreen because loading:', loading, 'or currentView:', currentView);
         return h(LoadingScreen);
     }
 
@@ -2259,22 +2305,44 @@ function AuthenticatedApp() {
 function App() {
     const [appReady, setAppReady] = React.useState(false);
     
+    console.log('🔍 App component rendering, appReady:', appReady);
+    console.log('🔍 window.AuthProvider available?', !!window.AuthProvider);
+    console.log('🔍 window.useAuth available?', !!window.useAuth);
+    
     // Wait for auth to be loaded
     React.useEffect(() => {
+        let checkCount = 0;
         const checkReady = () => {
+            checkCount++;
+            console.log(`🔍 Checking auth availability (attempt ${checkCount})...`);
+            console.log('  - AuthProvider:', !!window.AuthProvider);
+            console.log('  - useAuth:', !!window.useAuth);
+            
             if (window.AuthProvider && window.useAuth) {
+                console.log('🔍 Auth system ready!');
                 setAppReady(true);
             } else {
-                setTimeout(checkReady, 100);
+                if (checkCount < 50) { // Max 5 seconds
+                    setTimeout(checkReady, 100);
+                } else {
+                    console.error('🔍 Auth system failed to load after 5 seconds');
+                    console.log('🔍 Final window state:', {
+                        AuthProvider: !!window.AuthProvider,
+                        useAuth: !!window.useAuth,
+                        SupabaseAuth: !!window.SupabaseAuth
+                    });
+                }
             }
         };
         checkReady();
     }, []);
     
     if (!appReady) {
+        console.log('🔍 App not ready, showing LoadingScreen');
         return h(LoadingScreen);
     }
     
+    console.log('🔍 App ready, rendering AuthProvider');
     return h(window.AuthProvider, null,
         h(AuthenticatedApp)
     );
