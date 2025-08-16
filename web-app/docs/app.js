@@ -1967,13 +1967,16 @@ function HomePage(props) {
     );
 }
 
-// Main Authenticated App Component - NOW PROPERLY USES AUTH CONTEXT
-function AuthenticatedApp({ authData }) {
-    console.log('🔍 AuthenticatedApp rendering with authData:', authData);
+// Main Authenticated App Component - USES AUTH HOOK DIRECTLY
+function AuthenticatedApp() {
+    console.log('🔍 AuthenticatedApp rendering...');
     
-    // Use the auth data passed from AppWithAuth
-    const { user, loading: authLoading, signOut } = authData || { user: null, loading: false, signOut: null };
-    console.log('🔍 Auth data from props:', { user, authLoading });
+    // We're inside AuthProvider now, so this should work
+    const authContext = window.useAuth();
+    console.log('🔍 Auth context from hook:', authContext);
+    
+    const { user, loading: authLoading, signOut } = authContext || { user: null, loading: false, signOut: null };
+    console.log('🔍 Auth data:', { user, authLoading });
     
     const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user, () => '');
     
@@ -2234,59 +2237,114 @@ function AuthenticatedApp({ authData }) {
         );
     }
 
-    // Show auth modal over current content - MUST BE INSIDE AUTHPROVIDER
+    // Show auth modal over current content
     if (showAuthModal && window.AuthModal) {
         return h('div', null,
-            renderCurrentView(),
+            currentView === 'home' && h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            }),
             h(window.AuthModal, {
                 onClose: () => setShowAuthModal(false)
             })
         );
     }
-    
-    // Helper function to render current view
-    function renderCurrentView() {
-        switch (currentView) {
-            case 'home':
-                return h(HomePage, {
-                    specimens,
-                    user,
-                    userProgress,
-                    speciesWithHints: Object.keys(speciesHints).length,
-                    onStudyModeSelect: handleStudyModeSelect,
-                    onTrainingModuleSelect: handleTrainingModuleSelect,
-                    onAuthRequired: handleAuthRequired,
-                    onProfileClick: handleProfileClick,
-                    onSignOut: handleSignOut
-                });
-            default:
-                return h(HomePage, {
-                    specimens,
-                    user,
-                    userProgress,
-                    speciesWithHints: Object.keys(speciesHints).length,
-                    onStudyModeSelect: handleStudyModeSelect,
-                    onTrainingModuleSelect: handleTrainingModuleSelect,
-                    onAuthRequired: handleAuthRequired,
-                    onProfileClick: handleProfileClick,
-                    onSignOut: handleSignOut
-                });
-        }
-    }
 
     // Route to appropriate component
-    return renderCurrentView();
-}
+    switch (currentView) {
+        case 'home':
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            });
 
-// Wrapper component that ensures everything is inside AuthProvider
-function AppWithAuth() {
-    console.log('🔍 AppWithAuth rendering (inside AuthProvider)');
-    
-    // NOW we're inside AuthProvider, so useAuth will work
-    const authData = window.useAuth();
-    console.log('🔍 Auth from context:', authData);
-    
-    return h(AuthenticatedApp, { authData });
+        case 'profile':
+            return window.ProfilePage ? h(window.ProfilePage, {
+                user,
+                userProgress,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'study-quick':
+            return h(QuickStudy, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            });
+
+        case 'study-focused':
+            return window.FocusedStudy ? h(window.FocusedStudy, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'study-marathon':
+            return window.MarathonMode ? h(window.MarathonMode, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'training-modules':
+            return h(TrainingModules, {
+                userProgress,
+                user,
+                onBack: handleBackToHome,
+                onModuleSelect: handleModuleSelect
+            });
+
+        case 'module-player':
+            return h(ModulePlayer, {
+                module: currentModule,
+                user,
+                saveProgress,
+                onComplete: handleModuleComplete,
+                onBack: () => setCurrentView('training-modules')
+            });
+
+        default:
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            });
+    }
 }
 
 // Main App Component with Auth Wrapper
@@ -2337,9 +2395,10 @@ function App() {
         return h(LoadingScreen);
     }
     
-    console.log('🔍 App ready, rendering AuthProvider with AppWithAuth');
+    console.log('🔍 App ready, rendering AuthProvider with AuthenticatedApp');
+    // Directly render AuthenticatedApp inside AuthProvider
     return h(window.AuthProvider, null,
-        h(AppWithAuth)
+        h(AuthenticatedApp)
     );
 }
 
