@@ -2003,11 +2003,11 @@ function AuthenticatedApp({ authData }) {
     
     // Mark auth as complete when authLoading becomes false
     React.useEffect(() => {
-        if (!isAuthLoading) {
+        if (!authLoading) {
             console.log('🔍 Auth loading complete');
             setAuthCheckComplete(true);
         }
-    }, [isAuthLoading]);
+    }, [authLoading]);
     
     // Handle URL routing for public profiles
     React.useEffect(() => {
@@ -2276,6 +2276,92 @@ function AuthenticatedApp({ authData }) {
 
     // Route to appropriate component
     return renderCurrentView();
+        case 'home':
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            });
+
+        case 'profile':
+            return window.ProfilePage ? h(window.ProfilePage, {
+                user,
+                userProgress,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'study-quick':
+            return h(QuickStudy, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            });
+
+        case 'study-focused':
+            return window.FocusedStudy ? h(window.FocusedStudy, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'study-marathon':
+            return window.MarathonMode ? h(window.MarathonMode, {
+                specimens,
+                speciesHints,
+                referencePhotos,
+                specimenPhotos,
+                user,
+                saveProgress,
+                loadSpecimenPhotos,
+                onBack: handleBackToHome
+            }) : handleBackToHome();
+
+        case 'training-modules':
+            return h(TrainingModules, {
+                userProgress,
+                user,
+                onBack: handleBackToHome,
+                onModuleSelect: handleModuleSelect
+            });
+
+        case 'module-player':
+            return h(ModulePlayer, {
+                module: currentModule,
+                user,
+                saveProgress,
+                onComplete: handleModuleComplete,
+                onBack: () => setCurrentView('training-modules')
+            });
+
+        default:
+            return h(HomePage, {
+                specimens,
+                user,
+                userProgress,
+                speciesWithHints: Object.keys(speciesHints).length,
+                onStudyModeSelect: handleStudyModeSelect,
+                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onAuthRequired: handleAuthRequired,
+                onProfileClick: handleProfileClick,
+                onSignOut: handleSignOut
+            });
+    }
 }
 
 // Wrapper component that ensures everything is inside AuthProvider
