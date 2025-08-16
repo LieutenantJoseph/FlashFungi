@@ -30,16 +30,20 @@ const API_BASE = '/api';
 
 const h = React.createElement;
 
-// User Profile Management Hook (Updated for Auth)
-function useUserProfile(authUser) {
+// User Profile Management Hook (Updated for Supabase Auth)
+function useUserProfile(authUser, getAuthToken) {
     const [userProgress, setUserProgress] = React.useState({});
 
-    // Load user progress
     const loadUserProgress = React.useCallback(async () => {
         if (!authUser?.id) return;
+        const token = getAuthToken();
         
         try {
-            const response = await fetch(`${API_BASE}/user-progress-api?userId=${authUser.id}`);
+            const response = await fetch(`${API_BASE}/user-progress-api?userId=${authUser.id}`, {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
+            });
             if (response.ok) {
                 const data = await response.json();
                 const progressMap = {};
@@ -53,7 +57,48 @@ function useUserProfile(authUser) {
         } catch (error) {
             console.error('Error loading user progress:', error);
         }
-    }, [authUser]);
+    }, [authUser, getAuthToken]);
+
+    const saveProgress = React.useCallback(async (progressData) => {
+        if (!authUser?.id) return;
+        const token = getAuthToken();
+
+        try {
+            const response = await fetch(`${API_BASE}/user-progress-api`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({
+                    userId: authUser.id,
+                    ...progressData
+                })
+            });
+            
+            if (response.ok) {
+                await loadUserProgress();
+                return true;
+            }
+        } catch (error) {
+            console.error('Error saving progress:', error);
+        }
+        return false;
+    }, [authUser, loadUserProgress, getAuthToken]);
+
+    React.useEffect(() => {
+        loadUserProgress();
+    }, [loadUserProgress]);
+
+    return { userProgress, saveProgress, loadUserProgress };
+}
+
+// In AuthenticatedApp component, update the profile update call
+const handleProfileClick = () => {
+    if (window.ProfilePage) {
+        setCurrentView('profile');
+    }
+};
 
     // Save progress
     const saveProgress = React.useCallback(async (progressData) => {
