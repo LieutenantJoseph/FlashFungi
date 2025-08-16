@@ -30,7 +30,6 @@ const API_BASE = '/api';
 const h = React.createElement;
 
 // User Profile Management Hook (Updated for SupabaseAuth)
-// Replace the useUserProfile hook
 function useUserProfile(authUser, getAuthToken) {
     const [userProgress, setUserProgress] = React.useState({});
 
@@ -93,61 +92,7 @@ function useUserProfile(authUser, getAuthToken) {
     return { userProgress, saveProgress, loadUserProgress };
 }
 
-// Utility Functions for Fuzzy Matching
-const calculateLevenshteinDistance = (str1, str2) => {
-    const matrix = Array(str2.length + 1).fill(null).map(() => 
-        Array(str1.length + 1).fill(null)
-    );
-    
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-    
-    for (let j = 1; j <= str2.length; j++) {
-        for (let i = 1; i <= str1.length; i++) {
-            const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-            matrix[j][i] = Math.min(
-                matrix[j][i - 1] + 1,
-                matrix[j - 1][i] + 1,
-                matrix[j - 1][i - 1] + substitutionCost
-            );
-        }
-    } // <-- Add this closing brace to end the main else block
-    
-    return matrix[str2.length][str1.length];
-};
-
-const calculateSimilarity = (str1, str2) => {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    const editDistance = calculateLevenshteinDistance(longer, shorter);
-    return (longer.length - editDistance) / longer.length;
-};
-
-// Loading Screen Component
-function LoadingScreen() {
-    return h('div', {
-        style: { 
-            minHeight: '100vh', 
-            backgroundColor: '#f9fafb', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center' 
-        }
-    },
-        h('div', { style: { textAlign: 'center' } },
-            h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
-                'Flash Fungi'
-            ),
-            h('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
-        )
-    );
-}
-
-// Enhanced Interactive Species Guide with Reference Photos
+// Interactive Species Guide Component
 function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhotos, onClose, onTryAgain }) {
     const [activeTab, setActiveTab] = React.useState('overview');
     const [comparisonMode, setComparisonMode] = React.useState(false);
@@ -328,7 +273,7 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
                                     backgroundColor: '#fef3c7',
                                     borderRadius: '0.25rem'
                                 } 
-                            }, '🔍 Your Specimen'),
+                            }, '🔎 Your Specimen'),
                             photos.length > 0 ?
                                 h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
                                     photos.slice(0, 4).map((photo, idx) =>
@@ -534,7 +479,61 @@ function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhot
     );
 }
 
-// Enhanced Quick Study Component with Proper Scoring and Get Hint Button
+// Utility Functions for Fuzzy Matching
+const calculateLevenshteinDistance = (str1, str2) => {
+    const matrix = Array(str2.length + 1).fill(null).map(() => 
+        Array(str1.length + 1).fill(null)
+    );
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+        for (let i = 1; i <= str1.length; i++) {
+            const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(
+                matrix[j][i - 1] + 1,
+                matrix[j - 1][i] + 1,
+                matrix[j - 1][i - 1] + substitutionCost
+            );
+        }
+    }
+    
+    return matrix[str2.length][str1.length];
+};
+
+const calculateSimilarity = (str1, str2) => {
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+    
+    if (longer.length === 0) return 1.0;
+    
+    const editDistance = calculateLevenshteinDistance(longer, shorter);
+    return (longer.length - editDistance) / longer.length;
+};
+
+// Loading Screen Component
+function LoadingScreen() {
+    return h('div', {
+        style: { 
+            minHeight: '100vh', 
+            backgroundColor: '#f9fafb', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+        }
+    },
+        h('div', { style: { textAlign: 'center' } },
+            h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
+            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
+                'Flash Fungi'
+            ),
+            h('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
+        )
+    );
+}
+
+// Quick Study Component
 function QuickStudy(props) {
     const specimens = props.specimens || [];
     const speciesHints = props.speciesHints || {};
@@ -726,7 +725,7 @@ function QuickStudy(props) {
                 }));
                 setShowGuide(true);
             }
-        }} // <-- Add this closing brace to end the main else block
+        }
     };
 
     // Handle "Get Hint" button
@@ -1271,7 +1270,7 @@ function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
                                     justifyContent: 'center',
                                     fontSize: '0.75rem'
                                 }
-                            }, '✓'),
+                            }, '✔'),
 
                             h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' } },
                                 h('div', { style: { fontSize: '2rem' } }, module.icon),
@@ -1299,7 +1298,7 @@ function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
                                         fontWeight: module.completed ? '600' : '400'
                                     } 
                                 }, 
-                                    module.completed ? 'Completed ✓' : 'Not Started'
+                                    module.completed ? 'Completed ✔' : 'Not Started'
                                 ),
                                 h('button', {
                                     style: {
@@ -1925,7 +1924,7 @@ function HomePage(props) {
 // Main Authenticated App Component
 function AuthenticatedApp() {
     const { user, loading: authLoading, signOut } = window.useAuth ? window.useAuth() : { user: null, loading: true };
-    const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user);
+    const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user, () => '');
     
     const [currentView, setCurrentView] = React.useState('loading');
     const [showAuthModal, setShowAuthModal] = React.useState(false);
@@ -2320,4 +2319,5 @@ function initializeApp() {
         console.error('❌ Error initializing app:', error);
         rootElement.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h1>Error initializing app</h1><p>${error.message}</p></div>`;
     }
+}
 }
