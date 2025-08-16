@@ -1933,10 +1933,28 @@ function AuthenticatedApp() {
     console.log('🔍 AuthenticatedApp rendering...');
     console.log('🔍 window.useAuth available?', !!window.useAuth);
     
-    const authData = window.useAuth ? window.useAuth() : { user: null, loading: true, signOut: null };
+    // Try to use the auth hook, but handle if it's not working properly
+    let authData = { user: null, loading: false, signOut: null };
+    try {
+        if (window.useAuth) {
+            const hookResult = window.useAuth();
+            console.log('🔍 useAuth hook result:', hookResult);
+            // If the hook returns something, use it, otherwise use defaults
+            if (hookResult) {
+                authData = hookResult;
+            }
+        }
+    } catch (error) {
+        console.error('🔍 Error calling useAuth:', error);
+    }
+    
     console.log('🔍 Auth data:', { user: authData.user, loading: authData.loading });
     
     const { user, loading: authLoading, signOut } = authData;
+    
+    // WORKAROUND: If authLoading is undefined or null, treat as false
+    const isAuthLoading = authLoading === true;
+    
     const { userProgress, saveProgress, loadUserProgress } = useUserProfile(user, () => '');
     
     const [currentView, setCurrentView] = React.useState('loading');
@@ -1949,8 +1967,27 @@ function AuthenticatedApp() {
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
     const [currentModule, setCurrentModule] = React.useState(null);
+    const [authCheckComplete, setAuthCheckComplete] = React.useState(false);
     
-    console.log('🔍 Component state:', { currentView, loading, authLoading });
+    console.log('🔍 Component state:', { currentView, loading, isAuthLoading, authCheckComplete });
+    
+    // WORKAROUND: Force auth check to complete after 2 seconds
+    React.useEffect(() => {
+        const timeout = setTimeout(() => {
+            console.log('🔍 Force completing auth check after 2 seconds');
+            setAuthCheckComplete(true);
+        }, 2000);
+        
+        return () => clearTimeout(timeout);
+    }, []);
+    
+    // Mark auth as complete when authLoading becomes false
+    React.useEffect(() => {
+        if (!isAuthLoading) {
+            console.log('🔍 Auth loading complete');
+            setAuthCheckComplete(true);
+        }
+    }, [isAuthLoading]);
     
     // Handle URL routing for public profiles
     React.useEffect(() => {
@@ -1973,7 +2010,7 @@ function AuthenticatedApp() {
     
     // Load initial data
     React.useEffect(() => {
-        console.log('🔍 Data loading useEffect triggered, authLoading:', authLoading);
+        console.log('🔍 Data loading useEffect triggered, authCheckComplete:', authCheckComplete);
         
         const loadData = async () => {
             console.log('🔍 Starting data load...');
@@ -2047,13 +2084,13 @@ function AuthenticatedApp() {
             }
         };
 
-        if (!authLoading) {
-            console.log('🔍 Auth not loading, starting data load...');
+        if (authCheckComplete) {
+            console.log('🔍 Auth check complete, starting data load...');
             loadData();
         } else {
-            console.log('🔍 Auth still loading, waiting...');
+            console.log('🔍 Auth check not complete, waiting...');
         }
-    }, [authLoading]);
+    }, [authCheckComplete]);
 
     // Load specimen photos on demand
     const loadSpecimenPhotos = React.useCallback(async (inaturalistId) => {
@@ -2131,21 +2168,13 @@ function AuthenticatedApp() {
         }
     };
     
-    // Debug: Add timeout check for authLoading
-    React.useEffect(() => {
-        const timeout = setTimeout(() => {
-            console.log('🔍 WARNING: authLoading has been true for over 5 seconds');
-            console.log('🔍 Current authLoading state:', authLoading);
-            console.log('🔍 Current loading state:', loading);
-            console.log('🔍 Current view:', currentView);
-        }, 5000);
-        
-        return () => clearTimeout(timeout);
-    }, []);
+    // Don't wait for auth loading if we've already checked
+    // This prevents infinite loading when auth hook is broken
+    const shouldShowLoading = !authCheckComplete || loading || currentView === 'loading';
     
-    // Show loading while auth is loading
-    if (authLoading) {
-        console.log('🔍 Showing LoadingScreen because authLoading is true');
+    // Show loading while waiting for initial setup
+    if (shouldShowLoading) {
+        console.log('🔍 Showing LoadingScreen - authCheckComplete:', authCheckComplete, 'loading:', loading, 'currentView:', currentView);
         return h(LoadingScreen);
     }
     
@@ -2183,12 +2212,6 @@ function AuthenticatedApp() {
                 }
             }, 'Retry')
         );
-    }
-
-    // Loading state
-    if (loading || currentView === 'loading') {
-        console.log('🔍 Showing LoadingScreen because loading:', loading, 'or currentView:', currentView);
-        return h(LoadingScreen);
     }
 
     // Show auth modal over current content
