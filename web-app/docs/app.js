@@ -8,7 +8,6 @@ if (typeof React === 'undefined') {
     document.getElementById('root').innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React not loaded</h1></div>';
 } else {
     console.log('✅ React loaded successfully');
-}
 
 // Load auth system
 const authScript = document.createElement('script');
@@ -30,7 +29,8 @@ const API_BASE = '/api';
 
 const h = React.createElement;
 
-// User Profile Management Hook (Updated for Supabase Auth)
+// User Profile Management Hook (Updated for SupabaseAuth)
+// Replace the useUserProfile hook
 function useUserProfile(authUser, getAuthToken) {
     const [userProgress, setUserProgress] = React.useState({});
 
