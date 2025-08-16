@@ -1,0 +1,123 @@
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 Showing LoadingScreen - authCheckComplete: – false – "loading:" – true – "currentView:" – "loading" (app.js, line 2216)
+[Log] 🔍 LoadingScreen rendering (app.js, line 562)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] 🔍 Data loading useEffect triggered, authCheckComplete: – false (app.js, line 2052)
+[Log] 🔍 Auth check not complete, waiting... (app.js, line 2130)
+[Log] [Supabase Auth Debug] Starting initialization... (supabase-auth.js, line 5)
+[Log] [Supabase Auth Debug] Creating client with URL: – "https://oxgedcncrettasrbmwsl.supabase.co" (supabase-auth.js, line 19)
+[Log] [Supabase Auth Debug] Supabase client created: – true (supabase-auth.js, line 21)
+[Log] [Supabase Auth] Authentication system loaded (supabase-auth.js, line 665)
+[Log] ✅ Supabase auth system loaded (app.js, line 22)
+[Log] [Supabase Auth Debug] Current session: – null (supabase-auth.js, line 73)
+[Log] [Supabase Auth] Auth state changed: – "INITIAL_SESSION" (supabase-auth.js, line 50)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 Showing LoadingScreen - authCheckComplete: – false – "loading:" – true – "currentView:" – "loading" (app.js, line 2216)
+[Log] 🔍 LoadingScreen rendering (app.js, line 562)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] ✅ Service Worker registered (flash-fungi.vercel.app, line 45)
+[Log] [Supabase Auth Debug] Connection test result: – Object (supabase-auth.js, line 25)
+Object
+[Log] [Supabase Auth Debug] Connection test result: – Object (supabase-auth.js, line 25)
+Object
+[Log] 🔍 Supabase connection test: – "SUCCESS" – 200 (app.js, line 59)
+[Log] 🔍 Force completing auth check after 2 seconds (app.js, line 2016)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 Showing LoadingScreen - authCheckComplete: – true – "loading:" – true – "currentView:" – "loading" (app.js, line 2216)
+[Log] 🔍 LoadingScreen rendering (app.js, line 562)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] 🔍 Data loading useEffect triggered, authCheckComplete: – true (app.js, line 2052)
+[Log] 🔍 Auth check complete, starting data load... (app.js, line 2127)
+[Log] 🔍 Starting data load... (app.js, line 2055)
+[Log] 🔍 Fetching specimens... (app.js, line 2058)
+[Log] 🔍 Specimens response: – true – 200 (app.js, line 2065)
+[Log] 🔍 Specimens loaded: – 75 (app.js, line 2069)
+[Log] 🔍 Fetching species hints... (app.js, line 2074)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 Showing LoadingScreen - authCheckComplete: – true – "loading:" – true – "currentView:" – "loading" (app.js, line 2216)
+[Log] 🔍 LoadingScreen rendering (app.js, line 562)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] 🔍 Hints response: – true – 200 (app.js, line 2081)
+[Log] 🔍 Hints loaded: – 1 (app.js, line 2085)
+[Log] 🔍 Fetching field guides... (app.js, line 2094)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 Showing LoadingScreen - authCheckComplete: – true – "loading:" – true – "currentView:" – "loading" (app.js, line 2216)
+[Log] 🔍 LoadingScreen rendering (app.js, line 562)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] 🔍 Guides response: – true – 200 (app.js, line 2101)
+[Log] 🔍 Guides loaded: – 0 (app.js, line 2105)
+[Log] 🔍 Setting currentView to home... (app.js, line 2115)
+[Log] 🔍 Setting loading to false... (app.js, line 2121)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Log] 🔍 AuthenticatedApp rendering... (app.js, line 1972)
+[Log] 🔍 window.useAuth available? – true (app.js, line 1973)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 useAuth hook result: – Object (app.js, line 1980)
+Object
+[Log] 🔍 Auth data: – Object (app.js, line 1990)
+Object
+[Log] 🔍 useUserProfile called with user: – "no user" (app.js, line 75)
+[Log] 🔍 Component state: – Object (app.js, line 2011)
+Object
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] 🔍 No user ID, skipping user progress load (app.js, line 79)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312, x65)
+[Log] [AuthModal Debug] Form submission: – Object (supabase-auth.js, line 347)
+Object
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
+[Log] [AuthModal Debug] Operation result: – Object (supabase-auth.js, line 377)
+Object
+[Warning] [Supabase Auth Debug] useAuth called outside of AuthProvider (supabase-auth.js, line 312)
