@@ -1,0 +1,19 @@
+{
+  "name": "flash-fungi-frontend",
+  "version": "1.0.0",
+  "description": "Flash Fungi Web Application Frontend",
+  "main": "index.html",
+  "scripts": {
+    "dev": "serve . -p 3000",
+    "build": "echo 'Static build complete'",
+    "start": "serve .",
+    "preview": "serve . -p 8080"
+  },
+  "dependencies": {
+    "serve": "^14.0.0"
+  },
+  "devDependencies": {},
+  "keywords": ["mushroom", "education", "mycology"],
+  "author": "",
+  "license": "ISC"
+}

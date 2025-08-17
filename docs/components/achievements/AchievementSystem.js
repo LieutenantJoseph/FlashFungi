@@ -1,0 +1,324 @@
+// achievement-system.js - Achievement tracking and notifications
+(function() {
+    'use strict';
+    
+    const { useState, useEffect, useCallback } = React;
+    const h = React.createElement;
+    
+    // Achievement Toast Component
+    window.AchievementToast = function AchievementToast({ achievement, onClose }) {
+        const [isVisible, setIsVisible] = useState(true);
+        
+        useEffect(() => {
+            const timer = setTimeout(() => {
+                setIsVisible(false);
+                setTimeout(onClose, 300); // Wait for animation
+            }, 5000);
+            
+            return () => clearTimeout(timer);
+        }, [onClose]);
+        
+        return h('div', {
+            style: {
+                position: 'fixed',
+                top: '1rem',
+                right: '1rem',
+                backgroundColor: 'white',
+                borderRadius: '0.75rem',
+                boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+                padding: '1rem',
+                minWidth: '300px',
+                maxWidth: '400px',
+                zIndex: 1000,
+                transform: isVisible ? 'translateX(0)' : 'translateX(120%)',
+                transition: 'transform 0.3s ease-out',
+                border: '2px solid #10b981'
+            }
+        },
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
+                h('div', { 
+                    style: { 
+                        fontSize: '2rem',
+                        animation: 'bounce 1s infinite'
+                    } 
+                }, achievement.icon || '🏆'),
+                h('div', { style: { flex: 1 } },
+                    h('h4', { 
+                        style: { 
+                            fontWeight: '600', 
+                            marginBottom: '0.25rem',
+                            color: '#059669'
+                        } 
+                    }, 'Achievement Unlocked!'),
+                    h('p', { 
+                        style: { 
+                            fontWeight: '500',
+                            marginBottom: '0.125rem'
+                        } 
+                    }, achievement.name),
+                    h('p', { 
+                        style: { 
+                            fontSize: '0.875rem', 
+                            color: '#6b7280' 
+                        } 
+                    }, achievement.description),
+                    achievement.points && h('p', { 
+                        style: { 
+                            fontSize: '0.75rem', 
+                            color: '#f59e0b',
+                            marginTop: '0.25rem'
+                        } 
+                    }, `+${achievement.points} points`)
+                ),
+                h('button', {
+                    onClick: () => {
+                        setIsVisible(false);
+                        setTimeout(onClose, 300);
+                    },
+                    style: {
+                        background: 'none',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        fontSize: '1.25rem'
+                    }
+                }, '×')
+            )
+        );
+    };
+    
+    // Achievement Tracker Hook
+    window.useAchievementTracker = function(user, saveProgress) {
+        const [achievements, setAchievements] = useState([]);
+        const [userAchievements, setUserAchievements] = useState([]);
+        const [toastQueue, setToastQueue] = useState([]);
+        
+        // Load achievements from database
+        useEffect(() => {
+            if (!user?.id) return;
+            
+            const loadAchievements = async () => {
+                try {
+                    const response = await fetch(`/api/achievements?userId=${user.id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setAchievements(data);
+                        setUserAchievements(data.filter(a => a.earned));
+                    }
+                } catch (error) {
+                    console.error('Error loading achievements:', error);
+                }
+            };
+            
+            loadAchievements();
+        }, [user]);
+        
+        // Check achievement triggers
+        const checkAchievements = useCallback(async (eventType, eventData) => {
+            if (!user?.id) return;
+            
+            const achievementsToCheck = achievements.filter(a => !a.earned);
+            const newlyEarned = [];
+            
+            for (const achievement of achievementsToCheck) {
+                let earned = false;
+                let progress = 0;
+                
+                // Check based on requirement type
+                switch (achievement.requirement_type) {
+                    case 'first_correct':
+                        if (eventType === 'answer_correct' && userAchievements.length === 0) {
+                            earned = true;
+                        }
+                        break;
+                        
+                    case 'streak':
+                        if (eventType === 'streak_update' && eventData.streak >= achievement.requirement_value) {
+                            earned = true;
+                        }
+                        break;
+                        
+                    case 'genus_accuracy':
+                        if (eventType === 'genus_complete' && 
+                            eventData.genus === achievement.requirement_value &&
+                            eventData.accuracy >= 90) {
+                            earned = true;
+                        }
+                        break;
+                        
+                    case 'module_complete':
+                        if (eventType === 'module_complete' && 
+                            eventData.moduleId === achievement.requirement_value) {
+                            earned = true;
+                        }
+                        break;
+                        
+                    case 'dna_specialist':
+                        if (eventType === 'answer_correct' && eventData.dna_verified) {
+                            progress = (achievement.progress || 0) + 1;
+                            if (progress >= achievement.requirement_value) {
+                                earned = true;
+                            }
+                        }
+                        break;
+                        
+                    case 'time_based':
+                        const hour = new Date().getHours();
+                        if (achievement.requirement_value === 'night_owl' && hour >= 22) {
+                            earned = true;
+                        } else if (achievement.requirement_value === 'early_bird' && hour < 6) {
+                            earned = true;
+                        }
+                        break;
+                }
+                
+                if (earned || progress > achievement.progress) {
+                    // Award achievement
+                    try {
+                        const response = await fetch('/api/achievements', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                userId: user.id,
+                                achievementId: achievement.id,
+                                progress: earned ? 100 : progress
+                            })
+                        });
+                        
+                        if (response.ok && earned) {
+                            newlyEarned.push(achievement);
+                            setToastQueue(prev => [...prev, achievement]);
+                        }
+                    } catch (error) {
+                        console.error('Error awarding achievement:', error);
+                    }
+                }
+            }
+            
+            if (newlyEarned.length > 0) {
+                // Update local state
+                setUserAchievements(prev => [...prev, ...newlyEarned]);
+                setAchievements(prev => 
+                    prev.map(a => 
+                        newlyEarned.find(ne => ne.id === a.id) 
+                            ? { ...a, earned: true, earned_at: new Date().toISOString() }
+                            : a
+                    )
+                );
+            }
+        }, [achievements, userAchievements, user]);
+        
+        return {
+            achievements,
+            userAchievements,
+            checkAchievements,
+            toastQueue,
+            clearToast: () => setToastQueue(prev => prev.slice(1))
+        };
+    };
+    
+    // Achievement Showcase Component
+    window.AchievementShowcase = function({ achievements, user }) {
+        const earned = achievements.filter(a => a.earned);
+        const categories = [...new Set(achievements.map(a => a.category))];
+        
+        return h('div', { style: { padding: '1.5rem' } },
+            h('h2', { 
+                style: { 
+                    fontSize: '1.5rem', 
+                    fontWeight: 'bold', 
+                    marginBottom: '1rem' 
+                } 
+            }, '🏆 Your Achievements'),
+            
+            h('div', { 
+                style: { 
+                    marginBottom: '1.5rem',
+                    padding: '1rem',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '0.5rem'
+                } 
+            },
+                h('div', { style: { display: 'flex', gap: '2rem', justifyContent: 'center' } },
+                    h('div', { style: { textAlign: 'center' } },
+                        h('div', { style: { fontSize: '2rem', fontWeight: 'bold' } }, earned.length),
+                        h('div', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 'Earned')
+                    ),
+                    h('div', { style: { textAlign: 'center' } },
+                        h('div', { style: { fontSize: '2rem', fontWeight: 'bold' } }, achievements.length),
+                        h('div', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 'Total')
+                    ),
+                    h('div', { style: { textAlign: 'center' } },
+                        h('div', { 
+                            style: { 
+                                fontSize: '2rem', 
+                                fontWeight: 'bold',
+                                color: '#f59e0b'
+                            } 
+                        }, earned.reduce((sum, a) => sum + (a.points || 0), 0)),
+                        h('div', { style: { fontSize: '0.875rem', color: '#6b7280' } }, 'Points')
+                    )
+                )
+            ),
+            
+            categories.map(category =>
+                h('div', { key: category, style: { marginBottom: '2rem' } },
+                    h('h3', { 
+                        style: { 
+                            fontSize: '1.125rem', 
+                            fontWeight: '600', 
+                            marginBottom: '1rem',
+                            textTransform: 'capitalize'
+                        } 
+                    }, category),
+                    
+                    h('div', { 
+                        style: { 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                            gap: '1rem'
+                        } 
+                    },
+                        achievements
+                            .filter(a => a.category === category)
+                            .map(achievement =>
+                                h('div', {
+                                    key: achievement.id,
+                                    style: {
+                                        textAlign: 'center',
+                                        padding: '1rem',
+                                        backgroundColor: achievement.earned ? 'white' : '#f3f4f6',
+                                        borderRadius: '0.5rem',
+                                        border: achievement.earned ? '2px solid #10b981' : '2px solid #e5e7eb',
+                                        opacity: achievement.earned ? 1 : 0.5,
+                                        transition: 'all 0.3s'
+                                    }
+                                },
+                                    h('div', { 
+                                        style: { 
+                                            fontSize: '2rem',
+                                            marginBottom: '0.5rem',
+                                            filter: achievement.earned ? 'none' : 'grayscale(100%)'
+                                        } 
+                                    }, achievement.icon || '🏆'),
+                                    h('div', { 
+                                        style: { 
+                                            fontSize: '0.75rem',
+                                            fontWeight: '500'
+                                        } 
+                                    }, achievement.name),
+                                    achievement.earned && h('div', { 
+                                        style: { 
+                                            fontSize: '0.625rem',
+                                            color: '#6b7280',
+                                            marginTop: '0.25rem'
+                                        } 
+                                    }, new Date(achievement.earned_at).toLocaleDateString())
+                                )
+                            )
+                    )
+                )
+            )
+        );
+    };
+})();
