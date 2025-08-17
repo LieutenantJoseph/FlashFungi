@@ -3,48 +3,292 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arizona Mushroom Study</title>
-    <!-- React -->
+    <title>Flash Fungi - Master Mushroom Identification</title>
+    <meta name="description" content="Learn mushroom identification with DNA-verified specimens from Arizona. Interactive flashcards and training modules for mycology education.">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍄</text></svg>">
+    
+    <!-- React Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
     <!-- Supabase Client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
-    <!-- Tailwind -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- PWA -->
+    <!-- PWA Configuration -->
     <link rel="manifest" href="/manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#10b981">
+    
+    <!-- Base Styles -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            background-color: #f9fafb;
+        }
+        
+        #root {
+            min-height: 100vh;
+        }
+        
+        .initial-loader {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f9fafb;
+        }
+        
+        .loader-content {
+            text-align: center;
+        }
+        
+        .loader-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .error-screen {
+            padding: 2rem;
+            text-align: center;
+            color: #dc2626;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
     <div id="root">
-        <div style="padding: 20px; text-align: center;">
-            <h1>Loading...</h1>
-            <p>Arizona Mushroom Study App</p>
+        <!-- Enhanced initial loading state -->
+        <div class="initial-loader">
+            <div class="loader-content">
+                <div class="loader-icon">🍄</div>
+                <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; color: #1f2937;">Flash Fungi</h1>
+                <p style="color: #6b7280; margin-bottom: 0.5rem;">Loading educational content...</p>
+                <div style="width: 200px; height: 4px; background-color: #e5e7eb; border-radius: 2px; margin: 0 auto;">
+                    <div style="width: 0%; height: 100%; background-color: #10b981; border-radius: 2px; animation: loadProgress 3s ease-in-out infinite;"></div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <style>
+        @keyframes loadProgress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+    </style>
+
+    <!-- PHASE 1: Core Dependencies (Load First) -->
     
-    <!-- Load app scripts -->
-    <script src="./focused-study.js"></script>
-    <script src="./marathon-mode.js"></script>
-    <script src="./genus-modules.js"></script>
-    <script src="./achievement-system.js"></script>
-    <script src="./placeholder-assets.js"></script>
-    <script src="./supabase-auth.js"></script> <!-- Use Supabase auth instead -->
+    <!-- Common Components (Used by everything) -->
+    <script src="./components/common/Toast.js"></script>
+    <script src="./components/common/Phase3Badge.js"></script>
+    <script src="./components/common/LoadingScreen.js"></script>
+
+    <!-- Configuration & Constants -->
+    <script src="./config/constants.js"></script>
+    
+    <!-- PHASE 2: Utilities (Before Components That Use Them) -->
+    
+    <!-- API & Utility Functions -->
+    <script src="./utils/api.js"></script>
+    <script src="./utils/fuzzyMatching.js"></script>
+    
+    <!-- PHASE 3: Authentication System -->
+    
+    <!-- Keep existing auth system (unchanged for now) -->
+    <script src="./supabase-auth.js"></script>
+    
+    <!-- Auth-related components -->
+    <script src="./components/auth/useUserProfile.js"></script>
+    
+    <!-- PHASE 4: Study Components -->
+    
+    <!-- Study utilities and components -->
+    <script src="./components/study/InteractiveSpeciesGuide.js"></script>
+    <script src="./components/study/QuickStudy.js"></script>
+    
+    <!-- Enhanced study modes -->
+    <script src="./components/study/FocusedStudy.js"></script>
+    <script src="./components/study/MarathonMode.js"></script>
+    
+    <!-- PHASE 5: Training System -->
+    
+    <!-- Training components -->
+    <script src="./components/training/TrainingModules.js"></script>
+    <script src="./components/training/ModulePlayer.js"></script>
+    <script src="./components/training/GenusModules.js"></script>
+    
+    <!-- PHASE 6: Profile & Achievement System -->
+    
+    <!-- Profile components -->
+    <script src="./components/profile/ProfilePage.js"></script>
+    
+    <!-- Keep existing public profile (unchanged) -->
     <script src="./public-profile.js"></script>
+    
+    <!-- Achievement and progress tracking -->
+    <script src="./components/achievements/AchievementSystem.js"></script>
+    
+    <!-- PHASE 7: UI Enhancement Components -->
+    
+    <!-- Asset and placeholder management -->
+    <script src="./components/ui/PlaceholderAssets.js"></script>
+    
+    <!-- PHASE 8: Main Application Components -->
+    
+    <!-- Home page and main navigation -->
+    <script src="./components/home/HomePage.js"></script>
+    
+    <!-- Main app wrapper -->
+    <script src="./components/auth/AuthenticatedApp.js"></script>
+    
+    <!-- PHASE 9: Application Entry Point (Load Last) -->
+    
+    <!-- Main application orchestrator -->
     <script src="./app.js"></script>
     
-    <!-- Service Worker -->
+    <!-- PHASE 10: Service Worker & Analytics -->
+    
+    <!-- Service Worker Registration -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/service-worker.js')
-                    .then(reg => console.log('✅ Service Worker registered'))
-                    .catch(err => console.error('❌ Service Worker failed:', err));
+                    .then(registration => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            console.log('🔄 Service Worker update found');
+                        });
+                    })
+                    .catch(error => {
+                        console.error('❌ Service Worker failed:', error);
+                    });
             });
+        }
+    </script>
+
+    <!-- Application Monitoring & Error Handling -->
+    <script>
+        // Performance monitoring
+        window.addEventListener('load', () => {
+            const loadTime = performance.now();
+            console.log('🍄 Flash Fungi loaded in', Math.round(loadTime), 'ms');
+            
+            // Warn if load time is slow
+            if (loadTime > 3000) {
+                console.warn('⚠️ Slow load time detected. Consider optimizing.');
+                
+                // Could show toast notification if Toast is available
+                if (window.toast) {
+                    window.toast.warning('App loaded slowly. Check your connection.');
+                }
+            }
+        });
+        
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+            
+            const root = document.getElementById('root');
+            if (root && !root.innerHTML.includes('Flash Fungi initialized')) {
+                root.innerHTML = `
+                    <div class="error-screen">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Loading Error</h1>
+                        <p style="margin-bottom: 1rem; color: #6b7280;">Flash Fungi encountered an error while loading components.</p>
+                        <button onclick="window.location.reload()" 
+                                style="padding: 0.75rem 1.5rem; background: #10b981; color: white; 
+                                       border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+                            🔄 Reload Application
+                        </button>
+                        <div style="margin-top: 1rem; font-size: 0.875rem; color: #9ca3af;">
+                            Error: ${event.error?.message || 'Unknown error'}
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Unhandled promise rejection handler
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('🚨 Unhandled promise rejection:', event.reason);
+            
+            // Show user-friendly error if toast is available
+            if (window.toast) {
+                window.toast.error('An unexpected error occurred. Please try again.');
+            }
+        });
+        
+        // Component load tracking (for debugging)
+        window.componentLoadTracker = {
+            loaded: [],
+            failed: [],
+            track: function(name, success = true) {
+                if (success) {
+                    this.loaded.push(name);
+                    console.log(`✅ ${name} loaded`);
+                } else {
+                    this.failed.push(name);
+                    console.error(`❌ ${name} failed to load`);
+                }
+            },
+            report: function() {
+                console.log('📊 Component Load Report:', {
+                    loaded: this.loaded.length,
+                    failed: this.failed.length,
+                    details: { loaded: this.loaded, failed: this.failed }
+                });
+            }
+        };
+    </script>
+
+    <!-- Optional: Development helpers -->
+    <script>
+        // Development mode helpers
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('🔧 Development mode detected');
+            
+            // Add helpful debugging tools
+            window.debug = {
+                showToast: () => window.toast?.success('Toast system working!'),
+                listComponents: () => console.log('Available components:', Object.keys(window).filter(k => k.match(/^[A-Z]/))),
+                reload: () => window.location.reload(),
+                clearStorage: () => {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    console.log('🧹 Storage cleared');
+                }
+            };
+            
+            console.log('🛠️ Debug tools available: window.debug');
         }
     </script>
 </body>
