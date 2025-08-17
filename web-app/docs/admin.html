@@ -97,6 +97,295 @@
                 );
             }
 
+            // Module Content Editor Component
+            function ModuleContentEditor({ module, onSave, onClose }) {
+                const [content, setContent] = useState(module.content || {});
+                const [saving, setSaving] = useState(false);
+                
+                const handleContentChange = (section, field, value) => {
+                    setContent(prev => ({
+                        ...prev,
+                        [section]: {
+                            ...prev[section],
+                            [field]: value
+                        }
+                    }));
+                };
+                
+                const handleAddPage = (section) => {
+                    setContent(prev => ({
+                        ...prev,
+                        [section]: {
+                            ...prev[section],
+                            pages: [...(prev[section]?.pages || []), {
+                                title: '',
+                                content: '',
+                                image: ''
+                            }]
+                        }
+                    }));
+                };
+
+                const handleDeletePage = (section, idx) => {
+                    setContent(prev => ({
+                        ...prev,
+                        [section]: {
+                            ...prev[section],
+                            pages: prev[section].pages.filter((_, i) => i !== idx)
+                        }
+                    }));
+                };
+                
+                const handleSave = async () => {
+                    setSaving(true);
+                    try {
+                        // Check if module exists in database
+                        const checkResponse = await fetch(
+                            `${SUPABASE_URL}/rest/v1/training_modules?id=eq.${module.id}`,
+                            {
+                                headers: {
+                                    'apikey': SUPABASE_ANON_KEY,
+                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                                }
+                            }
+                        );
+                        
+                        const existing = await checkResponse.json();
+                        const method = existing.length > 0 ? 'PATCH' : 'POST';
+                        const url = existing.length > 0 
+                            ? `${SUPABASE_URL}/rest/v1/training_modules?id=eq.${module.id}`
+                            : `${SUPABASE_URL}/rest/v1/training_modules`;
+                        
+                        const body = existing.length > 0 
+                            ? { content: content, updated_at: new Date().toISOString() }
+                            : { 
+                                id: module.id,
+                                title: module.title,
+                                category: module.category || 'foundation',
+                                difficulty_level: module.difficulty_level,
+                                duration_minutes: module.duration_minutes,
+                                content: content,
+                                created_at: new Date().toISOString()
+                            };
+                        
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+                        
+                        if (response.ok) {
+                            onSave(content);
+                        } else {
+                            throw new Error('Failed to save module');
+                        }
+                    } catch (error) {
+                        console.error('Error saving module:', error);
+                    } finally {
+                        setSaving(false);
+                    }
+                };
+                
+                return h('div', {
+                    className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto'
+                },
+                    h('div', {
+                        className: 'bg-white rounded-xl max-w-4xl w-full my-8'
+                    },
+                        // Header
+                        h('div', {
+                            className: 'bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-xl'
+                        },
+                            h('div', { className: 'flex justify-between items-center' },
+                                h('div', null,
+                                    h('h2', { className: 'text-2xl font-bold mb-2' }, 
+                                        `Edit Module: ${module.title}`
+                                    ),
+                                    h('p', { className: 'opacity-90' }, 
+                                        `${module.difficulty_level} • ${module.duration_minutes} min`
+                                    )
+                                ),
+                                h('button', {
+                                    onClick: onClose,
+                                    className: 'text-white hover:text-gray-200 text-2xl'
+                                }, '×')
+                            )
+                        ),
+                        
+                        // Content Editor
+                        h('div', {
+                            className: 'max-h-[60vh] overflow-y-auto p-6'
+                        },
+                            // Introduction Section
+                            h('div', { className: 'mb-6' },
+                                h('h3', { className: 'text-lg font-semibold mb-3' }, 
+                                    '📖 Introduction Pages'
+                                ),
+                                h('div', { className: 'space-y-3' },
+                                    (content.introduction?.pages || []).map((page, idx) =>
+                                        h('div', {
+                                            key: idx,
+                                            className: 'border rounded-lg p-4 bg-gray-50'
+                                        },
+                                            h('div', { className: 'flex justify-between items-start mb-2' },
+                                                h('span', { className: 'text-sm font-medium text-gray-600' }, 
+                                                    `Page ${idx + 1}`
+                                                ),
+                                                h('button', {
+                                                    onClick: () => handleDeletePage('introduction', idx),
+                                                    className: 'text-red-500 hover:text-red-700 text-sm'
+                                                }, 'Delete')
+                                            ),
+                                            h('input', {
+                                                type: 'text',
+                                                value: page.title,
+                                                onChange: (e) => {
+                                                    const newPages = [...content.introduction.pages];
+                                                    newPages[idx].title = e.target.value;
+                                                    handleContentChange('introduction', 'pages', newPages);
+                                                },
+                                                placeholder: 'Page title',
+                                                className: 'w-full mb-2 px-3 py-2 border rounded'
+                                            }),
+                                            h('textarea', {
+                                                value: page.content,
+                                                onChange: (e) => {
+                                                    const newPages = [...content.introduction.pages];
+                                                    newPages[idx].content = e.target.value;
+                                                    handleContentChange('introduction', 'pages', newPages);
+                                                },
+                                                placeholder: 'Page content (supports markdown)',
+                                                className: 'w-full px-3 py-2 border rounded',
+                                                rows: 4
+                                            }),
+                                            h('input', {
+                                                type: 'text',
+                                                value: page.image,
+                                                onChange: (e) => {
+                                                    const newPages = [...content.introduction.pages];
+                                                    newPages[idx].image = e.target.value;
+                                                    handleContentChange('introduction', 'pages', newPages);
+                                                },
+                                                placeholder: 'Image emoji or URL',
+                                                className: 'w-full mt-2 px-3 py-2 border rounded'
+                                            })
+                                        )
+                                    ),
+                                    h('button', {
+                                        onClick: () => handleAddPage('introduction'),
+                                        className: 'mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                                    }, '+ Add Page')
+                                )
+                            ),
+                            
+                            // Quiz Questions Section
+                            h('div', { className: 'mb-6' },
+                                h('h3', { className: 'text-lg font-semibold mb-3' }, 
+                                    '❓ Assessment Questions'
+                                ),
+                                h('div', { className: 'space-y-3' },
+                                    (content.assessment?.questions || []).map((q, idx) =>
+                                        h('div', {
+                                            key: idx,
+                                            className: 'border rounded-lg p-4 bg-gray-50'
+                                        },
+                                            h('div', { className: 'flex justify-between items-start mb-2' },
+                                                h('span', { className: 'text-sm font-medium text-gray-600' }, 
+                                                    `Question ${idx + 1}`
+                                                ),
+                                                h('button', {
+                                                    onClick: () => {
+                                                        const newQuestions = content.assessment.questions.filter((_, i) => i !== idx);
+                                                        handleContentChange('assessment', 'questions', newQuestions);
+                                                    },
+                                                    className: 'text-red-500 hover:text-red-700 text-sm'
+                                                }, 'Delete')
+                                            ),
+                                            h('input', {
+                                                type: 'text',
+                                                value: q.question,
+                                                onChange: (e) => {
+                                                    const newQuestions = [...content.assessment.questions];
+                                                    newQuestions[idx].question = e.target.value;
+                                                    handleContentChange('assessment', 'questions', newQuestions);
+                                                },
+                                                placeholder: 'Question',
+                                                className: 'w-full mb-2 px-3 py-2 border rounded'
+                                            }),
+                                            h('div', { className: 'grid grid-cols-2 gap-2' },
+                                                (q.options || ['', '', '', '']).map((opt, optIdx) =>
+                                                    h('input', {
+                                                        key: optIdx,
+                                                        type: 'text',
+                                                        value: opt,
+                                                        onChange: (e) => {
+                                                            const newQuestions = [...content.assessment.questions];
+                                                            if (!newQuestions[idx].options) {
+                                                                newQuestions[idx].options = ['', '', '', ''];
+                                                            }
+                                                            newQuestions[idx].options[optIdx] = e.target.value;
+                                                            handleContentChange('assessment', 'questions', newQuestions);
+                                                        },
+                                                        placeholder: `Option ${optIdx + 1}`,
+                                                        className: `px-3 py-2 border rounded ${
+                                                            q.correct === optIdx ? 'bg-green-100 border-green-500' : ''
+                                                        }`
+                                                    })
+                                                )
+                                            ),
+                                            h('select', {
+                                                value: q.correct || 0,
+                                                onChange: (e) => {
+                                                    const newQuestions = [...content.assessment.questions];
+                                                    newQuestions[idx].correct = parseInt(e.target.value);
+                                                    handleContentChange('assessment', 'questions', newQuestions);
+                                                },
+                                                className: 'mt-2 px-3 py-2 border rounded'
+                                            },
+                                                h('option', { value: -1 }, 'Select correct answer'),
+                                                [0, 1, 2, 3].map(i =>
+                                                    h('option', { key: i, value: i }, `Option ${i + 1}`)
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    h('button', {
+                                        onClick: () => {
+                                            const newQuestions = [...(content.assessment?.questions || []), {
+                                                question: '',
+                                                options: ['', '', '', ''],
+                                                correct: 0
+                                            }];
+                                            handleContentChange('assessment', 'questions', newQuestions);
+                                        },
+                                        className: 'mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700'
+                                    }, '+ Add Question')
+                                )
+                            )
+                        ),
+                        
+                        // Footer
+                        h('div', {
+                            className: 'border-t p-6 bg-gray-50 flex justify-between rounded-b-xl'
+                        },
+                            h('button', {
+                                onClick: onClose,
+                                className: 'px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100'
+                            }, 'Cancel'),
+                            h('button', {
+                                onClick: handleSave,
+                                disabled: saving,
+                                className: 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50'
+                            }, saving ? 'Saving...' : 'Save Module')
+                        )
+                    )
+                );
+            }
+
             // Field Guide Editor Component (Preserved from original)
             function FieldGuideEditor({ species, specimens, allPhotos, onClose, onSave }) {
                 // Initialize state with existing field guide data or defaults
@@ -719,6 +1008,7 @@
                 const [loading, setLoading] = useState(true);
                 const [selectedSpecimen, setSelectedSpecimen] = useState(null);
                 const [selectedSpecies, setSelectedSpecies] = useState(null);
+                const [selectedModule, setSelectedModule] = useState(null);
                 const [toast, setToast] = useState(null);
                 const [searchTerm, setSearchTerm] = useState('');
                 const [filterStatus, setFilterStatus] = useState('all');
@@ -1077,14 +1367,14 @@
                                         ),
                                         h('div', { className: 'space-y-2' },
                                             [
-                                                { name: 'Basic Diagnostic Features', status: 'Published', completion: '87%' },
-                                                { name: 'Spore Print Basics', status: 'Published', completion: '73%' },
-                                                { name: 'Safety First: Deadly Species', status: 'Published', completion: '91%' },
-                                                { name: 'Mycological Terminology', status: 'Draft', completion: '65%' },
-                                                { name: 'Arizona Fungal Families', status: 'Published', completion: '58%' }
+                                                { id: 'foundation-1', name: 'Basic Diagnostic Features', status: 'Published', completion: '87%' },
+                                                { id: 'foundation-2', name: 'Spore Print Basics', status: 'Published', completion: '73%' },
+                                                { id: 'foundation-3', name: 'Safety First: Deadly Species', status: 'Published', completion: '91%' },
+                                                { id: 'foundation-4', name: 'Mycological Terminology', status: 'Draft', completion: '65%' },
+                                                { id: 'foundation-5', name: 'Arizona Fungal Families', status: 'Published', completion: '58%' }
                                             ].map((module, idx) =>
                                                 h('div', {
-                                                    key: idx,
+                                                    key: module.id,
                                                     className: 'flex justify-between items-center p-3 bg-white rounded border hover:shadow-sm transition-shadow'
                                                 },
                                                     h('div', { className: 'flex-1' },
@@ -1104,9 +1394,18 @@
                                                     ),
                                                     h('div', { className: 'flex gap-1' },
                                                         h('button', { 
-                                                            onClick: () => showToast(`Editing ${module.name}...`, 'info'),
+                                                            onClick: () => {
+                                                                setSelectedModule({
+                                                                    id: module.id,
+                                                                    title: module.name,
+                                                                    category: 'foundation',
+                                                                    difficulty_level: 'beginner',
+                                                                    duration_minutes: 20,
+                                                                    content: {}
+                                                                });
+                                                            },
                                                             className: 'text-xs text-blue-600 hover:underline px-2 py-1' 
-                                                        }, 'Edit'),
+                                                        }, 'Edit Content'),
                                                         h('button', { 
                                                             onClick: () => showToast(`Previewing ${module.name}...`, 'info'),
                                                             className: 'text-xs text-purple-600 hover:underline px-2 py-1' 
@@ -1690,7 +1989,7 @@
                         )
                     ),
 
-                    // Modals (Preserved from original)
+                    // Modals
                     selectedSpecimen && h(SpecimenReviewModal, {
                         specimen: selectedSpecimen,
                         onClose: () => setSelectedSpecimen(null),
@@ -1704,6 +2003,15 @@
                         allPhotos: getAllPhotosForSpecies(selectedSpecies.species_name),
                         onClose: () => setSelectedSpecies(null),
                         onSave: handleSaveFieldGuide
+                    }),
+
+                    selectedModule && h(ModuleContentEditor, {
+                        module: selectedModule,
+                        onSave: (content) => {
+                            showToast('Module content saved successfully', 'success');
+                            setSelectedModule(null);
+                        },
+                        onClose: () => setSelectedModule(null)
                     }),
 
                     // Toast Notifications
