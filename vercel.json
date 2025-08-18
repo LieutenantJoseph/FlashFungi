@@ -9,17 +9,38 @@
       "dest": "/docs/admin.html"
     },
     {
-      "src": ".*\\.js$",
-      "dest": "/docs$0",
+      "src": "^/([^/]+\\.js)$",
+      "dest": "/docs/$1",
       "headers": {
         "Content-Type": "application/javascript; charset=utf-8"
       }
     },
     {
-      "src": ".*\\.css$",
-      "dest": "/docs$0",
+      "src": "^/(components/.+\\.js)$",
+      "dest": "/docs/$1",
       "headers": {
-        "Content-Type": "text/css; charset=utf-8"
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "src": "^/(config/.+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "src": "^/(utils/.+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "src": "^/(legacy/.+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
       }
     },
     {

@@ -1,203 +1,105 @@
-// Flash Fungi - Authenticated App Component
-// Main application router and state management
+// AuthenticatedApp.js - Main Authenticated App Component (Fixed)
+const h = window.h; // Use global h variable
 
-window.AuthenticatedApp = function AuthenticatedApp() {
+// Main Authenticated App Component
+function AuthenticatedApp() {
     console.log('🔍 AuthenticatedApp rendering...');
     
-    
-    // We're inside AuthProvider now, so this should work
-    const authContext = window.useAuth();
-    console.log('🔍 Auth context from hook:', authContext);
-    
+    // Get auth context
+    const authContext = window.useAuth ? window.useAuth() : null;
     const { user, loading: authLoading, signOut } = authContext || { user: null, loading: false, signOut: null };
-    console.log('🔍 Auth data:', { user, authLoading });
     
-    const { userProgress, saveProgress, loadUserProgress } = window.useUserProfile(user, () => '');
+    // Get user profile hook
+    const { userProgress, saveProgress } = window.useUserProfile ? window.useUserProfile(user, () => '') : { userProgress: {}, saveProgress: () => {} };
     
     const [currentView, setCurrentView] = React.useState('loading');
-    const [showAuthModal, setShowAuthModal] = React.useState(false);
-    const [profileUsername, setProfileUsername] = React.useState(null);
     const [specimens, setSpecimens] = React.useState([]);
-    const [speciesHints, setSpeciesHints] = React.useState({});
-    const [referencePhotos, setReferencePhotos] = React.useState({});
-    const [specimenPhotos, setSpecimenPhotos] = React.useState({});
     const [loading, setLoading] = React.useState(true);
     const [error, setError] = React.useState(null);
-    const [currentModule, setCurrentModule] = React.useState(null);
-    const [authCheckComplete, setAuthCheckComplete] = React.useState(false);
-    
-    console.log('🔍 Component state:', { currentView, loading, authLoading, authCheckComplete });
-    
-    // WORKAROUND: Force auth check to complete after 2 seconds
-    React.useEffect(() => {
-        const timeout = setTimeout(() => {
-            console.log('🔍 Force completing auth check after 2 seconds');
-            setAuthCheckComplete(true);
-        }, 2000);
-        
-        return () => clearTimeout(timeout);
-    }, []);
-    
-    // Mark auth as complete when authLoading becomes false
-    React.useEffect(() => {
-        if (!authLoading) {
-            console.log('🔍 Auth loading complete');
-            setAuthCheckComplete(true);
-        }
-    }, [authLoading]);
-    
-    // Handle URL routing for public profiles
-    React.useEffect(() => {
-        const handleRoute = () => {
-            const path = window.location.pathname;
-            const match = path.match(/^\/profile\/(.+)$/);
-            
-            if (match) {
-                const username = match[1];
-                setProfileUsername(username);
-                setCurrentView('public-profile');
-            }
-        };
-        
-        handleRoute();
-        window.addEventListener('popstate', handleRoute);
-        
-        return () => window.removeEventListener('popstate', handleRoute);
-    }, []);
     
     // Load initial data
     React.useEffect(() => {
-        console.log('🔍 Data loading useEffect triggered, authCheckComplete:', authCheckComplete);
-        
         const loadData = async () => {
-            console.log('🔍 Starting data load...');
             try {
-                // Load specimens
-                const specimensData = await window.FlashFungiAPI.loadSpecimens();
-                setSpecimens(specimensData);
-
-                // Load species hints
-                const hintsData = await window.FlashFungiAPI.loadSpeciesHints();
-                setSpeciesHints(hintsData);
-
-                // Load field guides (for reference photos)
-                const photosData = await window.FlashFungiAPI.loadFieldGuides();
-                setReferencePhotos(photosData);
-
-                console.log('🔍 Setting currentView to home...');
+                console.log('🔍 Loading specimens...');
+                
+                // Use global constants
+                const url = window.SUPABASE_URL || 'https://oxgedcncrettasrbmwsl.supabase.co';
+                const key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+                
+                const response = await fetch(`${url}/rest/v1/specimens?select=*&order=created_at.desc&limit=50`, {
+                    headers: {
+                        'apikey': key,
+                        'Authorization': `Bearer ${key}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('🔍 Loaded specimens:', data.length);
+                    setSpecimens(data);
+                } else {
+                    console.warn('🔍 Failed to load specimens:', response.status);
+                }
+                
                 setCurrentView('home');
             } catch (err) {
                 console.error('🔍 Error loading data:', err);
-                setError('Failed to load application data');
+                setError('Failed to load data');
             } finally {
-                console.log('🔍 Setting loading to false...');
                 setLoading(false);
             }
         };
 
-        if (authCheckComplete) {
-            console.log('🔍 Auth check complete, starting data load...');
-            loadData();
-        } else {
-            console.log('🔍 Auth check not complete, waiting...');
-        }
-    }, [authCheckComplete]);
+        // Add a small delay to let auth system initialize
+        setTimeout(loadData, 1000);
+    }, []);
 
-    // Load specimen photos on demand
-    const loadSpecimenPhotos = React.useCallback(async (inaturalistId) => {
-        if (specimenPhotos[inaturalistId]) {
-            return specimenPhotos[inaturalistId];
-        }
-
-        try {
-            const photos = await window.FlashFungiAPI.loadSpecimenPhotos(inaturalistId);
-            setSpecimenPhotos(prev => ({
-                ...prev,
-                [inaturalistId]: photos
-            }));
-            return photos;
-        } catch (error) {
-            console.error(`❌ Error loading photos for ${inaturalistId}:`, error);
-            return [];
-        }
-    }, [specimenPhotos]);
-
+    // Event handlers
     const handleStudyModeSelect = (mode) => {
         setCurrentView(`study-${mode}`);
     };
 
-    const handleTrainingModuleSelect = (category) => {
-        if (category === 'foundation') {
-            setCurrentView('training-modules');
-        }
-    };
-
-    const handleModuleSelect = (module) => {
-        setCurrentModule(module);
-        setCurrentView('module-player');
-    };
-
-    const handleModuleComplete = async (module) => {
-        console.log(`Module ${module.id} completed!`);
-        await loadUserProgress(); // Refresh progress
-        setCurrentView('training-modules');
-        setCurrentModule(null);
-    };
-
     const handleBackToHome = () => {
         setCurrentView('home');
-        setCurrentModule(null);
     };
 
     const handleAuthRequired = () => {
-        setShowAuthModal(true);
-    };
-
-    const handleProfileClick = () => {
-        if (window.ProfilePage) {
-            setCurrentView('profile');
-        }
+        alert('Sign in functionality coming soon!');
     };
 
     const handleSignOut = async () => {
         if (signOut) {
             await signOut();
-            setCurrentView('home');
         }
+        setCurrentView('home');
     };
-    
-    // Don't wait for auth loading if we've already checked
-    // This prevents infinite loading when auth hook is broken
-    const shouldShowLoading = !authCheckComplete || loading || currentView === 'loading';
-    
-    // Show loading while waiting for initial setup
-    if (shouldShowLoading) {
-        console.log('🔍 Showing LoadingScreen - authCheckComplete:', authCheckComplete, 'loading:', loading, 'currentView:', currentView);
-        return h(window.LoadingScreen);
-    }
-    
-    // Show public profile if viewing one
-    if (currentView === 'public-profile' && profileUsername && window.PublicProfile) {
-        return h(window.PublicProfile, {
-            username: profileUsername,
-            onBack: () => {
-                window.history.pushState({}, '', '/');
-                setCurrentView('home');
-                setProfileUsername(null);
+
+    // Show loading
+    if (loading || currentView === 'loading') {
+        return window.LoadingScreen ? 
+            h(window.LoadingScreen) : 
+            h('div', { 
+                style: { 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    minHeight: '100vh' 
+                } 
             },
-            onClose: () => {
-                if (user && user.username === profileUsername) {
-                    setCurrentView('profile');
-                }
-            }
-        });
+                h('div', { style: { textAlign: 'center' } },
+                    h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
+                    h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold' } }, 'Flash Fungi'),
+                    h('p', { style: { color: '#6b7280' } }, 'Loading...')
+                )
+            );
     }
 
-    // Error state
+    // Show error
     if (error) {
         return h('div', { style: { padding: '2rem', textAlign: 'center' } },
-            h('h1', { style: { color: '#ef4444' } }, 'Error'),
-            h('p', null, error),
+            h('h1', { style: { color: '#ef4444', marginBottom: '1rem' } }, 'Error'),
+            h('p', { style: { marginBottom: '1rem' } }, error),
             h('button', { 
                 onClick: () => window.location.reload(),
                 style: {
@@ -212,114 +114,54 @@ window.AuthenticatedApp = function AuthenticatedApp() {
         );
     }
 
-    // Show auth modal over current content
-    if (showAuthModal && window.AuthModal) {
-        return h('div', null,
-            currentView === 'home' && h(window.HomePage, {
-                specimens,
-                user,
-                userProgress,
-                speciesWithHints: Object.keys(speciesHints).length,
-                onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect,
-                onAuthRequired: handleAuthRequired,
-                onProfileClick: handleProfileClick,
-                onSignOut: handleSignOut
-            }),
-            h(window.AuthModal, {
-                onClose: () => setShowAuthModal(false)
-            })
-        );
-    }
-
-    // Route to appropriate component
+    // Route to components
     switch (currentView) {
         case 'home':
-            return h(window.HomePage, {
+            return window.HomePage ? h(window.HomePage, {
                 specimens,
                 user,
                 userProgress,
-                speciesWithHints: Object.keys(speciesHints).length,
                 onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onTrainingModuleSelect: () => {},
                 onAuthRequired: handleAuthRequired,
-                onProfileClick: handleProfileClick,
+                onProfileClick: () => {},
                 onSignOut: handleSignOut
-            });
-
-        case 'profile':
-            return window.ProfilePage ? h(window.ProfilePage, {
-                user,
-                userProgress,
-                onBack: handleBackToHome
-            }) : handleBackToHome();
+            }) : h('div', { style: { padding: '2rem', textAlign: 'center' } },
+                h('h1', null, 'HomePage component not loaded'),
+                h('p', null, 'Check console for component loading errors'),
+                h('button', { onClick: handleBackToHome }, 'Retry')
+            );
 
         case 'study-quick':
-            return h(window.QuickStudy, {
+            return window.QuickStudy ? h(window.QuickStudy, {
                 specimens,
-                speciesHints,
-                referencePhotos,
-                specimenPhotos,
                 user,
-                saveProgress,
-                loadSpecimenPhotos,
                 onBack: handleBackToHome
-            });
-
-        case 'study-focused':
-            return window.FocusedStudy ? h(window.FocusedStudy, {
-                specimens,
-                speciesHints,
-                referencePhotos,
-                specimenPhotos,
-                user,
-                saveProgress,
-                loadSpecimenPhotos,
-                onBack: handleBackToHome
-            }) : handleBackToHome();
-
-        case 'study-marathon':
-            return window.MarathonMode ? h(window.MarathonMode, {
-                specimens,
-                speciesHints,
-                referencePhotos,
-                specimenPhotos,
-                user,
-                saveProgress,
-                loadSpecimenPhotos,
-                onBack: handleBackToHome
-            }) : handleBackToHome();
-
-        case 'training-modules':
-            return h(window.TrainingModules, {
-                userProgress,
-                user,
-                onBack: handleBackToHome,
-                onModuleSelect: handleModuleSelect
-            });
-
-        case 'module-player':
-            return h(window.ModulePlayer, {
-                module: currentModule,
-                user,
-                saveProgress,
-                onComplete: handleModuleComplete,
-                onBack: () => setCurrentView('training-modules')
-            });
+            }) : h('div', { style: { padding: '2rem', textAlign: 'center' } },
+                h('h1', null, 'QuickStudy component not loaded'),
+                h('button', { onClick: handleBackToHome }, 'Back to Home')
+            );
 
         default:
-            return h(window.HomePage, {
+            return window.HomePage ? h(window.HomePage, {
                 specimens,
                 user,
                 userProgress,
-                speciesWithHints: Object.keys(speciesHints).length,
                 onStudyModeSelect: handleStudyModeSelect,
-                onTrainingModuleSelect: handleTrainingModuleSelect,
+                onTrainingModuleSelect: () => {},
                 onAuthRequired: handleAuthRequired,
-                onProfileClick: handleProfileClick,
+                onProfileClick: () => {},
                 onSignOut: handleSignOut
-            });
+            }) : h('div', { style: { padding: '2rem', textAlign: 'center' } },
+                h('h1', null, 'Components not loaded'),
+                h('button', { onClick: () => window.location.reload() }, 'Reload')
+            );
     }
-};
+}
 
-console.log('✅ AuthenticatedApp component loaded');
+// Export
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { AuthenticatedApp };
+} else {
+    window.AuthenticatedApp = AuthenticatedApp;
+}
