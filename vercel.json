@@ -9,24 +9,46 @@
       "dest": "/docs/admin.html"
     },
     {
-      "src": "/components/(.*)",
-      "dest": "/docs/components/$1"
+      "src": "^/([^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
-      "src": "/config/(.*)",
-      "dest": "/docs/config/$1"
+      "src": "^/(legacy/[^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
-      "src": "/utils/(.*)",
-      "dest": "/docs/utils/$1"
+      "src": "^/(components/[^/]+/[^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
-      "src": "/legacy/(.*)",
-      "dest": "/docs/legacy/$1"
+      "src": "^/(components/[^/]+/[^/]+/[^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/docs/assets/$1"
+      "src": "^/(config/[^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
+    },
+    {
+      "src": "^/(utils/[^/]+\\.js)$",
+      "dest": "/docs/$1",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
       "src": "/manifest.json",
@@ -34,14 +56,17 @@
     },
     {
       "src": "/service-worker.js",
-      "dest": "/docs/service-worker.js"
+      "dest": "/docs/service-worker.js",
+      "headers": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
     {
       "src": "/",
       "dest": "/docs/index.html"
     },
     {
-      "src": "/((?!api|components|config|utils|legacy|assets|manifest.json|service-worker.js).*)",
+      "src": "/(.*)",
       "dest": "/docs/index.html"
     }
   ]
