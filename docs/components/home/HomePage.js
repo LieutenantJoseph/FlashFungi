@@ -1,5 +1,4 @@
 // HomePage.js - Home Page Component (Fixed)
-const h = window.h; // Use global h variable
 
 function HomePage(props) {
     const specimens = props.specimens || [];
