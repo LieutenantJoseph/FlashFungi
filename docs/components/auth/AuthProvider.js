@@ -14,12 +14,50 @@
         const [user, setUser] = useState(null);
         const [loading, setLoading] = useState(true);
         const [session, setSession] = useState(null);
+        const [supabaseReady, setSupabaseReady] = useState(false);
         
-        // Initialize Supabase auth
+        // Wait for Supabase to be initialized
         useEffect(() => {
-            if (!window.supabase) {
-                console.error('Supabase not initialized');
-                setLoading(false);
+            const checkSupabase = () => {
+                if (window.supabase && window.supabase.auth) {
+                    console.log('✅ Supabase client ready for AuthProvider');
+                    setSupabaseReady(true);
+                    return true;
+                }
+                return false;
+            };
+            
+            // Check immediately
+            if (checkSupabase()) {
+                return;
+            }
+            
+            // Poll for Supabase availability
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max
+            
+            const pollForSupabase = () => {
+                attempts++;
+                
+                if (checkSupabase()) {
+                    return; // Success
+                }
+                
+                if (attempts >= maxAttempts) {
+                    console.error('❌ Supabase client not available after 5 seconds');
+                    setLoading(false);
+                    return;
+                }
+                
+                setTimeout(pollForSupabase, 100);
+            };
+            
+            pollForSupabase();
+        }, []);
+        
+        // Initialize Supabase auth once client is ready
+        useEffect(() => {
+            if (!supabaseReady || !window.supabase) {
                 return;
             }
             
@@ -33,6 +71,7 @@
                     } else {
                         setSession(session);
                         setUser(session?.user || null);
+                        console.log('✅ Initial session loaded:', session?.user?.email || 'No user');
                     }
                 } catch (error) {
                     console.error('Failed to get initial session:', error);
@@ -46,7 +85,7 @@
             // Listen for auth changes
             const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
                 async (event, session) => {
-                    console.log('Auth state changed:', event, session?.user?.email);
+                    console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
                     setSession(session);
                     setUser(session?.user || null);
                     setLoading(false);
@@ -56,10 +95,14 @@
             return () => {
                 subscription?.unsubscribe();
             };
-        }, []);
+        }, [supabaseReady]);
         
         // Auth functions
         const signIn = async (email, password) => {
+            if (!window.supabase) {
+                return { data: null, error: { message: 'Supabase not initialized' } };
+            }
+            
             try {
                 setLoading(true);
                 const { data, error } = await window.supabase.auth.signInWithPassword({
@@ -79,6 +122,10 @@
         };
         
         const signUp = async (email, password, options = {}) => {
+            if (!window.supabase) {
+                return { data: null, error: { message: 'Supabase not initialized' } };
+            }
+            
             try {
                 setLoading(true);
                 const { data, error } = await window.supabase.auth.signUp({
@@ -101,6 +148,10 @@
         };
         
         const signOut = async () => {
+            if (!window.supabase) {
+                return { error: { message: 'Supabase not initialized' } };
+            }
+            
             try {
                 setLoading(true);
                 const { error } = await window.supabase.auth.signOut();
@@ -117,6 +168,10 @@
         };
         
         const resetPassword = async (email) => {
+            if (!window.supabase) {
+                return { data: null, error: { message: 'Supabase not initialized' } };
+            }
+            
             try {
                 const { data, error } = await window.supabase.auth.resetPasswordForEmail(email);
                 
@@ -137,8 +192,28 @@
             signIn,
             signUp,
             signOut,
-            resetPassword
+            resetPassword,
+            supabaseReady
         };
+        
+        // Show loading while waiting for Supabase
+        if (!supabaseReady) {
+            return React.createElement('div', { 
+                className: 'min-h-screen flex items-center justify-center bg-gray-50'
+            },
+                React.createElement('div', { className: 'text-center' },
+                    React.createElement('div', { 
+                        className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'
+                    }),
+                    React.createElement('h2', { 
+                        className: 'text-xl font-bold text-gray-800 mb-2'
+                    }, '🍄 Flash Fungi'),
+                    React.createElement('p', { 
+                        className: 'text-gray-600'
+                    }, 'Initializing authentication system...')
+                )
+            );
+        }
         
         return React.createElement(AuthContext.Provider, { value }, children);
     };

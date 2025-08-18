@@ -4,15 +4,18 @@
 (function() {
     'use strict';
     
+    console.log('🔧 Starting Supabase initialization...');
+    
     // Wait for constants and Supabase library to be available
     const initSupabase = () => {
-        if (typeof window.supabase !== 'undefined') {
+        if (typeof window.supabase !== 'undefined' && window.supabase.auth) {
             console.log('✅ Supabase client already initialized');
             return;
         }
         
-        if (typeof window.createClient === 'undefined' && typeof supabase === 'undefined') {
-            console.error('❌ Supabase library not loaded');
+        // Check if Supabase library is loaded
+        if (typeof supabase === 'undefined') {
+            console.error('❌ Supabase library not loaded from CDN');
             return;
         }
         
@@ -26,14 +29,10 @@
             const supabaseUrl = window.FLASH_FUNGI_CONFIG.SUPABASE.URL;
             const supabaseKey = window.FLASH_FUNGI_CONFIG.SUPABASE.ANON_KEY;
             
-            // Use the global createClient function from the Supabase CDN
-            const createClient = window.supabase?.createClient || window.createClient;
+            console.log('🔧 Creating Supabase client with URL:', supabaseUrl);
             
-            if (!createClient) {
-                throw new Error('Supabase createClient function not available');
-            }
-            
-            window.supabase = createClient(supabaseUrl, supabaseKey, {
+            // Use the global supabase object from the CDN
+            window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
                 auth: {
                     autoRefreshToken: true,
                     persistSession: true,
@@ -42,6 +41,8 @@
             });
             
             console.log('✅ Supabase client initialized successfully');
+            console.log('🔧 Supabase client object:', typeof window.supabase);
+            console.log('🔧 Supabase auth available:', typeof window.supabase.auth);
             
             // Test the connection
             window.supabase.from('specimens')
@@ -67,14 +68,23 @@
         document.addEventListener('DOMContentLoaded', initSupabase);
     } else {
         // DOM is ready, try to initialize
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds
+        
         const tryInit = () => {
-            if (window.FLASH_FUNGI_CONFIG && (window.supabase?.createClient || window.createClient)) {
+            attempts++;
+            
+            if (window.FLASH_FUNGI_CONFIG && typeof supabase !== 'undefined') {
                 initSupabase();
-            } else {
+            } else if (attempts < maxAttempts) {
                 // Wait a bit more for dependencies
+                console.log(`⏳ Waiting for dependencies... (${attempts}/${maxAttempts})`);
                 setTimeout(tryInit, 100);
+            } else {
+                console.error('❌ Timeout waiting for Supabase dependencies');
             }
         };
+        
         tryInit();
     }
     
