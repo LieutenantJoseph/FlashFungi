@@ -1,4 +1,4 @@
-// Marathon Mode - Phase 3 Implementation
+// Marathon Mode - Phase 3 Complete Implementation
 // Unlimited practice with SM-2 spaced repetition algorithm
 
 (function() {
@@ -17,7 +17,8 @@
                 correctAnswers: 0,
                 currentStreak: 0,
                 longestStreak: 0,
-                startTime: Date.now()
+                startTime: Date.now(),
+                masteredCards: 0
             };
             
             this.initializeQueue();
@@ -31,12 +32,13 @@
                     specimenId: cardId,
                     specimen: specimen,
                     repetitions: 0,
-                    easeFactor: 2.5, // Default ease factor
+                    easeFactor: 2.5, // Default ease factor in SM-2
                     interval: 0,
                     nextReview: 0, // Questions until next review
                     lastQuality: null,
                     totalAttempts: 0,
-                    correctAttempts: 0
+                    correctAttempts: 0,
+                    lastSeen: 0
                 });
                 
                 // Add to initial queue
@@ -56,125 +58,122 @@
         
         getNextCard() {
             if (this.queue.length === 0) {
+                // No cards in immediate queue, check for due reviews
                 this.refillQueue();
             }
             
             if (this.queue.length === 0) {
-                return null; // No cards available
+                // Still no cards, all might be mastered
+                return null;
             }
             
             const cardId = this.queue.shift();
             const card = this.cardData.get(cardId);
             
+            if (!card) {
+                return this.getNextCard(); // Skip invalid cards
+            }
+            
             return card;
         }
         
         refillQueue() {
-            // Find all cards that are due for review
             const now = this.sessionStats.totalAnswered;
-            const dueCards = [];
             
-            this.cardData.forEach((card, cardId) => {
-                if (card.nextReview <= now) {
-                    dueCards.push(cardId);
+            // Find cards that are due for review
+            const dueCards = Array.from(this.cardData.entries())
+                .filter(([id, card]) => card.nextReview <= now && card.repetitions < 5)
+                .map(([id, card]) => id);
+            
+            if (dueCards.length > 0) {
+                this.shuffleArray(dueCards);
+                this.queue.push(...dueCards);
+            } else {
+                // If no due cards, add some random cards for continued practice
+                const availableCards = Array.from(this.cardData.keys())
+                    .filter(id => this.cardData.get(id).repetitions < 3);
+                
+                if (availableCards.length > 0) {
+                    this.shuffleArray(availableCards);
+                    this.queue.push(...availableCards.slice(0, 5));
                 }
-            });
-            
-            // If no cards are due, add some new ones or recently failed ones
-            if (dueCards.length === 0) {
-                this.cardData.forEach((card, cardId) => {
-                    if (card.repetitions === 0 || card.lastQuality < 3) {
-                        dueCards.push(cardId);
-                    }
-                });
             }
-            
-            // Shuffle and add to queue
-            this.shuffleArray(dueCards);
-            this.queue.push(...dueCards);
         }
         
-        processAnswer(cardId, quality, hintsUsed, timeSpent) {
-            // Quality is 0-5 based on answer correctness and hints used
-            // 5 = perfect (no hints)
-            // 4 = correct with 1 hint
-            // 3 = correct with 2 hints
-            // 2 = correct with 3-4 hints
-            // 1 = incorrect with hints
-            // 0 = gave up / no attempt
-            
+        processAnswer(cardId, quality, hintsUsed = 0) {
             const card = this.cardData.get(cardId);
             if (!card) return;
             
-            card.totalAttempts++;
-            card.lastQuality = quality;
-            
-            // Update statistics
+            // Update session stats
             this.sessionStats.totalAnswered++;
+            card.totalAttempts++;
+            card.lastSeen = this.sessionStats.totalAnswered;
             
-            if (quality >= 3) {
-                card.correctAttempts++;
+            // Determine if answer was correct based on quality and hints
+            const wasCorrect = quality >= 3 && hintsUsed <= 2;
+            
+            if (wasCorrect) {
                 this.sessionStats.correctAnswers++;
                 this.sessionStats.currentStreak++;
-                if (this.sessionStats.currentStreak > this.sessionStats.longestStreak) {
-                    this.sessionStats.longestStreak = this.sessionStats.currentStreak;
-                }
+                this.sessionStats.longestStreak = Math.max(
+                    this.sessionStats.longestStreak, 
+                    this.sessionStats.currentStreak
+                );
+                card.correctAttempts++;
             } else {
                 this.sessionStats.currentStreak = 0;
             }
             
-            // Apply SM-2 algorithm
-            const { repetitions, easeFactor, interval } = card;
-            let newRepetitions = repetitions;
-            let newEaseFactor = easeFactor;
-            let newInterval = interval;
-            
+            // SM-2 Algorithm
             if (quality >= 3) {
-                // Correct response
-                if (repetitions === 0) {
-                    newInterval = 1;
-                } else if (repetitions === 1) {
-                    newInterval = 6;
+                // Correct answer
+                if (card.repetitions === 0) {
+                    card.interval = 1;
+                } else if (card.repetitions === 1) {
+                    card.interval = 6;
                 } else {
-                    newInterval = Math.round(interval * easeFactor);
+                    card.interval = Math.round(card.interval * card.easeFactor);
                 }
-                newRepetitions = repetitions + 1;
+                card.repetitions++;
             } else {
-                // Incorrect response
-                newRepetitions = 0;
-                newInterval = 1;
+                // Incorrect answer - restart the card
+                card.repetitions = 0;
+                card.interval = 1;
             }
             
-            // Update ease factor (min 1.3, no max)
-            newEaseFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-            newEaseFactor = Math.max(1.3, newEaseFactor);
+            // Update ease factor
+            card.easeFactor = Math.max(1.3, 
+                card.easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+            );
             
-            // Update card data
-            card.repetitions = newRepetitions;
-            card.easeFactor = newEaseFactor;
-            card.interval = newInterval;
-            card.nextReview = this.sessionStats.totalAnswered + newInterval;
-            
-            // If the card needs immediate review (failed), add it back soon
+            // Schedule next review
             if (quality < 3) {
-                const reviewIn = Math.min(3, Math.max(1, 5 - quality));
-                this.queue.splice(reviewIn, 0, cardId);
+                // Show again soon for incorrect answers
+                card.nextReview = this.sessionStats.totalAnswered + 1;
+            } else {
+                // Schedule based on interval
+                card.nextReview = this.sessionStats.totalAnswered + card.interval;
             }
+            
+            card.lastQuality = quality;
+            
+            // Update mastered cards count
+            this.sessionStats.masteredCards = Array.from(this.cardData.values())
+                .filter(c => c.repetitions >= 3 && c.easeFactor >= 2.5).length;
         }
         
         getSessionStats() {
-            const duration = Date.now() - this.sessionStats.startTime;
-            const minutes = Math.floor(duration / 60000);
+            const duration = (Date.now() - this.sessionStats.startTime) / 1000 / 60; // minutes
             const accuracy = this.sessionStats.totalAnswered > 0 
                 ? Math.round((this.sessionStats.correctAnswers / this.sessionStats.totalAnswered) * 100)
                 : 0;
             
             return {
                 ...this.sessionStats,
-                duration: minutes,
+                duration: Math.round(duration * 10) / 10,
                 accuracy: accuracy,
                 cardsInRotation: this.cardData.size,
-                masteredCards: Array.from(this.cardData.values()).filter(c => c.repetitions >= 3).length
+                masteredCards: this.sessionStats.masteredCards
             };
         }
         
@@ -187,11 +186,14 @@
                     repetitions: data.repetitions,
                     easeFactor: data.easeFactor,
                     interval: data.interval,
+                    nextReview: data.nextReview,
                     lastQuality: data.lastQuality,
                     attempts: data.totalAttempts,
-                    correct: data.correctAttempts
+                    correct: data.correctAttempts,
+                    lastSeen: data.lastSeen
                 })),
-                queue: this.queue
+                queue: this.queue,
+                timestamp: Date.now()
             };
             
             return sessionData;
@@ -200,10 +202,10 @@
         static loadSession(sessionData, specimens) {
             const queue = new SpacedRepetitionQueue(specimens);
             
-            if (sessionData) {
+            if (sessionData && sessionData.cards) {
                 // Restore session stats
                 Object.assign(queue.sessionStats, sessionData.stats);
-                queue.sessionStats.startTime = Date.now(); // Reset timer
+                queue.sessionStats.startTime = Date.now(); // Reset timer for current session
                 
                 // Restore card data
                 sessionData.cards.forEach(cardInfo => {
@@ -215,7 +217,9 @@
                 
                 // Restore queue
                 if (sessionData.queue && sessionData.queue.length > 0) {
-                    queue.queue = sessionData.queue;
+                    queue.queue = [...sessionData.queue];
+                } else {
+                    queue.refillQueue();
                 }
             }
             
@@ -236,715 +240,532 @@
             onBack
         } = props;
         
-        // State
-        const [srpQueue, setSrpQueue] = useState(null);
+        const [spQueue, setSpQueue] = useState(null);
         const [currentCard, setCurrentCard] = useState(null);
-        const [userAnswer, setUserAnswer] = useState('');
-        const [currentHintLevel, setCurrentHintLevel] = useState(0);
-        const [hintsRevealed, setHintsRevealed] = useState(0);
-        const [attemptCount, setAttemptCount] = useState(0);
-        const [showResult, setShowResult] = useState(false);
-        const [showGuide, setShowGuide] = useState(false);
-        const [sessionStats, setSessionStats] = useState(null);
         const [isPaused, setIsPaused] = useState(false);
-        const [lastScore, setLastScore] = useState(null);
-        const [photosLoaded, setPhotosLoaded] = useState(false);
+        const [showingHint, setShowingHint] = useState(false);
+        const [hintsUsed, setHintsUsed] = useState(0);
+        const [userAnswer, setUserAnswer] = useState('');
+        const [feedback, setFeedback] = useState(null);
+        const [showingAnswer, setShowingAnswer] = useState(false);
+        const [isLoading, setIsLoading] = useState(true);
+        const [sessionSaved, setSessionSaved] = useState(false);
         
-        const sessionRef = useRef(null);
-        const autoSaveTimer = useRef(null);
+        // Touch gesture state
+        const [touchStart, setTouchStart] = useState(null);
+        const [touchEnd, setTouchEnd] = useState(null);
         
-        // Initialize or restore session
+        // Refs for cleanup
+        const saveIntervalRef = useRef(null);
+        
+        // Initialize or resume session
         useEffect(() => {
-            const initSession = async () => {
-                // Only use approved specimens
-                const approvedSpecimens = specimens.filter(s => s.status === 'approved');
+            const initializeSession = async () => {
+                setIsLoading(true);
                 
-                if (approvedSpecimens.length === 0) {
-                    alert('No approved specimens available for Marathon Mode');
-                    onBack();
-                    return;
-                }
-                
-                // Try to restore previous session
-                let queue;
-                const savedSession = localStorage.getItem(`marathonSession_${user?.id}`);
-                
-                if (savedSession) {
-                    try {
-                        const sessionData = JSON.parse(savedSession);
-                        const resumeSession = confirm(
-                            'Resume previous Marathon session?\n' +
-                            `Progress: ${sessionData.stats.totalAnswered} questions\n` +
-                            `Accuracy: ${sessionData.stats.accuracy}%`
-                        );
-                        
-                        if (resumeSession) {
-                            queue = SpacedRepetitionQueue.loadSession(sessionData, approvedSpecimens);
+                try {
+                    // Try to load existing session
+                    let sessionData = null;
+                    if (user?.id) {
+                        const response = await fetch(`/api/study-sessions?userId=${user.id}&mode=marathon`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            sessionData = data.session;
                         }
-                    } catch (e) {
-                        console.warn('Could not restore session:', e);
                     }
+                    
+                    // Create or restore queue
+                    const queue = sessionData 
+                        ? SpacedRepetitionQueue.loadSession(sessionData, specimens)
+                        : new SpacedRepetitionQueue(specimens);
+                    
+                    setSpQueue(queue);
+                    
+                    // Get first card
+                    const firstCard = queue.getNextCard();
+                    setCurrentCard(firstCard);
+                    
+                    if (sessionData) {
+                        window.showToast && window.showToast('Session resumed!', 'success');
+                    }
+                    
+                } catch (error) {
+                    console.error('Error initializing session:', error);
+                    // Fallback to new session
+                    const queue = new SpacedRepetitionQueue(specimens);
+                    setSpQueue(queue);
+                    setCurrentCard(queue.getNextCard());
                 }
                 
-                if (!queue) {
-                    queue = new SpacedRepetitionQueue(approvedSpecimens);
-                }
-                
-                setSrpQueue(queue);
-                sessionRef.current = queue;
-                
-                // Get first card
-                const firstCard = queue.getNextCard();
-                setCurrentCard(firstCard);
-                setSessionStats(queue.getSessionStats());
+                setIsLoading(false);
             };
             
-            initSession();
-            
-            // Auto-save session every 30 seconds
-            autoSaveTimer.current = setInterval(() => {
-                if (sessionRef.current && !isPaused) {
-                    saveSessionToStorage();
-                }
-            }, 30000);
-            
-            return () => {
-                if (autoSaveTimer.current) {
-                    clearInterval(autoSaveTimer.current);
-                }
-            };
-        }, [specimens, user, onBack]);
+            if (specimens.length > 0) {
+                initializeSession();
+            }
+        }, [specimens, user]);
         
-        // Load photos when card changes
+        // Auto-save session periodically
         useEffect(() => {
-            if (currentCard?.specimen && !specimenPhotos[currentCard.specimen.inaturalist_id]) {
-                setPhotosLoaded(false);
-                loadSpecimenPhotos(currentCard.specimen.inaturalist_id).then(() => {
-                    setPhotosLoaded(true);
-                });
-            } else {
-                setPhotosLoaded(true);
+            if (spQueue && user?.id) {
+                saveIntervalRef.current = setInterval(async () => {
+                    await saveSession();
+                }, 30000); // Save every 30 seconds
+                
+                return () => {
+                    if (saveIntervalRef.current) {
+                        clearInterval(saveIntervalRef.current);
+                    }
+                };
             }
-        }, [currentCard, loadSpecimenPhotos, specimenPhotos]);
-        
-        // Save session to localStorage
-        const saveSessionToStorage = useCallback(() => {
-            if (sessionRef.current && user?.id) {
-                const sessionData = sessionRef.current.saveSession();
-                localStorage.setItem(`marathonSession_${user.id}`, JSON.stringify(sessionData));
-            }
-        }, [user]);
+        }, [spQueue, user]);
         
         // Save session to database
-        const saveSessionToDatabase = useCallback(async () => {
-            if (!sessionRef.current || !user?.id) return;
-            
-            const sessionData = sessionRef.current.saveSession();
+        const saveSession = useCallback(async () => {
+            if (!spQueue || !user?.id) return;
             
             try {
-                await fetch(`${window.SUPABASE_URL}/rest/v1/study_sessions`, {
+                const sessionData = spQueue.saveSession();
+                
+                const response = await fetch('/api/study-sessions', {
                     method: 'POST',
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        user_id: user.id,
+                        userId: user.id,
                         mode: 'marathon',
-                        queue: sessionData,
-                        stats: sessionData.stats,
-                        is_active: !isPaused
+                        sessionData: sessionData
                     })
                 });
+                
+                if (response.ok) {
+                    setSessionSaved(true);
+                    setTimeout(() => setSessionSaved(false), 2000);
+                }
             } catch (error) {
-                console.error('Error saving session to database:', error);
+                console.error('Error saving session:', error);
             }
-        }, [user, isPaused]);
-        
-        // Calculate quality rating based on answer
-        const calculateQuality = (isCorrect, hintsUsed, timeSpent) => {
-            if (!isCorrect) return hintsUsed === 0 ? 0 : 1;
-            
-            // Quality based on hints used
-            if (hintsUsed === 0) return 5;
-            if (hintsUsed === 1) return 4;
-            if (hintsUsed === 2) return 3;
-            if (hintsUsed <= 4) return 2;
-            return 1;
-        };
-        
-        // Validate answer (reuse from QuickStudy logic)
-        const validateAnswer = (answer) => {
-            if (!answer || !currentCard?.specimen) return { isCorrect: false, score: 0 };
-            
-            const cleaned = answer.toLowerCase().trim();
-            const species = currentCard.specimen.species_name.toLowerCase();
-            const genus = currentCard.specimen.genus.toLowerCase();
-            const common = (currentCard.specimen.common_name || '').toLowerCase();
-            
-            // Check for exact or close match
-            if (cleaned === species || cleaned === common) {
-                return { isCorrect: true, score: 100 };
-            }
-            
-            // Check for genus match
-            if (cleaned === genus || cleaned.startsWith(genus + ' ')) {
-                return { isCorrect: cleaned === species, score: cleaned === species ? 100 : 50 };
-            }
-            
-            return { isCorrect: false, score: 0 };
-        };
+        }, [spQueue, user]);
         
         // Handle answer submission
-        const handleSubmitAnswer = () => {
-            if (!userAnswer.trim() || !sessionRef.current) return;
+        const handleAnswerSubmit = useCallback(async (quality) => {
+            if (!currentCard || !spQueue) return;
             
-            const validation = validateAnswer(userAnswer);
-            const totalHints = currentHintLevel + hintsRevealed;
-            const quality = calculateQuality(validation.isCorrect, totalHints, 0);
+            // Process the answer with SM-2 algorithm
+            spQueue.processAnswer(currentCard.specimenId, quality, hintsUsed);
             
-            setAttemptCount(prev => prev + 1);
+            // Show feedback
+            const correct = quality >= 3 && hintsUsed <= 2;
+            setFeedback({
+                correct,
+                quality,
+                hintsUsed,
+                specimen: currentCard.specimen
+            });
+            setShowingAnswer(true);
             
-            if (validation.isCorrect) {
-                // Process with SM-2
-                sessionRef.current.processAnswer(currentCard.specimenId, quality, totalHints, 0);
-                setLastScore({ quality, hints: totalHints, score: validation.score });
-                setShowResult(true);
-                setSessionStats(sessionRef.current.getSessionStats());
-                
-                // Save progress
-                if (saveProgress) {
-                    saveProgress({
-                        specimenId: currentCard.specimen.id,
-                        progressType: 'marathon',
-                        score: validation.score,
-                        hintsUsed: totalHints,
-                        completed: true
+            // Save progress to database
+            if (saveProgress) {
+                await saveProgress({
+                    specimenId: currentCard.specimenId,
+                    correct,
+                    hintsUsed,
+                    mode: 'marathon',
+                    sessionStats: spQueue.getSessionStats()
+                });
+            }
+            
+            // Check for achievements
+            if (window.useAchievementTracker) {
+                const stats = spQueue.getSessionStats();
+                // Trigger achievement checks
+                if (correct) {
+                    window.checkAchievements && window.checkAchievements('answer_correct', {
+                        mode: 'marathon',
+                        streak: stats.currentStreak
                     });
                 }
-            } else {
-                // Wrong answer - show next hint if available
-                if (currentHintLevel < 4) {
-                    setCurrentHintLevel(prev => prev + 1);
-                    setUserAnswer('');
-                } else {
-                    // All hints exhausted
-                    sessionRef.current.processAnswer(currentCard.specimenId, 0, totalHints, 0);
-                    setShowGuide(true);
-                    setSessionStats(sessionRef.current.getSessionStats());
+                
+                if (stats.currentStreak > 0 && stats.currentStreak % 5 === 0) {
+                    window.checkAchievements && window.checkAchievements('streak_update', {
+                        streak: stats.currentStreak
+                    });
                 }
             }
-        };
+            
+        }, [currentCard, spQueue, hintsUsed, saveProgress]);
         
         // Move to next card
-        const handleNext = () => {
-            const nextCard = sessionRef.current.getNextCard();
+        const handleNextCard = useCallback(() => {
+            if (!spQueue) return;
             
-            if (!nextCard) {
-                alert('No more cards available in this session!');
-                return;
-            }
-            
+            const nextCard = spQueue.getNextCard();
             setCurrentCard(nextCard);
+            setShowingAnswer(false);
+            setFeedback(null);
             setUserAnswer('');
-            setCurrentHintLevel(0);
-            setHintsRevealed(0);
-            setAttemptCount(0);
-            setShowResult(false);
-            setShowGuide(false);
-            setLastScore(null);
-            
-            // Auto-save periodically
-            if (sessionRef.current.sessionStats.totalAnswered % 10 === 0) {
-                saveSessionToStorage();
-            }
+            setHintsUsed(0);
+            setShowingHint(false);
+        }, [spQueue]);
+        
+        // Handle hint request
+        const handleHintRequest = () => {
+            setShowingHint(true);
+            setHintsUsed(prev => prev + 1);
         };
         
-        // Pause/Resume session
+        // Toggle pause
         const togglePause = () => {
-            setIsPaused(prev => !prev);
-            if (!isPaused) {
-                saveSessionToStorage();
-                saveSessionToDatabase();
-            }
+            setIsPaused(!isPaused);
         };
         
         // End session
-        const endSession = () => {
-            if (confirm('End Marathon session? Your progress will be saved.')) {
-                saveSessionToDatabase();
-                localStorage.removeItem(`marathonSession_${user?.id}`);
-                onBack();
+        const endSession = async () => {
+            if (spQueue) {
+                await saveSession();
+                window.showToast && window.showToast('Session saved successfully!', 'success');
+            }
+            onBack();
+        };
+        
+        // Touch gesture handlers
+        const handleTouchStart = (e) => {
+            setTouchEnd(null);
+            setTouchStart(e.targetTouches[0].clientX);
+        };
+        
+        const handleTouchMove = (e) => {
+            setTouchEnd(e.targetTouches[0].clientX);
+        };
+        
+        const handleTouchEnd = () => {
+            if (!touchStart || !touchEnd) return;
+            
+            const distance = touchStart - touchEnd;
+            const isLeftSwipe = distance > 50;
+            const isRightSwipe = distance < -50;
+            
+            if (isLeftSwipe && !showingAnswer) {
+                handleHintRequest();
+            } else if (isRightSwipe && showingAnswer) {
+                handleNextCard();
             }
         };
         
-        // Get hints for current specimen
-        const getHints = useCallback(() => {
-            if (!currentCard?.specimen) return [];
-            
-            const speciesHint = speciesHints[currentCard.specimen.species_name];
-            if (speciesHint?.hints && speciesHint.hints.length > 0) {
-                return speciesHint.hints;
-            }
-            
-            // Fallback hints
-            return [
-                { type: 'morphological', level: 1, text: `Examine the physical features.` },
-                { type: 'comparative', level: 2, text: `Compare to similar species.` },
-                { type: 'ecological', level: 3, text: `Consider the habitat.` },
-                { type: 'taxonomic', level: 4, text: `Family: ${currentCard.specimen.family}` }
-            ];
-        }, [currentCard, speciesHints]);
+        if (isLoading) {
+            return React.createElement(window.LoadingScreen, {
+                message: 'Preparing your marathon session...'
+            });
+        }
         
-        const hints = getHints();
-        const currentPhotos = currentCard ? specimenPhotos[currentCard.specimen.inaturalist_id] || [] : [];
-        
-        if (!srpQueue || !currentCard) {
-            return h('div', { style: { padding: '2rem', textAlign: 'center' } },
-                h('h2', null, 'Loading Marathon Mode...'),
-                h('button', { onClick: onBack, style: { marginTop: '1rem' } }, 'Back to Home')
+        if (!currentCard) {
+            return React.createElement('div', { 
+                className: 'min-h-screen bg-gray-50 flex items-center justify-center'
+            },
+                React.createElement('div', { 
+                    className: 'bg-white rounded-xl p-8 shadow-lg text-center max-w-md'
+                },
+                    React.createElement('h2', { 
+                        className: 'text-2xl font-bold text-gray-800 mb-4'
+                    }, '🏆 Marathon Complete!'),
+                    React.createElement('p', { 
+                        className: 'text-gray-600 mb-6'
+                    }, 'You\'ve completed all available cards. Great work!'),
+                    React.createElement('button', {
+                        onClick: onBack,
+                        className: 'px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+                    }, 'Return to Menu')
+                )
             );
         }
         
-        return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-            // Header with session stats
-            h('div', { 
-                style: { 
-                    backgroundColor: 'white', 
-                    borderBottom: '1px solid #e5e7eb', 
-                    padding: '1rem' 
-                } 
+        const sessionStats = spQueue ? spQueue.getSessionStats() : {};
+        
+        return React.createElement('div', { 
+            className: 'min-h-screen bg-gray-50',
+            onTouchStart: handleTouchStart,
+            onTouchMove: handleTouchMove,
+            onTouchEnd: handleTouchEnd
+        },
+            // Header with stats
+            React.createElement('div', { 
+                className: 'bg-white border-b border-gray-200 px-4 py-4'
             },
-                h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
-                    h('div', { 
-                        style: { 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center' 
-                        } 
-                    },
-                        h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
-                            h('button', { 
-                                onClick: endSession, 
-                                style: { 
-                                    background: 'none', 
-                                    border: 'none', 
-                                    cursor: 'pointer' 
-                                } 
+                React.createElement('div', { className: 'max-w-4xl mx-auto' },
+                    React.createElement('div', { className: 'flex items-center justify-between mb-4' },
+                        React.createElement('div', { className: 'flex items-center space-x-4' },
+                            React.createElement('button', {
+                                onClick: endSession,
+                                className: 'text-gray-600 hover:text-gray-800 text-lg'
                             }, '← End Session'),
-                            h('div', null,
-                                h('h1', { 
-                                    style: { 
-                                        fontSize: '1.25rem', 
-                                        fontWeight: 'bold' 
-                                    } 
-                                }, '🏃 Marathon Mode'),
-                                h('p', { 
-                                    style: { 
-                                        fontSize: '0.875rem', 
-                                        color: '#6b7280' 
-                                    } 
-                                }, `Question ${sessionStats.totalAnswered + 1} • ${sessionStats.duration} min`)
-                            )
+                            React.createElement('h1', { 
+                                className: 'text-xl font-bold text-gray-800'
+                            }, '🏃‍♂️ Marathon Mode'),
+                            React.createElement(window.Phase3Badge),
+                            sessionSaved && React.createElement('span', {
+                                className: 'text-green-600 text-sm'
+                            }, '✓ Saved')
                         ),
                         
-                        // Session stats
-                        h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
-                            h('div', { style: { textAlign: 'center' } },
-                                h('div', { 
-                                    style: { 
-                                        fontSize: '1.125rem', 
-                                        fontWeight: 'bold',
-                                        color: '#10b981'
-                                    } 
-                                }, sessionStats.correctAnswers),
-                                h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Correct')
-                            ),
-                            h('div', { style: { textAlign: 'center' } },
-                                h('div', { 
-                                    style: { 
-                                        fontSize: '1.125rem', 
-                                        fontWeight: 'bold',
-                                        color: sessionStats.accuracy >= 70 ? '#10b981' : '#f59e0b'
-                                    } 
-                                }, `${sessionStats.accuracy}%`),
-                                h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Accuracy')
-                            ),
-                            h('div', { style: { textAlign: 'center' } },
-                                h('div', { 
-                                    style: { 
-                                        fontSize: '1.125rem', 
-                                        fontWeight: 'bold',
-                                        color: '#f59e0b'
-                                    } 
-                                }, `🔥 ${sessionStats.currentStreak}`),
-                                h('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 'Streak')
-                            ),
-                            h('button', {
-                                onClick: togglePause,
-                                style: {
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: isPaused ? '#10b981' : '#6b7280',
-                                    color: 'white',
-                                    borderRadius: '0.375rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '0.875rem'
-                                }
-                            }, isPaused ? '▶️ Resume' : '⏸️ Pause')
+                        React.createElement('button', {
+                            onClick: togglePause,
+                            className: `px-4 py-2 rounded-lg font-medium ${
+                                isPaused ? 'bg-green-600 text-white' : 'bg-gray-600 text-white'
+                            }`
+                        }, isPaused ? '▶️ Resume' : '⏸️ Pause')
+                    ),
+                    
+                    // Stats row
+                    React.createElement('div', { 
+                        className: 'grid grid-cols-4 gap-4 text-center'
+                    },
+                        React.createElement('div', { className: 'bg-gray-50 rounded-lg p-3' },
+                            React.createElement('div', { 
+                                className: 'text-lg font-bold text-blue-600'
+                            }, sessionStats.totalAnswered || 0),
+                            React.createElement('div', { 
+                                className: 'text-xs text-gray-600'
+                            }, 'Questions')
+                        ),
+                        React.createElement('div', { className: 'bg-gray-50 rounded-lg p-3' },
+                            React.createElement('div', { 
+                                className: `text-lg font-bold ${
+                                    (sessionStats.accuracy || 0) >= 70 ? 'text-green-600' : 'text-amber-600'
+                                }`
+                            }, `${sessionStats.accuracy || 0}%`),
+                            React.createElement('div', { 
+                                className: 'text-xs text-gray-600'
+                            }, 'Accuracy')
+                        ),
+                        React.createElement('div', { className: 'bg-gray-50 rounded-lg p-3' },
+                            React.createElement('div', { 
+                                className: 'text-lg font-bold text-orange-600'
+                            }, `🔥 ${sessionStats.currentStreak || 0}`),
+                            React.createElement('div', { 
+                                className: 'text-xs text-gray-600'
+                            }, 'Streak')
+                        ),
+                        React.createElement('div', { className: 'bg-gray-50 rounded-lg p-3' },
+                            React.createElement('div', { 
+                                className: 'text-lg font-bold text-purple-600'
+                            }, `${sessionStats.masteredCards || 0}`),
+                            React.createElement('div', { 
+                                className: 'text-xs text-gray-600'
+                            }, 'Mastered')
                         )
                     ),
                     
                     // Card repetition info
-                    h('div', {
-                        style: {
-                            marginTop: '0.5rem',
-                            fontSize: '0.75rem',
-                            color: '#6b7280',
-                            display: 'flex',
-                            gap: '1rem'
-                        }
+                    currentCard && React.createElement('div', {
+                        className: 'mt-3 text-xs text-gray-500 flex justify-between items-center'
                     },
-                        h('span', null, `Mastered: ${sessionStats.masteredCards}/${sessionStats.cardsInRotation}`),
-                        h('span', null, `Ease: ${currentCard.easeFactor.toFixed(2)}`),
-                        h('span', null, `Interval: ${currentCard.interval}`),
-                        currentCard.repetitions > 0 && h('span', { 
-                            style: { color: '#10b981' } 
-                        }, `✓ Seen ${currentCard.repetitions} times`)
+                        React.createElement('span', null, 
+                            `Ease: ${currentCard.easeFactor.toFixed(2)} | ` +
+                            `Interval: ${currentCard.interval} | ` +
+                            `Seen: ${currentCard.repetitions} times`
+                        ),
+                        React.createElement('span', null, 
+                            `Duration: ${sessionStats.duration || 0}min`
+                        )
                     )
                 )
             ),
             
-            // Main content (similar to QuickStudy but adapted for Marathon)
-            !isPaused ? h('div', { 
-                style: { 
-                    maxWidth: '72rem', 
-                    margin: '0 auto', 
-                    padding: '1.5rem' 
-                } 
-            },
-                h('div', { 
-                    style: { 
-                        display: 'grid', 
-                        gridTemplateColumns: '1fr 1fr', 
-                        gap: '1.5rem' 
-                    } 
+            // Main content
+            !isPaused ? React.createElement('div', { className: 'max-w-4xl mx-auto p-6' },
+                // Specimen display
+                currentCard && React.createElement('div', { 
+                    className: 'bg-white rounded-xl shadow-lg overflow-hidden mb-6'
                 },
-                    // Left: Photos
-                    h('div', { 
-                        style: { 
-                            backgroundColor: 'white', 
-                            borderRadius: '0.75rem', 
-                            padding: '1.5rem' 
-                        } 
+                    // Image
+                    React.createElement('div', { 
+                        className: 'aspect-w-16 aspect-h-9 bg-gray-200'
                     },
-                        h('h3', { 
-                            style: { 
-                                fontWeight: '600', 
-                                marginBottom: '1rem' 
-                            } 
-                        }, 'Specimen Photos'),
-                        
-                        !photosLoaded ? 
-                            h('div', { 
-                                style: { 
-                                    textAlign: 'center', 
-                                    padding: '2rem' 
-                                } 
-                            }, 'Loading photos...') :
-                        currentPhotos.length > 0 ?
-                            h('div', { 
-                                style: { 
-                                    display: 'grid', 
-                                    gridTemplateColumns: 'repeat(2, 1fr)', 
-                                    gap: '0.5rem' 
-                                } 
-                            },
-                                currentPhotos.slice(0, 4).map((photo, idx) =>
-                                    h('img', {
-                                        key: idx,
-                                        src: photo.medium_url,
-                                        alt: `Photo ${idx + 1}`,
-                                        style: {
-                                            width: '100%',
-                                            height: '150px',
-                                            objectFit: 'cover',
-                                            borderRadius: '0.5rem'
-                                        }
-                                    })
-                                )
-                            ) :
-                            h('div', { 
-                                style: { 
-                                    textAlign: 'center', 
-                                    padding: '2rem' 
-                                } 
-                            }, 'No photos available')
+                        React.createElement('img', {
+                            src: currentCard.specimen.primary_image_url || '/placeholder-mushroom.jpg',
+                            alt: showingAnswer ? currentCard.specimen.species : 'Mystery mushroom',
+                            className: 'w-full h-64 object-cover'
+                        })
                     ),
                     
-                    // Right: Answer interface
-                    h('div', { 
-                        style: { 
-                            backgroundColor: 'white', 
-                            borderRadius: '0.75rem', 
-                            padding: '1.5rem' 
-                        } 
-                    },
-                        h('h3', { 
-                            style: { 
-                                fontWeight: '600', 
-                                marginBottom: '1rem' 
-                            } 
-                        }, 'Identify This Mushroom'),
-                        
-                        // Show hints if revealed
-                        (currentHintLevel > 0 || hintsRevealed > 0) && !showResult && !showGuide && h('div', {
-                            style: {
-                                backgroundColor: '#fef3c7',
-                                border: '1px solid #f59e0b',
-                                borderRadius: '0.5rem',
-                                padding: '1rem',
-                                marginBottom: '1rem'
-                            }
-                        },
-                            h('h4', { 
-                                style: { 
-                                    fontWeight: '500', 
-                                    color: '#92400e',
-                                    marginBottom: '0.5rem'
-                                } 
-                            }, `💡 Hints (${currentHintLevel + hintsRevealed}/4)`),
-                            hints.slice(0, currentHintLevel + hintsRevealed).map((hint, idx) =>
-                                h('p', {
-                                    key: idx,
-                                    style: {
-                                        fontSize: '0.875rem',
-                                        color: '#374151',
-                                        marginBottom: idx < currentHintLevel + hintsRevealed - 1 ? '0.5rem' : 0
-                                    }
-                                }, `${idx + 1}. ${hint.text}`)
-                            )
-                        ),
-                        
-                        !showResult && !showGuide ?
-                            // Input mode
-                            h('div', null,
-                                h('div', { style: { marginBottom: '1rem' } },
-                                    h('input', {
-                                        type: 'text',
-                                        value: userAnswer,
-                                        onChange: (e) => setUserAnswer(e.target.value),
-                                        onKeyPress: (e) => e.key === 'Enter' && handleSubmitAnswer(),
-                                        placeholder: 'Enter species name',
-                                        style: {
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '0.5rem',
-                                            fontSize: '1rem',
-                                            boxSizing: 'border-box'
-                                        }
-                                    })
-                                ),
+                    // Content
+                    React.createElement('div', { className: 'p-6' },
+                        !showingAnswer ? (
+                            // Question mode
+                            React.createElement('div', null,
+                                React.createElement('h2', { 
+                                    className: 'text-xl font-semibold mb-4'
+                                }, 'What species is this?'),
                                 
-                                h('div', { style: { display: 'flex', gap: '0.5rem' } },
-                                    h('button', {
-                                        onClick: handleSubmitAnswer,
-                                        disabled: !userAnswer.trim(),
-                                        style: {
-                                            flex: 1,
-                                            padding: '0.75rem',
-                                            backgroundColor: userAnswer.trim() ? '#10b981' : '#d1d5db',
-                                            color: 'white',
-                                            borderRadius: '0.5rem',
-                                            border: 'none',
-                                            cursor: userAnswer.trim() ? 'pointer' : 'not-allowed',
-                                            fontWeight: '500'
-                                        }
-                                    }, 'Submit Answer'),
-                                    
-                                    h('button', {
-                                        onClick: () => {
-                                            if (currentHintLevel + hintsRevealed < 4) {
-                                                setHintsRevealed(prev => prev + 1);
+                                React.createElement('input', {
+                                    type: 'text',
+                                    value: userAnswer,
+                                    onChange: (e) => setUserAnswer(e.target.value),
+                                    placeholder: 'Enter species name...',
+                                    className: 'w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500',
+                                    onKeyPress: (e) => {
+                                        if (e.key === 'Enter') {
+                                            // Simple quality assessment based on answer accuracy
+                                            const targetSpecies = currentCard.specimen.species.toLowerCase();
+                                            const userInput = userAnswer.toLowerCase().trim();
+                                            
+                                            let quality = 1; // Default: incorrect
+                                            if (userInput === targetSpecies) {
+                                                quality = hintsUsed === 0 ? 5 : hintsUsed === 1 ? 4 : 3;
+                                            } else if (targetSpecies.includes(userInput) || userInput.includes(targetSpecies.split(' ')[0])) {
+                                                quality = 3; // Partial credit
                                             }
-                                        },
-                                        disabled: currentHintLevel + hintsRevealed >= 4,
-                                        style: {
-                                            padding: '0.75rem 1rem',
-                                            backgroundColor: currentHintLevel + hintsRevealed < 4 ? '#3b82f6' : '#d1d5db',
-                                            color: 'white',
-                                            borderRadius: '0.5rem',
-                                            border: 'none',
-                                            cursor: currentHintLevel + hintsRevealed < 4 ? 'pointer' : 'not-allowed',
-                                            fontWeight: '500'
+                                            
+                                            handleAnswerSubmit(quality);
                                         }
-                                    }, '💡 Hint')
-                                )
-                            ) :
-                        showResult ?
-                            // Result display
-                            h('div', null,
-                                h('div', {
-                                    style: {
-                                        padding: '1rem',
-                                        backgroundColor: '#f0fdf4',
-                                        border: '2px solid #10b981',
-                                        borderRadius: '0.5rem',
-                                        marginBottom: '1rem'
                                     }
+                                }),
+                                
+                                React.createElement('div', { 
+                                    className: 'flex justify-between items-center'
                                 },
-                                    h('h4', { 
-                                        style: { 
-                                            color: '#065f46',
-                                            marginBottom: '0.5rem'
-                                        } 
-                                    }, '✅ Correct!'),
-                                    h('p', null, 
-                                        h('strong', null, 'Species: '), 
-                                        h('em', null, currentCard.specimen.species_name)
-                                    ),
-                                    lastScore && h('div', {
-                                        style: {
-                                            marginTop: '0.5rem',
-                                            padding: '0.5rem',
-                                            backgroundColor: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '0.25rem',
-                                            fontSize: '0.875rem'
-                                        }
-                                    },
-                                        h('p', null, `Quality Rating: ${lastScore.quality}/5`),
-                                        h('p', null, `Next Review: ${currentCard.interval} questions`)
+                                    React.createElement('button', {
+                                        onClick: handleHintRequest,
+                                        disabled: hintsUsed >= 3,
+                                        className: 'px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 disabled:bg-gray-300'
+                                    }, `💡 Hint (${hintsUsed}/3)`),
+                                    
+                                    React.createElement('div', { className: 'flex space-x-2' },
+                                        React.createElement('button', {
+                                            onClick: () => handleAnswerSubmit(1),
+                                            className: 'px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600'
+                                        }, "Don't Know"),
+                                        React.createElement('button', {
+                                            onClick: () => {
+                                                const targetSpecies = currentCard.specimen.species.toLowerCase();
+                                                const userInput = userAnswer.toLowerCase().trim();
+                                                
+                                                let quality = 1;
+                                                if (userInput === targetSpecies) {
+                                                    quality = hintsUsed === 0 ? 5 : hintsUsed === 1 ? 4 : 3;
+                                                } else if (targetSpecies.includes(userInput) || userInput.includes(targetSpecies.split(' ')[0])) {
+                                                    quality = 3;
+                                                }
+                                                
+                                                handleAnswerSubmit(quality);
+                                            },
+                                            className: 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700'
+                                        }, 'Submit')
                                     )
                                 ),
                                 
-                                h('button', {
-                                    onClick: handleNext,
-                                    style: {
-                                        width: '100%',
-                                        padding: '0.75rem',
-                                        backgroundColor: '#10b981',
-                                        color: 'white',
-                                        borderRadius: '0.5rem',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontWeight: '500'
-                                    }
-                                }, 'Next Question →')
-                            ) : null
-                    )
-                )
-            ) : 
-            // Paused state
-            h('div', {
-                style: {
-                    maxWidth: '32rem',
-                    margin: '4rem auto',
-                    padding: '2rem',
-                    backgroundColor: 'white',
-                    borderRadius: '0.75rem',
-                    textAlign: 'center',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                }
-            },
-                h('h2', { 
-                    style: { 
-                        fontSize: '1.5rem', 
-                        fontWeight: 'bold', 
-                        marginBottom: '1rem' 
-                    } 
-                }, '⏸️ Session Paused'),
-                h('p', { 
-                    style: { 
-                        color: '#6b7280', 
-                        marginBottom: '2rem' 
-                    } 
-                }, 'Your progress has been saved. Click resume to continue.'),
-                
-                h('div', { 
-                    style: { 
-                        display: 'grid', 
-                        gridTemplateColumns: '1fr 1fr', 
-                        gap: '1rem',
-                        marginBottom: '2rem'
-                    } 
-                },
-                    h('div', { 
-                        style: { 
-                            padding: '1rem', 
-                            backgroundColor: '#f9fafb', 
-                            borderRadius: '0.5rem' 
-                        } 
-                    },
-                        h('div', { 
-                            style: { 
-                                fontSize: '1.5rem', 
-                                fontWeight: 'bold', 
-                                color: '#10b981' 
-                            } 
-                        }, sessionStats.totalAnswered),
-                        h('div', { 
-                            style: { 
-                                fontSize: '0.875rem', 
-                                color: '#6b7280' 
-                            } 
-                        }, 'Questions')
-                    ),
-                    h('div', { 
-                        style: { 
-                            padding: '1rem', 
-                            backgroundColor: '#f9fafb', 
-                            borderRadius: '0.5rem' 
-                        } 
-                    },
-                        h('div', { 
-                            style: { 
-                                fontSize: '1.5rem', 
-                                fontWeight: 'bold', 
-                                color: '#3b82f6' 
-                            } 
-                        }, `${sessionStats.accuracy}%`),
-                        h('div', { 
-                            style: { 
-                                fontSize: '0.875rem', 
-                                color: '#6b7280' 
-                            } 
-                        }, 'Accuracy')
+                                // Show hint if requested
+                                showingHint && currentCard.specimen.species && speciesHints[currentCard.specimen.species] && (
+                                    React.createElement('div', { 
+                                        className: 'mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg'
+                                    },
+                                        React.createElement('h3', { 
+                                            className: 'font-medium text-yellow-800 mb-2'
+                                        }, 'Hint:'),
+                                        React.createElement('p', { 
+                                            className: 'text-yellow-700'
+                                        }, speciesHints[currentCard.specimen.species].hints[hintsUsed - 1] || 'No more hints available')
+                                    )
+                                )
+                            )
+                        ) : (
+                            // Answer mode
+                            React.createElement('div', null,
+                                React.createElement('div', { 
+                                    className: `p-4 rounded-lg mb-4 ${
+                                        feedback?.correct ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                                    }`
+                                },
+                                    React.createElement('h3', { 
+                                        className: `font-semibold mb-2 ${
+                                            feedback?.correct ? 'text-green-800' : 'text-red-800'
+                                        }`
+                                    }, feedback?.correct ? '✅ Correct!' : '❌ Incorrect'),
+                                    
+                                    React.createElement('p', { 
+                                        className: 'text-lg font-medium text-gray-800'
+                                    }, currentCard.specimen.species),
+                                    
+                                    currentCard.specimen.common_name && React.createElement('p', { 
+                                        className: 'text-gray-600'
+                                    }, `Common name: ${currentCard.specimen.common_name}`)
+                                ),
+                                
+                                // Additional info
+                                React.createElement('div', { className: 'space-y-2 text-sm text-gray-600' },
+                                    React.createElement('p', null, 
+                                        `Family: ${currentCard.specimen.family || 'Unknown'}`
+                                    ),
+                                    React.createElement('p', null, 
+                                        `Genus: ${currentCard.specimen.genus || 'Unknown'}`
+                                    ),
+                                    currentCard.specimen.dna_sequenced && React.createElement('p', { 
+                                        className: 'text-blue-600'
+                                    }, '🧬 DNA verified')
+                                ),
+                                
+                                React.createElement('div', { className: 'mt-6 flex justify-center' },
+                                    React.createElement('button', {
+                                        onClick: handleNextCard,
+                                        className: 'px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium'
+                                    }, 'Next Card →')
+                                )
+                            )
+                        )
                     )
                 ),
                 
-                h('button', {
-                    onClick: togglePause,
-                    style: {
-                        width: '100%',
-                        padding: '0.75rem',
-                        backgroundColor: '#10b981',
-                        color: 'white',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        fontSize: '1rem'
-                    }
-                }, '▶️ Resume Session')
-            ),
-            
-            // Show guide modal if needed
-            showGuide && window.InteractiveSpeciesGuide && h(window.InteractiveSpeciesGuide, {
-                specimen: currentCard.specimen,
-                speciesHints: speciesHints[currentCard.specimen.species_name],
-                photos: currentPhotos,
-                referencePhotos: referencePhotos[currentCard.specimen.species_name] || [],
-                onClose: () => {
-                    setShowGuide(false);
-                    handleNext();
+                // Mobile swipe instructions
+                React.createElement('div', { 
+                    className: 'text-center text-gray-500 text-sm md:hidden'
                 },
-                onTryAgain: () => {
-                    setShowGuide(false);
-                    handleNext();
-                }
-            })
+                    '👆 Swipe left for hint, swipe right for next card'
+                )
+            ) : (
+                // Paused state
+                React.createElement('div', { 
+                    className: 'max-w-md mx-auto mt-12 bg-white rounded-xl p-8 shadow-lg text-center'
+                },
+                    React.createElement('h2', { 
+                        className: 'text-2xl font-bold text-gray-800 mb-4'
+                    }, '⏸️ Session Paused'),
+                    React.createElement('p', { 
+                        className: 'text-gray-600 mb-6'
+                    }, 'Take a break! Your progress is automatically saved.'),
+                    
+                    React.createElement('div', { 
+                        className: 'grid grid-cols-2 gap-4 mb-6 text-center'
+                    },
+                        React.createElement('div', { 
+                            className: 'bg-gray-50 rounded-lg p-4'
+                        },
+                            React.createElement('div', { 
+                                className: 'text-2xl font-bold text-green-600'
+                            }, sessionStats.totalAnswered || 0),
+                            React.createElement('div', { 
+                                className: 'text-sm text-gray-600'
+                            }, 'Questions')
+                        ),
+                        React.createElement('div', { 
+                            className: 'bg-gray-50 rounded-lg p-4'
+                        },
+                            React.createElement('div', { 
+                                className: 'text-2xl font-bold text-blue-600'
+                            }, `${sessionStats.accuracy || 0}%`),
+                            React.createElement('div', { 
+                                className: 'text-sm text-gray-600'
+                            }, 'Accuracy')
+                        )
+                    ),
+                    
+                    React.createElement('button', {
+                        onClick: togglePause,
+                        className: 'w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium'
+                    }, '▶️ Resume Session')
+                )
+            )
         );
     };
+    
+    console.log('✅ MarathonMode component loaded successfully');
+    
 })();
