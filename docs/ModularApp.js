@@ -1,4 +1,7 @@
-// ModularApp.js - Main Modular Application Entry Point
+// ModularApp.js - Main Modular Application Entry Point (Root Level)
+// Moved to docs root to avoid vercel routing issues
+
+// Use shared h variable
 const h = window.h || React.createElement;
 
 // Main App Component with Auth Wrapper
@@ -16,28 +19,17 @@ function ModularApp() {
         const checkReady = () => {
             checkCount++;
             console.log(`🍄 Checking auth availability (attempt ${checkCount})...`);
-            console.log('  - Supabase client:', !!window.supabase);
-            console.log('  - AuthProvider:', !!window.AuthProvider);
-            console.log('  - useAuth:', !!window.useAuth);
             
             if (window.supabase && window.AuthProvider && window.useAuth) {
                 console.log('🍄 Auth system ready!');
                 setAppReady(true);
             } else {
-                if (checkCount < 50) { // Max 5 seconds
+                if (checkCount < 30) { // Max 3 seconds
                     setTimeout(checkReady, 100);
                 } else {
-                    console.error('🍄 Auth system failed to load after 5 seconds');
-                    console.log('🍄 Final window state:', {
-                        supabase: !!window.supabase,
-                        AuthProvider: !!window.AuthProvider,
-                        useAuth: !!window.useAuth
-                    });
-                    // Try to proceed anyway in case there's a timing issue
-                    if (window.AuthProvider && window.useAuth) {
-                        console.log('🍄 Auth functions available, proceeding anyway...');
-                        setAppReady(true);
-                    }
+                    console.error('🍄 Auth system failed to load after 3 seconds');
+                    // Proceed anyway - maybe auth isn't needed immediately
+                    setAppReady(true);
                 }
             }
         };
@@ -62,19 +54,47 @@ function ModularApp() {
         );
     }
     
-    console.log('🍄 App ready, rendering AuthProvider with AuthenticatedApp');
+    console.log('🍄 App ready, checking for AuthProvider and AuthenticatedApp');
     
-    // Render app with auth provider
+    // Render app with auth provider if available, otherwise render HomePage directly
     if (window.AuthProvider && window.AuthenticatedApp) {
         return h(window.AuthProvider, null,
             h(window.AuthenticatedApp)
         );
+    } else if (window.HomePage) {
+        // Fallback to HomePage if auth components aren't ready
+        console.log('🍄 Falling back to HomePage directly');
+        return h(window.HomePage, {
+            specimens: [],
+            user: null,
+            userProgress: {},
+            speciesWithHints: 0,
+            onStudyModeSelect: () => console.log('Study mode selected'),
+            onTrainingModuleSelect: () => console.log('Training module selected'), 
+            onAuthRequired: () => console.log('Auth required'),
+            onProfileClick: () => console.log('Profile clicked'),
+            onSignOut: () => console.log('Sign out')
+        });
     } else {
         return h('div', { style: { padding: '2rem', textAlign: 'center' } },
             h('h1', { style: { color: '#ef4444' } }, 'Component Loading Error'),
-            h('p', null, 'AuthProvider or AuthenticatedApp components not found'),
-            h('p', { style: { fontSize: '0.875rem', color: '#6b7280', marginTop: '1rem' } },
-                'Available components: ', Object.keys(window).filter(k => k.match(/^[A-Z]/)).join(', ')
+            h('p', null, 'Required components not found'),
+            h('div', { style: { marginTop: '1rem' } },
+                h('p', { style: { fontSize: '0.875rem', color: '#6b7280' } },
+                    'Available components: ', Object.keys(window).filter(k => k.match(/^[A-Z]/)).join(', ')
+                ),
+                h('button', {
+                    onClick: () => window.componentLoadTracker?.report(),
+                    style: {
+                        marginTop: '1rem',
+                        padding: '0.5rem 1rem',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer'
+                    }
+                }, 'Show Component Status')
             )
         );
     }
@@ -116,9 +136,10 @@ function initializeModularApp() {
         
         console.log('✅ Flash Fungi Modular App initialized successfully!');
         
-        // Report component status
+        // Report component status after initialization
         setTimeout(() => {
             if (window.componentLoadTracker) {
+                console.log('📊 Final Component Report:');
                 window.componentLoadTracker.report();
             }
         }, 2000);

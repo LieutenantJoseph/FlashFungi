@@ -101,10 +101,14 @@
         </div>
     </div>
 
-    <!-- PHASE 1: Global Setup and Shared Variables -->
+    <!-- PHASE 1: Critical Setup (Must Load First) -->
     <script>
-        // Shared React createElement to prevent duplicate variable errors
+        // CRITICAL: Shared React createElement to prevent duplicate variable errors
+        // This MUST be defined before any components load
         window.h = React.createElement;
+        
+        console.log('🍄 Flash Fungi v3.0 - Modular Components Loading...');
+        console.log('✅ Shared window.h defined:', typeof window.h);
         
         // Component load tracking for debugging
         window.componentLoadTracker = {
@@ -125,77 +129,136 @@
                     failed: this.failed.length,
                     details: { loaded: this.loaded, failed: this.failed }
                 });
+                return { loaded: this.loaded, failed: this.failed };
             }
         };
         
-        console.log('🍄 Flash Fungi v3.0 - Modular Components Loading...');
+        // Error handler for component loading
+        window.handleComponentError = function(componentName, error) {
+            console.error(`🚨 Error in ${componentName}:`, error);
+            window.componentLoadTracker.track(componentName, false);
+        };
     </script>
 
-    <!-- PHASE 2: Core Configuration (Load First) -->
-    <script src="./config/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
+    <!-- PHASE 2: Core Configuration -->
+    <script src="./config/constants.js" 
+            onload="window.componentLoadTracker.track('constants.js')" 
+            onerror="window.componentLoadTracker.track('constants.js', false)">
+    </script>
 
     <!-- PHASE 3: Utility Functions -->
-    <script src="./utils/api.js" onload="window.componentLoadTracker.track('api.js')" onerror="window.componentLoadTracker.track('api.js', false)"></script>
-    <script src="./utils/fuzzyMatching.js" onload="window.componentLoadTracker.track('fuzzyMatching.js')" onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)"></script>
+    <script src="./utils/api.js" 
+            onload="window.componentLoadTracker.track('api.js')" 
+            onerror="window.componentLoadTracker.track('api.js', false)">
+    </script>
+    <script src="./utils/fuzzyMatching.js" 
+            onload="window.componentLoadTracker.track('fuzzyMatching.js')" 
+            onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)">
+    </script>
 
-    <!-- PHASE 4: Common Components (Used by everything) -->
-    <script src="./components/common/Toast.js" onload="window.componentLoadTracker.track('Toast.js')" onerror="window.componentLoadTracker.track('Toast.js', false)"></script>
-    <script src="./components/common/Phase3Badge.js" onload="window.componentLoadTracker.track('Phase3Badge.js')" onerror="window.componentLoadTracker.track('Phase3Badge.js', false)"></script>
-    <script src="./components/common/LoadingScreen.js" onload="window.componentLoadTracker.track('LoadingScreen.js')" onerror="window.componentLoadTracker.track('LoadingScreen.js', false)"></script>
+    <!-- PHASE 4: Common Components -->
+    <script src="./components/common/Toast.js" 
+            onload="window.componentLoadTracker.track('Toast.js')" 
+            onerror="window.componentLoadTracker.track('Toast.js', false)">
+    </script>
+    <script src="./components/common/Phase3Badge.js" 
+            onload="window.componentLoadTracker.track('Phase3Badge.js')" 
+            onerror="window.componentLoadTracker.track('Phase3Badge.js', false)">
+    </script>
+    <script src="./components/common/LoadingScreen.js" 
+            onload="window.componentLoadTracker.track('LoadingScreen.js')" 
+            onerror="window.componentLoadTracker.track('LoadingScreen.js', false)">
+    </script>
 
     <!-- PHASE 5: Authentication System -->
-    <!-- Keep existing auth system (unchanged) -->
-    <script src="./legacy/supabase-auth.js" onload="window.componentLoadTracker.track('supabase-auth.js')" onerror="window.componentLoadTracker.track('supabase-auth.js', false)"></script>
-    
-    <!-- Auth-related components -->
-    <script src="./components/auth/useUserProfile.js" onload="window.componentLoadTracker.track('useUserProfile.js')" onerror="window.componentLoadTracker.track('useUserProfile.js', false)"></script>
+    <script src="./legacy/supabase-auth.js" 
+            onload="window.componentLoadTracker.track('supabase-auth.js')" 
+            onerror="window.componentLoadTracker.track('supabase-auth.js', false)">
+    </script>
+    <script src="./components/auth/useUserProfile.js" 
+            onload="window.componentLoadTracker.track('useUserProfile.js')" 
+            onerror="window.componentLoadTracker.track('useUserProfile.js', false)">
+    </script>
 
     <!-- PHASE 6: Study Components -->
-    <script src="./components/study/InteractiveSpeciesGuide.js" onload="window.componentLoadTracker.track('InteractiveSpeciesGuide.js')" onerror="window.componentLoadTracker.track('InteractiveSpeciesGuide.js', false)"></script>
-    <script src="./components/study/QuickStudy.js" onload="window.componentLoadTracker.track('QuickStudy.js')" onerror="window.componentLoadTracker.track('QuickStudy.js', false)"></script>
-    <script src="./components/study/FocusedStudy.js" onload="window.componentLoadTracker.track('FocusedStudy.js')" onerror="window.componentLoadTracker.track('FocusedStudy.js', false)"></script>
-    <script src="./components/study/MarathonMode.js" onload="window.componentLoadTracker.track('MarathonMode.js')" onerror="window.componentLoadTracker.track('MarathonMode.js', false)"></script>
+    <script src="./components/study/InteractiveSpeciesGuide.js" 
+            onload="window.componentLoadTracker.track('InteractiveSpeciesGuide.js')" 
+            onerror="window.componentLoadTracker.track('InteractiveSpeciesGuide.js', false)">
+    </script>
+    <script src="./components/study/QuickStudy.js" 
+            onload="window.componentLoadTracker.track('QuickStudy.js')" 
+            onerror="window.componentLoadTracker.track('QuickStudy.js', false)">
+    </script>
+    <script src="./components/study/FocusedStudy.js" 
+            onload="window.componentLoadTracker.track('FocusedStudy.js')" 
+            onerror="window.componentLoadTracker.track('FocusedStudy.js', false)">
+    </script>
+    <script src="./components/study/MarathonMode.js" 
+            onload="window.componentLoadTracker.track('MarathonMode.js')" 
+            onerror="window.componentLoadTracker.track('MarathonMode.js', false)">
+    </script>
 
     <!-- PHASE 7: Training System -->
-    <script src="./components/training/TrainingModules.js" onload="window.componentLoadTracker.track('TrainingModules.js')" onerror="window.componentLoadTracker.track('TrainingModules.js', false)"></script>
-    <script src="./components/training/ModulePlayer.js" onload="window.componentLoadTracker.track('ModulePlayer.js')" onerror="window.componentLoadTracker.track('ModulePlayer.js', false)"></script>
-    <script src="./components/training/GenusModules.js" onload="window.componentLoadTracker.track('GenusModules.js')" onerror="window.componentLoadTracker.track('GenusModules.js', false)"></script>
+    <script src="./components/training/TrainingModules.js" 
+            onload="window.componentLoadTracker.track('TrainingModules.js')" 
+            onerror="window.componentLoadTracker.track('TrainingModules.js', false)">
+    </script>
+    <script src="./components/training/ModulePlayer.js" 
+            onload="window.componentLoadTracker.track('ModulePlayer.js')" 
+            onerror="window.componentLoadTracker.track('ModulePlayer.js', false)">
+    </script>
+    <script src="./components/training/GenusModules.js" 
+            onload="window.componentLoadTracker.track('GenusModules.js')" 
+            onerror="window.componentLoadTracker.track('GenusModules.js', false)">
+    </script>
 
     <!-- PHASE 8: Profile & Achievement System -->
-    <script src="./components/profile/ProfilePage.js" onload="window.componentLoadTracker.track('ProfilePage.js')" onerror="window.componentLoadTracker.track('ProfilePage.js', false)"></script>
-    <script src="./legacy/public-profile.js" onload="window.componentLoadTracker.track('public-profile.js')" onerror="window.componentLoadTracker.track('public-profile.js', false)"></script>
-    <script src="./components/achievements/AchievementSystem.js" onload="window.componentLoadTracker.track('AchievementSystem.js')" onerror="window.componentLoadTracker.track('AchievementSystem.js', false)"></script>
+    <script src="./components/profile/ProfilePage.js" 
+            onload="window.componentLoadTracker.track('ProfilePage.js')" 
+            onerror="window.componentLoadTracker.track('ProfilePage.js', false)">
+    </script>
+    <script src="./legacy/public-profile.js" 
+            onload="window.componentLoadTracker.track('public-profile.js')" 
+            onerror="window.componentLoadTracker.track('public-profile.js', false)">
+    </script>
+    <script src="./components/achievements/AchievementSystem.js" 
+            onload="window.componentLoadTracker.track('AchievementSystem.js')" 
+            onerror="window.componentLoadTracker.track('AchievementSystem.js', false)">
+    </script>
 
     <!-- PHASE 9: UI Enhancement Components -->
-    <script src="./components/ui/PlaceholderAssets.js" onload="window.componentLoadTracker.track('PlaceholderAssets.js')" onerror="window.componentLoadTracker.track('PlaceholderAssets.js', false)"></script>
+    <script src="./components/ui/PlaceholderAssets.js" 
+            onload="window.componentLoadTracker.track('PlaceholderAssets.js')" 
+            onerror="window.componentLoadTracker.track('PlaceholderAssets.js', false)">
+    </script>
 
     <!-- PHASE 10: Main Application Components -->
-    <script src="./components/home/HomePage.js" onload="window.componentLoadTracker.track('HomePage.js')" onerror="window.componentLoadTracker.track('HomePage.js', false)"></script>
-    <script src="./components/auth/AuthenticatedApp.js" onload="window.componentLoadTracker.track('AuthenticatedApp.js')" onerror="window.componentLoadTracker.track('AuthenticatedApp.js', false)"></script>
+    <script src="./components/home/HomePage.js" 
+            onload="window.componentLoadTracker.track('HomePage.js')" 
+            onerror="window.componentLoadTracker.track('HomePage.js', false)">
+    </script>
+    <script src="./components/auth/AuthenticatedApp.js" 
+            onload="window.componentLoadTracker.track('AuthenticatedApp.js')" 
+            onerror="window.componentLoadTracker.track('AuthenticatedApp.js', false)">
+    </script>
 
-    <!-- PHASE 11: Application Entry Point (New Modular App) -->
-    <script src="./components/ModularApp.js" onload="window.componentLoadTracker.track('ModularApp.js')" onerror="window.componentLoadTracker.track('ModularApp.js', false)"></script>
+    <!-- PHASE 11: Application Entry Point (From docs root to avoid routing issues) -->
+    <script src="./ModularApp.js" 
+            onload="window.componentLoadTracker.track('ModularApp.js')" 
+            onerror="window.componentLoadTracker.track('ModularApp.js', false)">
+    </script>
 
-    <!-- Error Handling & Component Status Check -->
+    <!-- Final Error Handling & Status Check -->
     <script>
-        // Wait for all components to load, then initialize
-        window.addEventListener('load', () => {
-            console.log('🍄 All resources loaded, checking component status...');
-            window.componentLoadTracker.report();
-            
-            // Check if main app components are available
-            setTimeout(() => {
-                if (typeof window.ModularApp !== 'undefined') {
-                    console.log('✅ Modular app system ready!');
-                } else {
-                    console.warn('⚠️ ModularApp not found, components may not be fully loaded');
-                }
-            }, 1000);
-        });
-
-        // Global error handler
+        // Global error handler with better debugging
         window.addEventListener('error', (event) => {
             console.error('🚨 Global error:', event.error);
+            
+            // Track the error
+            if (event.filename) {
+                const componentName = event.filename.split('/').pop();
+                window.componentLoadTracker.track(componentName, false);
+            }
             
             const root = document.getElementById('root');
             if (root && !root.innerHTML.includes('Flash Fungi initialized')) {
@@ -217,9 +280,41 @@
                                        border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
                             📊 Show Component Status
                         </button>
+                        <div style="margin-top: 1rem; font-size: 0.875rem; color: #9ca3af;">
+                            Available components: ${Object.keys(window).filter(k => k.match(/^[A-Z]/)).join(', ')}
+                        </div>
                     </div>
                 `;
             }
+        });
+
+        // Wait for all components to load, then show final status
+        window.addEventListener('load', () => {
+            console.log('🍄 All resources loaded, checking component status...');
+            
+            setTimeout(() => {
+                const report = window.componentLoadTracker.report();
+                
+                if (report.failed.length > 0) {
+                    console.warn('⚠️ Some components failed to load:', report.failed);
+                }
+                
+                if (typeof window.ModularApp !== 'undefined') {
+                    console.log('✅ Modular app system ready!');
+                } else {
+                    console.warn('⚠️ ModularApp not found');
+                }
+                
+                // Check for critical components
+                const criticalComponents = ['HomePage', 'LoadingScreen', 'Toast'];
+                const missingCritical = criticalComponents.filter(comp => !window[comp]);
+                
+                if (missingCritical.length > 0) {
+                    console.error('❌ Missing critical components:', missingCritical);
+                } else {
+                    console.log('✅ All critical components loaded successfully');
+                }
+            }, 1000);
         });
 
         // Development mode helpers

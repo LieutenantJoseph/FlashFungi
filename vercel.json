@@ -9,57 +9,22 @@
       "dest": "/docs/admin.html"
     },
     {
-      "src": "^/([^/]+\\.js)$",
-      "dest": "/docs/$1",
+      "src": ".*\\.js$",
+      "dest": "/docs$0",
       "headers": {
         "Content-Type": "application/javascript; charset=utf-8"
       }
     },
     {
-      "src": "^/(legacy/[^/]+\\.js)$",
-      "dest": "/docs/$1",
+      "src": ".*\\.css$",
+      "dest": "/docs$0",
       "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "^/(components/[^/]+/[^/]+\\.js)$",
-      "dest": "/docs/$1",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "^/(components/[^/]+/[^/]+/[^/]+\\.js)$",
-      "dest": "/docs/$1",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "^/(config/[^/]+\\.js)$",
-      "dest": "/docs/$1",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "^/(utils/[^/]+\\.js)$",
-      "dest": "/docs/$1",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
+        "Content-Type": "text/css; charset=utf-8"
       }
     },
     {
       "src": "/manifest.json",
       "dest": "/docs/manifest.json"
-    },
-    {
-      "src": "/service-worker.js",
-      "dest": "/docs/service-worker.js",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
     },
     {
       "src": "/",
