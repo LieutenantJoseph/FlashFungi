@@ -9,11 +9,39 @@
       "dest": "/docs/admin.html"
     },
     {
+      "src": "/components/(.*)",
+      "dest": "/docs/components/$1"
+    },
+    {
+      "src": "/config/(.*)",
+      "dest": "/docs/config/$1"
+    },
+    {
+      "src": "/utils/(.*)",
+      "dest": "/docs/utils/$1"
+    },
+    {
+      "src": "/legacy/(.*)",
+      "dest": "/docs/legacy/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/docs/assets/$1"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/docs/manifest.json"
+    },
+    {
+      "src": "/service-worker.js",
+      "dest": "/docs/service-worker.js"
+    },
+    {
       "src": "/",
       "dest": "/docs/index.html"
     },
     {
-      "src": "/(.*)",
+      "src": "/((?!api|components|config|utils|legacy|assets|manifest.json|service-worker.js).*)",
       "dest": "/docs/index.html"
     }
   ]
