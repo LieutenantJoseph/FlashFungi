@@ -4,6 +4,7 @@
 window.TrainingModules = function TrainingModules({ onBack, onModuleSelect, userProgress, user }) {
     const [selectedCategory, setSelectedCategory] = React.useState('foundation');
     
+    window.h = window.h || React.createElement; const h = window.h;
     
     // Foundation modules data
     const foundationModules = [

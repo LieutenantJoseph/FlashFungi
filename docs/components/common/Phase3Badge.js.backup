@@ -1,6 +1,7 @@
 // Phase3Badge.js - Reusable Phase/Coming Soon Badge Component
 // Flash Fungi - Common Components
 
+window.h = window.h || React.createElement; const h = window.h;
 
 // Main Phase3Badge Component
 function Phase3Badge({ 

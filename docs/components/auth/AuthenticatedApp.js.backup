@@ -4,6 +4,7 @@
 window.AuthenticatedApp = function AuthenticatedApp() {
     console.log('🔍 AuthenticatedApp rendering...');
     
+    window.h = window.h || React.createElement; const h = window.h;
     
     // We're inside AuthProvider now, so this should work
     const authContext = window.useAuth();

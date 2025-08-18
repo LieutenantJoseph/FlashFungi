@@ -3,6 +3,7 @@
     'use strict';
     
     const { useState, useEffect, useCallback } = React;
+    window.h = window.h || React.createElement; const h = window.h;
     
     // Achievement Toast Component
     window.AchievementToast = function AchievementToast({ achievement, onClose }) {

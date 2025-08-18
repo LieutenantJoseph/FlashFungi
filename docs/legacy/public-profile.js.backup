@@ -3,6 +3,7 @@
     'use strict';
     
     const { useState, useEffect } = React;
+    const h = React.createElement;
     
     window.PublicProfile = function PublicProfile({ username, onBack, onClose }) {
         const [profile, setProfile] = useState(null);

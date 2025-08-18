@@ -5,6 +5,7 @@ window.ModulePlayer = function ModulePlayer({ module, onComplete, onBack, savePr
     const [currentSlide, setCurrentSlide] = React.useState(0);
     const [completed, setCompleted] = React.useState(false);
 
+    window.h = window.h || React.createElement; const h = window.h;
 
     // Sample module content structure
     const moduleContent = {

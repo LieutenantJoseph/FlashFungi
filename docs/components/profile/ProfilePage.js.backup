@@ -3,6 +3,7 @@
     'use strict';
     
     const { useState, useEffect, useCallback } = React;
+    window.h = window.h || React.createElement; const h = window.h;
     
     window.ProfilePage = function ProfilePage({ user, userProgress, onBack }) {
         const [activeTab, setActiveTab] = useState('overview');

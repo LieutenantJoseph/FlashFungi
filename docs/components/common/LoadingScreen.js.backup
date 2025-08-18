@@ -4,6 +4,7 @@
 window.LoadingScreen = function LoadingScreen({ message = 'Loading educational content...' }) {
     console.log('🔍 LoadingScreen rendering with message:', message);
     
+    window.h = window.h || React.createElement; const h = window.h;
     
     return h('div', {
         style: { 
