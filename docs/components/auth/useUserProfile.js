@@ -7,14 +7,19 @@ window.useUserProfile = function useUserProfile(authUser, getAuthToken) {
     console.log('🔍 useUserProfile called with user:', authUser ? authUser.id : 'no user');
 
     const loadUserProgress = React.useCallback(async () => {
-        try {
-            const progress = await window.FlashFungiAPI.loadUserProgress(authUser?.id, getAuthToken);
-            setUserProgress(progress);
-        } catch (error) {
-            console.error('❌ Error loading user progress:', error);
-            setUserProgress({});
+    if (!authUser?.id) {
+        setUserProgress({});
+        return;
         }
-    }, [authUser, getAuthToken]);
+    
+    try {
+        const progress = await window.FlashFungiAPI.loadUserProgress(authUser?.id, getAuthToken);
+        setUserProgress(progress);
+        } catch (error) {
+        console.error('⚠️ Error loading user progress:', error);
+        setUserProgress({});
+        }
+    }, [authUser?.id]); // ← Only depend on the user ID
 
     const saveProgress = React.useCallback(async (progressData) => {
         if (!authUser?.id) return false;
