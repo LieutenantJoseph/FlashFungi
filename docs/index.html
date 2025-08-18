@@ -26,6 +26,13 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- React createElement helper - MUST be defined before any components load -->
+    <script>
+        // Define h as shorthand for React.createElement (used by some components)
+        window.h = React.createElement;
+        console.log('✅ React createElement helper (h) defined globally');
+    </script>
+    
     <style>
         /* Custom scrollbar */
         ::-webkit-scrollbar {
@@ -94,6 +101,7 @@
 
     <!-- PHASE 1: Configuration & Utils -->
     <script src="config/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
+    <script src="config/supabase.js" onload="window.componentLoadTracker.track('supabase.js')" onerror="window.componentLoadTracker.track('supabase.js', false)"></script>
     <script src="utils/api.js" onload="window.componentLoadTracker.track('api.js')" onerror="window.componentLoadTracker.track('api.js', false)"></script>
     <script src="utils/fuzzyMatching.js" onload="window.componentLoadTracker.track('fuzzyMatching.js')" onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)"></script>
     <script src="utils/touchGestures.js" onload="window.componentLoadTracker.track('touchGestures.js')" onerror="window.componentLoadTracker.track('touchGestures.js', false)"></script>
