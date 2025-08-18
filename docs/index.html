@@ -68,6 +68,12 @@
             50% { opacity: 0.5; }
         }
         
+        @keyframes loadProgress {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        
         .error-screen {
             padding: 2rem;
             text-align: center;
@@ -87,7 +93,7 @@
             <div class="loader-content">
                 <div class="loader-icon">🍄</div>
                 <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; color: #1f2937;">Flash Fungi</h1>
-                <p style="color: #6b7280; margin-bottom: 0.5rem;">Loading educational content...</p>
+                <p style="color: #6b7280; margin-bottom: 0.5rem;">Loading modular components...</p>
                 <div style="width: 200px; height: 4px; background-color: #e5e7eb; border-radius: 2px; margin: 0 auto;">
                     <div style="width: 0%; height: 100%; background-color: #10b981; border-radius: 2px; animation: loadProgress 3s ease-in-out infinite;"></div>
                 </div>
@@ -95,159 +101,12 @@
         </div>
     </div>
 
-    <style>
-        @keyframes loadProgress {
-            0% { width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
-        }
-    </style>
-
-    <!-- PHASE 1: Core Dependencies (Load First) -->
-    
-    <!-- Common Components (Used by everything) -->
-    <script src="./components/common/Toast.js"></script>
-    <script src="./components/common/Phase3Badge.js"></script>
-    <script src="./components/common/LoadingScreen.js"></script>
-
-    <!-- Configuration & Constants -->
-    <script src="./config/constants.js"></script>
-    
-    <!-- PHASE 2: Utilities (Before Components That Use Them) -->
-    
-    <!-- API & Utility Functions -->
-    <script src="./utils/api.js"></script>
-    <script src="./utils/fuzzyMatching.js"></script>
-    
-    <!-- PHASE 3: Authentication System -->
-    
-    <!-- Keep existing auth system (unchanged for now) -->
-    <script src="./supabase-auth.js"></script>
-    
-    <!-- Auth-related components -->
-    <script src="./components/auth/useUserProfile.js"></script>
-    
-    <!-- PHASE 4: Study Components -->
-    
-    <!-- Study utilities and components -->
-    <script src="./components/study/InteractiveSpeciesGuide.js"></script>
-    <script src="./components/study/QuickStudy.js"></script>
-    
-    <!-- Enhanced study modes -->
-    <script src="./components/study/FocusedStudy.js"></script>
-    <script src="./components/study/MarathonMode.js"></script>
-    
-    <!-- PHASE 5: Training System -->
-    
-    <!-- Training components -->
-    <script src="./components/training/TrainingModules.js"></script>
-    <script src="./components/training/ModulePlayer.js"></script>
-    <script src="./components/training/GenusModules.js"></script>
-    
-    <!-- PHASE 6: Profile & Achievement System -->
-    
-    <!-- Profile components -->
-    <script src="./components/profile/ProfilePage.js"></script>
-    
-    <!-- Keep existing public profile (unchanged) -->
-    <script src="./public-profile.js"></script>
-    
-    <!-- Achievement and progress tracking -->
-    <script src="./components/achievements/AchievementSystem.js"></script>
-    
-    <!-- PHASE 7: UI Enhancement Components -->
-    
-    <!-- Asset and placeholder management -->
-    <script src="./components/ui/PlaceholderAssets.js"></script>
-    
-    <!-- PHASE 8: Main Application Components -->
-    
-    <!-- Home page and main navigation -->
-    <script src="./components/home/HomePage.js"></script>
-    
-    <!-- Main app wrapper -->
-    <script src="./components/auth/AuthenticatedApp.js"></script>
-    
-    <!-- PHASE 9: Application Entry Point (Load Last) -->
-    
-    <!-- Main application orchestrator -->
-    <script src="./app.js"></script>
-    
-    <!-- PHASE 10: Service Worker & Analytics -->
-    
-    <!-- Service Worker Registration -->
+    <!-- PHASE 1: Global Setup and Shared Variables -->
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker registered:', registration.scope);
-                        
-                        // Check for updates
-                        registration.addEventListener('updatefound', () => {
-                            console.log('🔄 Service Worker update found');
-                        });
-                    })
-                    .catch(error => {
-                        console.error('❌ Service Worker failed:', error);
-                    });
-            });
-        }
-    </script>
-
-    <!-- Application Monitoring & Error Handling -->
-    <script>
-        // Performance monitoring
-        window.addEventListener('load', () => {
-            const loadTime = performance.now();
-            console.log('🍄 Flash Fungi loaded in', Math.round(loadTime), 'ms');
-            
-            // Warn if load time is slow
-            if (loadTime > 3000) {
-                console.warn('⚠️ Slow load time detected. Consider optimizing.');
-                
-                // Could show toast notification if Toast is available
-                if (window.toast) {
-                    window.toast.warning('App loaded slowly. Check your connection.');
-                }
-            }
-        });
+        // Shared React createElement to prevent duplicate variable errors
+        window.h = React.createElement;
         
-        // Global error handler
-        window.addEventListener('error', (event) => {
-            console.error('🚨 Global error:', event.error);
-            
-            const root = document.getElementById('root');
-            if (root && !root.innerHTML.includes('Flash Fungi initialized')) {
-                root.innerHTML = `
-                    <div class="error-screen">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
-                        <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Loading Error</h1>
-                        <p style="margin-bottom: 1rem; color: #6b7280;">Flash Fungi encountered an error while loading components.</p>
-                        <button onclick="window.location.reload()" 
-                                style="padding: 0.75rem 1.5rem; background: #10b981; color: white; 
-                                       border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
-                            🔄 Reload Application
-                        </button>
-                        <div style="margin-top: 1rem; font-size: 0.875rem; color: #9ca3af;">
-                            Error: ${event.error?.message || 'Unknown error'}
-                        </div>
-                    </div>
-                `;
-            }
-        });
-        
-        // Unhandled promise rejection handler
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('🚨 Unhandled promise rejection:', event.reason);
-            
-            // Show user-friendly error if toast is available
-            if (window.toast) {
-                window.toast.error('An unexpected error occurred. Please try again.');
-            }
-        });
-        
-        // Component load tracking (for debugging)
+        // Component load tracking for debugging
         window.componentLoadTracker = {
             loaded: [],
             failed: [],
@@ -268,19 +127,109 @@
                 });
             }
         };
+        
+        console.log('🍄 Flash Fungi v3.0 - Modular Components Loading...');
     </script>
 
-    <!-- Optional: Development helpers -->
+    <!-- PHASE 2: Core Configuration (Load First) -->
+    <script src="./config/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
+
+    <!-- PHASE 3: Utility Functions -->
+    <script src="./utils/api.js" onload="window.componentLoadTracker.track('api.js')" onerror="window.componentLoadTracker.track('api.js', false)"></script>
+    <script src="./utils/fuzzyMatching.js" onload="window.componentLoadTracker.track('fuzzyMatching.js')" onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)"></script>
+
+    <!-- PHASE 4: Common Components (Used by everything) -->
+    <script src="./components/common/Toast.js" onload="window.componentLoadTracker.track('Toast.js')" onerror="window.componentLoadTracker.track('Toast.js', false)"></script>
+    <script src="./components/common/Phase3Badge.js" onload="window.componentLoadTracker.track('Phase3Badge.js')" onerror="window.componentLoadTracker.track('Phase3Badge.js', false)"></script>
+    <script src="./components/common/LoadingScreen.js" onload="window.componentLoadTracker.track('LoadingScreen.js')" onerror="window.componentLoadTracker.track('LoadingScreen.js', false)"></script>
+
+    <!-- PHASE 5: Authentication System -->
+    <!-- Keep existing auth system (unchanged) -->
+    <script src="./legacy/supabase-auth.js" onload="window.componentLoadTracker.track('supabase-auth.js')" onerror="window.componentLoadTracker.track('supabase-auth.js', false)"></script>
+    
+    <!-- Auth-related components -->
+    <script src="./components/auth/useUserProfile.js" onload="window.componentLoadTracker.track('useUserProfile.js')" onerror="window.componentLoadTracker.track('useUserProfile.js', false)"></script>
+
+    <!-- PHASE 6: Study Components -->
+    <script src="./components/study/InteractiveSpeciesGuide.js" onload="window.componentLoadTracker.track('InteractiveSpeciesGuide.js')" onerror="window.componentLoadTracker.track('InteractiveSpeciesGuide.js', false)"></script>
+    <script src="./components/study/QuickStudy.js" onload="window.componentLoadTracker.track('QuickStudy.js')" onerror="window.componentLoadTracker.track('QuickStudy.js', false)"></script>
+    <script src="./components/study/FocusedStudy.js" onload="window.componentLoadTracker.track('FocusedStudy.js')" onerror="window.componentLoadTracker.track('FocusedStudy.js', false)"></script>
+    <script src="./components/study/MarathonMode.js" onload="window.componentLoadTracker.track('MarathonMode.js')" onerror="window.componentLoadTracker.track('MarathonMode.js', false)"></script>
+
+    <!-- PHASE 7: Training System -->
+    <script src="./components/training/TrainingModules.js" onload="window.componentLoadTracker.track('TrainingModules.js')" onerror="window.componentLoadTracker.track('TrainingModules.js', false)"></script>
+    <script src="./components/training/ModulePlayer.js" onload="window.componentLoadTracker.track('ModulePlayer.js')" onerror="window.componentLoadTracker.track('ModulePlayer.js', false)"></script>
+    <script src="./components/training/GenusModules.js" onload="window.componentLoadTracker.track('GenusModules.js')" onerror="window.componentLoadTracker.track('GenusModules.js', false)"></script>
+
+    <!-- PHASE 8: Profile & Achievement System -->
+    <script src="./components/profile/ProfilePage.js" onload="window.componentLoadTracker.track('ProfilePage.js')" onerror="window.componentLoadTracker.track('ProfilePage.js', false)"></script>
+    <script src="./legacy/public-profile.js" onload="window.componentLoadTracker.track('public-profile.js')" onerror="window.componentLoadTracker.track('public-profile.js', false)"></script>
+    <script src="./components/achievements/AchievementSystem.js" onload="window.componentLoadTracker.track('AchievementSystem.js')" onerror="window.componentLoadTracker.track('AchievementSystem.js', false)"></script>
+
+    <!-- PHASE 9: UI Enhancement Components -->
+    <script src="./components/ui/PlaceholderAssets.js" onload="window.componentLoadTracker.track('PlaceholderAssets.js')" onerror="window.componentLoadTracker.track('PlaceholderAssets.js', false)"></script>
+
+    <!-- PHASE 10: Main Application Components -->
+    <script src="./components/home/HomePage.js" onload="window.componentLoadTracker.track('HomePage.js')" onerror="window.componentLoadTracker.track('HomePage.js', false)"></script>
+    <script src="./components/auth/AuthenticatedApp.js" onload="window.componentLoadTracker.track('AuthenticatedApp.js')" onerror="window.componentLoadTracker.track('AuthenticatedApp.js', false)"></script>
+
+    <!-- PHASE 11: Application Entry Point (New Modular App) -->
+    <script src="./components/ModularApp.js" onload="window.componentLoadTracker.track('ModularApp.js')" onerror="window.componentLoadTracker.track('ModularApp.js', false)"></script>
+
+    <!-- Error Handling & Component Status Check -->
     <script>
+        // Wait for all components to load, then initialize
+        window.addEventListener('load', () => {
+            console.log('🍄 All resources loaded, checking component status...');
+            window.componentLoadTracker.report();
+            
+            // Check if main app components are available
+            setTimeout(() => {
+                if (typeof window.ModularApp !== 'undefined') {
+                    console.log('✅ Modular app system ready!');
+                } else {
+                    console.warn('⚠️ ModularApp not found, components may not be fully loaded');
+                }
+            }, 1000);
+        });
+
+        // Global error handler
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+            
+            const root = document.getElementById('root');
+            if (root && !root.innerHTML.includes('Flash Fungi initialized')) {
+                root.innerHTML = `
+                    <div class="error-screen">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+                        <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">Component Loading Error</h1>
+                        <p style="margin-bottom: 1rem; color: #6b7280;">Some modular components failed to load.</p>
+                        <button onclick="window.location.reload()" 
+                                style="padding: 0.75rem 1.5rem; background: #10b981; color: white; 
+                                       border: none; border-radius: 0.5rem; cursor: pointer; font-weight: 500;">
+                            🔄 Reload Application
+                        </button>
+                        <div style="margin-top: 1rem; font-size: 0.875rem; color: #9ca3af;">
+                            Error: ${event.error?.message || 'Unknown error'}
+                        </div>
+                        <button onclick="window.componentLoadTracker.report()" 
+                                style="margin-top: 0.5rem; padding: 0.5rem 1rem; background: #6b7280; color: white; 
+                                       border: none; border-radius: 0.375rem; cursor: pointer; font-size: 0.875rem;">
+                            📊 Show Component Status
+                        </button>
+                    </div>
+                `;
+            }
+        });
+
         // Development mode helpers
         if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
             console.log('🔧 Development mode detected');
             
-            // Add helpful debugging tools
             window.debug = {
-                showToast: () => window.toast?.success('Toast system working!'),
                 listComponents: () => console.log('Available components:', Object.keys(window).filter(k => k.match(/^[A-Z]/))),
                 reload: () => window.location.reload(),
+                checkStatus: () => window.componentLoadTracker.report(),
                 clearStorage: () => {
                     localStorage.clear();
                     sessionStorage.clear();
