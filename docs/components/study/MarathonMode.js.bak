@@ -5,7 +5,7 @@
     'use strict';
     
     const { useState, useEffect, useCallback, useRef } = React;
-    window.h = window.h || React.createElement; const h = window.h;
+    const h = React.createElement;
     
     // SM-2 Algorithm Implementation
     class SpacedRepetitionQueue {

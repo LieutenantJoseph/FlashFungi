@@ -11,7 +11,7 @@ window.HomePage = function HomePage(props) {
     const onProfileClick = props.onProfileClick;
     const onSignOut = props.onSignOut;
     
-    window.h = window.h || React.createElement; const h = window.h;
+    const h = React.createElement;
     
     const approvedCount = specimens.filter(s => s.status === 'approved').length;
     const dnaCount = specimens.filter(s => s.dna_sequenced).length;

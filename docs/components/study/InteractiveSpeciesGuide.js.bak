@@ -12,7 +12,7 @@ window.InteractiveSpeciesGuide = function InteractiveSpeciesGuide({
     const [activeTab, setActiveTab] = React.useState('overview');
     const [comparisonMode, setComparisonMode] = React.useState(false);
     
-    window.h = window.h || React.createElement; const h = window.h;
+    const h = React.createElement;
     const hints = speciesHints?.hints || [];
     
     // Get admin-selected reference photos if available

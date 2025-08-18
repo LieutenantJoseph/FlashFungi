@@ -12,7 +12,7 @@ window.QuickStudy = function QuickStudy(props) {
     const user = props.user;
     const saveProgress = props.saveProgress;
     
-    window.h = window.h || React.createElement; const h = window.h;
+    const h = React.createElement;
     
     // State
     const [currentIndex, setCurrentIndex] = React.useState(0);

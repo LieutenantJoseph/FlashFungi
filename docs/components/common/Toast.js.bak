@@ -1,7 +1,7 @@
 // Toast.js - Reusable Toast Notification Component
 // Flash Fungi - Common Components
 
-window.h = window.h || React.createElement; const h = window.h;
+const h = React.createElement;
 
 // Toast Hook for managing toast state
 function useToast() {

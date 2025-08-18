@@ -5,7 +5,7 @@
     'use strict';
     
     const { useState, useEffect, useCallback, useMemo } = React;
-    window.h = window.h || React.createElement; const h = window.h;
+    const h = React.createElement;
     
     // Focused Study Component
     window.FocusedStudy = function FocusedStudy(props) {
