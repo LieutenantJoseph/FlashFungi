@@ -1,6 +1,7 @@
-// Flash Fungi - Main Application Entry Point
-// Version 3.0 - Modular Architecture with Authentication Integration
-console.log('🍄 Flash Fungi v3.0 - Modular Architecture');
+// app.js - Complete Flash Fungi Application Orchestrator
+// Version 3.0 - Enhanced modular architecture with all original features
+
+console.log('🍄 Flash Fungi v3.0 - Complete Application Starting...');
 
 // Check React availability
 if (typeof React === 'undefined') {
@@ -9,409 +10,326 @@ if (typeof React === 'undefined') {
 } else {
     console.log('✅ React loaded successfully');
 
-// Configuration
-const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-const API_BASE = '/api';
-
-// Export configuration for use by components
-window.SUPABASE_URL = SUPABASE_URL;
-window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-window.API_BASE = API_BASE;
-
-// Debug: Verify Supabase configuration
-console.log('🔍 Supabase Config:', {
-    url: SUPABASE_URL,
-    hasKey: !!SUPABASE_ANON_KEY,
-    keyLength: SUPABASE_ANON_KEY.length
-});
-
-// Test Supabase connection
-fetch(`${SUPABASE_URL}/rest/v1/`, {
-    headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-    }
-}).then(response => {
-    console.log('🔍 Supabase connection test:', response.ok ? 'SUCCESS' : 'FAILED', response.status);
-}).catch(error => {
-    console.error('🔍 Supabase connection error:', error);
-});
-
-const h = React.createElement;
-
-// Loading Screen Component (shared across modules)
-function LoadingScreen() {
-    console.log('🔍 LoadingScreen rendering');
-    return h('div', {
-        style: { 
-            minHeight: '100vh', 
-            backgroundColor: '#f9fafb', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center' 
-        }
-    },
-        h('div', { style: { textAlign: 'center' } },
-            h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
-                'Flash Fungi'
-            ),
-            h('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
-        )
-    );
-}
-
-// Export LoadingScreen to window for global access
-window.LoadingScreen = LoadingScreen;
-
-// Dynamic Component Loader
-async function loadComponent(scriptPath) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = scriptPath;
-        script.onload = () => {
-            console.log(`✅ Component loaded: ${scriptPath}`);
-            resolve();
-        };
-        script.onerror = (error) => {
-            console.error(`❌ Failed to load component: ${scriptPath}`, error);
-            reject(error);
-        };
-        document.head.appendChild(script);
-    });
-}
-
-// Load Required External Scripts
-async function loadExternalDependencies() {
-    console.log('📦 Loading external dependencies...');
-    
-    try {
-        // Load Supabase client library
-        await new Promise((resolve, reject) => {
-            const supabaseScript = document.createElement('script');
-            supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            supabaseScript.onload = () => {
-                console.log('✅ Supabase client library loaded');
-                resolve();
-            };
-            supabaseScript.onerror = reject;
-            document.head.appendChild(supabaseScript);
-        });
-
-        // Load auth system
-        await loadComponent('./supabase-auth.js');
+    // Component registry for tracking loaded components
+    window.FlashFungi = {
+        components: {},
+        utils: {},
+        version: '3.0.0',
+        loadedComponents: new Set(),
         
-        // Load other Phase 3 components
-        await loadComponent('./public-profile.js');
-        
-// Flash Fungi - Main Application Entry Point
-// Version 3.0 - Modular Architecture with Authentication Integration
-console.log('🍄 Flash Fungi v3.0 - Modular Architecture');
-
-// Check React availability
-if (typeof React === 'undefined') {
-    console.error('❌ React not available');
-    document.getElementById('root').innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React not loaded</h1></div>';
-} else {
-    console.log('✅ React loaded successfully');
-
-// Configuration
-const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-const API_BASE = '/api';
-
-// Export configuration for use by components
-window.SUPABASE_URL = SUPABASE_URL;
-window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-window.API_BASE = API_BASE;
-
-// Debug: Verify Supabase configuration
-console.log('🔍 Supabase Config:', {
-    url: SUPABASE_URL,
-    hasKey: !!SUPABASE_ANON_KEY,
-    keyLength: SUPABASE_ANON_KEY.length
-});
-
-// Test Supabase connection
-fetch(`${SUPABASE_URL}/rest/v1/`, {
-    headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-    }
-}).then(response => {
-    console.log('🔍 Supabase connection test:', response.ok ? 'SUCCESS' : 'FAILED', response.status);
-}).catch(error => {
-    console.error('🔍 Supabase connection error:', error);
-});
-
-const h = React.createElement;
-
-// Loading Screen Component (shared across modules)
-function LoadingScreen() {
-    console.log('🔍 LoadingScreen rendering');
-    return h('div', {
-        style: { 
-            minHeight: '100vh', 
-            backgroundColor: '#f9fafb', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center' 
-        }
-    },
-        h('div', { style: { textAlign: 'center' } },
-            h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-            h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
-                'Flash Fungi'
-            ),
-            h('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
-        )
-    );
-}
-
-// Export LoadingScreen to window for global access
-window.LoadingScreen = LoadingScreen;
-
-// Dynamic Component Loader
-async function loadComponent(scriptPath) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = scriptPath;
-        script.onload = () => {
-            console.log(`✅ Component loaded: ${scriptPath}`);
-            resolve();
-        };
-        script.onerror = (error) => {
-            console.error(`❌ Failed to load component: ${scriptPath}`, error);
-            reject(error);
-        };
-        document.head.appendChild(script);
-    });
-}
-
-// Load Required External Scripts
-async function loadExternalDependencies() {
-    console.log('📦 Loading external dependencies...');
-    
-    try {
-        // Load Supabase client library
-        await new Promise((resolve, reject) => {
-            const supabaseScript = document.createElement('script');
-            supabaseScript.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            supabaseScript.onload = () => {
-                console.log('✅ Supabase client library loaded');
-                resolve();
-            };
-            supabaseScript.onerror = reject;
-            document.head.appendChild(supabaseScript);
-        });
-
-        // Load auth system
-        await loadComponent('./supabase-auth.js');
-        
-        // Load other Phase 3 components
-        await loadComponent('./public-profile.js');
-        
-        console.log('✅ All external dependencies loaded');
-        return true;
-    } catch (error) {
-        console.error('❌ Failed to load external dependencies:', error);
-        return false;
-    }
-}
-
-// Load Core Components
-async function loadCoreComponents() {
-    console.log('🏗️ Loading core components...');
-    
-    try {
-        // Load common components first
-        await loadComponent('./components/common/LoadingScreen.js');
-        await loadComponent('./components/common/Toast.js');
-        await loadComponent('./components/common/Phase3Badge.js');
-        
-        // Load utility components
-        await loadComponent('./components/study/utils/fuzzyMatching.js');
-        
-        // Load study components  
-        await loadComponent('./components/study/QuickStudy.js');
-        
-        // Load page components
-        await loadComponent('./components/home/HomePage.js');
-        
-        // Load the main authenticated app component
-        await loadComponent('./components/auth/AuthenticatedApp.js');
-        
-        console.log('✅ Core components loaded');
-        return true;
-    } catch (error) {
-        console.error('❌ Failed to load core components:', error);
-        return false;
-    }
-}
-
-// Main App Component with Auth Wrapper
-function App() {
-    const [appReady, setAppReady] = React.useState(false);
-    const [loadingStage, setLoadingStage] = React.useState('Starting...');
-    
-    console.log('🔍 App component rendering, appReady:', appReady);
-    console.log('🔍 window.AuthProvider available?', !!window.AuthProvider);
-    console.log('🔍 window.useAuth available?', !!window.useAuth);
-    console.log('🔍 window.supabase available?', !!window.supabase);
-    
-    // Load all dependencies and components
-    React.useEffect(() => {
-        const initializeApp = async () => {
-            try {
-                setLoadingStage('Loading external dependencies...');
-                const depsLoaded = await loadExternalDependencies();
-                
-                if (!depsLoaded) {
-                    throw new Error('Failed to load external dependencies');
-                }
-                
-                setLoadingStage('Loading core components...');
-                const componentsLoaded = await loadCoreComponents();
-                
-                if (!componentsLoaded) {
-                    throw new Error('Failed to load core components');
-                }
-                
-                setLoadingStage('Checking authentication system...');
-                
-                // Wait for auth system to be ready
-                let checkCount = 0;
-                const checkReady = () => {
-                    checkCount++;
-                    console.log(`🔍 Checking auth availability (attempt ${checkCount})...`);
-                    console.log('  - Supabase client:', !!window.supabase);
-                    console.log('  - AuthProvider:', !!window.AuthProvider);
-                    console.log('  - useAuth:', !!window.useAuth);
-                    console.log('  - AuthenticatedApp:', !!window.AuthenticatedApp);
-                    
-                    if (window.supabase && window.AuthProvider && window.useAuth && window.AuthenticatedApp) {
-                        console.log('🔍 Auth system and components ready!');
-                        setLoadingStage('Ready!');
-                        setAppReady(true);
-                    } else {
-                        if (checkCount < 50) { // Max 5 seconds
-                            setTimeout(checkReady, 100);
-                        } else {
-                            console.error('🔍 Auth system failed to load after 5 seconds');
-                            console.log('🔍 Final window state:', {
-                                supabase: !!window.supabase,
-                                AuthProvider: !!window.AuthProvider,
-                                useAuth: !!window.useAuth,
-                                AuthenticatedApp: !!window.AuthenticatedApp
-                            });
-                            // Try to proceed anyway if we have the critical components
-                            if (window.AuthProvider && window.useAuth && window.AuthenticatedApp) {
-                                console.log('🔍 Critical components available, proceeding anyway...');
-                                setAppReady(true);
-                            } else {
-                                throw new Error('Critical components failed to load');
-                            }
-                        }
-                    }
-                };
-                checkReady();
-                
-            } catch (error) {
-                console.error('❌ App initialization failed:', error);
-                setLoadingStage(`Error: ${error.message}`);
-            }
-        };
-        
-        initializeApp();
-    }, []);
-    
-    if (!appReady) {
-        console.log('🔍 App not ready, showing LoadingScreen');
-        return h('div', {
-            style: { 
-                minHeight: '100vh', 
-                backgroundColor: '#f9fafb', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center' 
-            }
+        // Register component when loaded
+        registerComponent: function(name) {
+            this.loadedComponents.add(name);
+            console.log(`✅ Component registered: ${name}`);
+            return true;
         },
-            h('div', { style: { textAlign: 'center' } },
-                h('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-                h('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.5rem' } }, 
-                    'Flash Fungi'
-                ),
-                h('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, loadingStage),
-                h('div', { 
+        
+        // Check if all critical components are loaded
+        checkCriticalComponents: function() {
+            const critical = [
+                'AuthProvider',
+                'AuthenticatedApp', 
+                'HomePage',
+                'QuickStudy',
+                'TrainingModules',
+                'ModulePlayer',
+                'useUserProfile',
+                'FuzzyMatching',
+                'InteractiveSpeciesGuide'
+            ];
+            
+            const missing = critical.filter(component => !window[component]);
+            if (missing.length > 0) {
+                console.log(`⏳ Missing critical components: ${missing.join(', ')}`);
+                return false;
+            }
+            
+            console.log('✅ All critical components loaded');
+            return true;
+        }
+    };
+
+    // Enhanced App Component with complete error handling
+    function App() {
+        const [appReady, setAppReady] = React.useState(false);
+        const [componentStatus, setComponentStatus] = React.useState('Initializing...');
+        const [retryCount, setRetryCount] = React.useState(0);
+        
+        console.log('🔍 App component rendering, appReady:', appReady);
+        
+        // Initialize app dependencies and components
+        React.useEffect(() => {
+            let checkCount = 0;
+            const maxAttempts = 50; // 5 seconds max
+            
+            const checkReady = () => {
+                checkCount++;
+                setComponentStatus(`Checking components (${checkCount}/${maxAttempts})...`);
+                
+                console.log(`🔍 Checking app readiness (attempt ${checkCount})...`);
+                console.log('Available components:', Object.keys(window).filter(k => k.match(/^[A-Z]/) && typeof window[k] === 'function'));
+                
+                // Check for Supabase
+                if (!window.supabase) {
+                    setComponentStatus('Loading Supabase...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // Check for AuthProvider
+                if (!window.AuthProvider || !window.useAuth) {
+                    setComponentStatus('Loading authentication system...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // Check for main app component
+                if (!window.AuthenticatedApp) {
+                    setComponentStatus('Loading main application...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // Check for critical study components
+                if (!window.HomePage || !window.QuickStudy) {
+                    setComponentStatus('Loading study components...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // Check for training components
+                if (!window.TrainingModules || !window.ModulePlayer) {
+                    setComponentStatus('Loading training modules...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // Check for utility components
+                if (!window.useUserProfile || !window.FuzzyMatching) {
+                    setComponentStatus('Loading utilities...');
+                    if (checkCount < maxAttempts) {
+                        setTimeout(checkReady, 100);
+                        return;
+                    }
+                }
+                
+                // All components ready
+                if (window.supabase && window.AuthProvider && window.useAuth && 
+                    window.AuthenticatedApp && window.HomePage && window.QuickStudy &&
+                    window.TrainingModules && window.ModulePlayer && window.useUserProfile &&
+                    window.FuzzyMatching) {
+                    
+                    console.log('🎉 All components ready!');
+                    setComponentStatus('All components loaded successfully!');
+                    setAppReady(true);
+                    return;
+                }
+                
+                // Timeout handling
+                if (checkCount >= maxAttempts) {
+                    console.error('❌ App initialization timeout after', maxAttempts * 100, 'ms');
+                    setComponentStatus('Timeout - some components failed to load');
+                    
+                    // Show what we have vs what we need
+                    const available = Object.keys(window).filter(k => k.match(/^[A-Z]/) && typeof window[k] === 'function');
+                    const needed = ['AuthProvider', 'AuthenticatedApp', 'HomePage', 'QuickStudy', 'TrainingModules', 'ModulePlayer'];
+                    const missing = needed.filter(comp => !available.includes(comp));
+                    
+                    console.log('Available components:', available);
+                    console.log('Missing components:', missing);
+                    
+                    // Try to proceed with what we have if basic auth is working
+                    if (window.AuthProvider && window.AuthenticatedApp) {
+                        console.log('🔄 Proceeding with available components...');
+                        setAppReady(true);
+                    }
+                    return;
+                }
+                
+                // Continue checking
+                setTimeout(checkReady, 100);
+            };
+            
+            // Start checking after a small delay
+            setTimeout(checkReady, 100);
+        }, [retryCount]);
+        
+        // Retry mechanism
+        const handleRetry = () => {
+            setAppReady(false);
+            setRetryCount(prev => prev + 1);
+            setComponentStatus('Retrying initialization...');
+        };
+        
+        // Show loading screen
+        if (!appReady) {
+            return window.LoadingScreen ? 
+                React.createElement(window.LoadingScreen, { message: componentStatus }) :
+                React.createElement('div', { 
                     style: { 
-                        width: '200px', 
-                        height: '4px', 
-                        backgroundColor: '#e5e7eb', 
-                        borderRadius: '2px',
-                        margin: '0 auto',
-                        overflow: 'hidden'
-                    } 
+                        minHeight: '100vh',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#f9fafb'
+                    }
                 },
-                    h('div', {
-                        style: {
-                            width: '100%',
-                            height: '100%',
-                            backgroundColor: '#10b981',
-                            borderRadius: '2px',
-                            animation: 'pulse 2s infinite'
-                        }
-                    })
-                )
-            )
-        );
-    }
-    
-    console.log('🔍 App ready, rendering AuthProvider with AuthenticatedApp');
-    // Render AuthenticatedApp inside AuthProvider
-    return h(window.AuthProvider, null,
-        h(window.AuthenticatedApp)
-    );
-}
-
-// Initialize the app
-console.log('🚀 Initializing Flash Fungi App with Modular Architecture...');
-
-// Wait for DOM to be ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-    initializeApp();
-}
-
-function initializeApp() {
-    const rootElement = document.getElementById('root');
-    
-    if (!rootElement) {
-        console.error('❌ Root element not found');
-        return;
-    }
-
-    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-        console.error('❌ React not available');
-        rootElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React libraries not loaded</h1></div>';
-        return;
-    }
-
-    try {
-        // Use React 18 createRoot API
-        if (ReactDOM.createRoot) {
-            const root = ReactDOM.createRoot(rootElement);
-            root.render(h(App));
-        } else {
-            // Fallback for older React versions
-            ReactDOM.render(h(App), rootElement);
+                    React.createElement('div', { style: { textAlign: 'center', maxWidth: '400px', padding: '2rem' } },
+                        React.createElement('div', { 
+                            style: { 
+                                fontSize: '4rem', 
+                                marginBottom: '1rem',
+                                animation: 'pulse 2s infinite'
+                            } 
+                        }, '🍄'),
+                        React.createElement('h1', { 
+                            style: { 
+                                fontSize: '1.5rem', 
+                                fontWeight: 'bold', 
+                                marginBottom: '0.5rem',
+                                color: '#1f2937'
+                            } 
+                        }, 'Flash Fungi'),
+                        React.createElement('p', { 
+                            style: { 
+                                color: '#6b7280', 
+                                marginBottom: '1rem',
+                                fontSize: '0.875rem'
+                            } 
+                        }, componentStatus),
+                        
+                        // Show retry button after some attempts
+                        retryCount > 0 && React.createElement('button', {
+                            onClick: handleRetry,
+                            style: {
+                                padding: '0.5rem 1rem',
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '0.5rem',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                marginTop: '1rem'
+                            }
+                        }, `Retry (${retryCount})`)
+                    )
+                );
         }
         
-        console.log('✅ Flash Fungi initialized successfully with modular architecture!');
-    } catch (error) {
-        console.error('❌ Error initializing app:', error);
-        rootElement.innerHTML = `<div style="padding: 20px; text-align: center; color: red;"><h1>Error initializing app</h1><p>${error.message}</p></div>`;
+        console.log('🚀 App ready, rendering with AuthProvider...');
+        
+        // Render the complete app
+        try {
+            return React.createElement(window.AuthProvider, null,
+                React.createElement(window.AuthenticatedApp)
+            );
+        } catch (error) {
+            console.error('❌ Error rendering app:', error);
+            return React.createElement('div', { 
+                style: { 
+                    padding: '2rem', 
+                    textAlign: 'center',
+                    minHeight: '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                } 
+            },
+                React.createElement('div', null,
+                    React.createElement('h1', { style: { color: '#ef4444', marginBottom: '1rem' } }, 'Application Error'),
+                    React.createElement('p', { style: { marginBottom: '1rem' } }, error.message),
+                    React.createElement('button', {
+                        onClick: () => window.location.reload(),
+                        style: {
+                            padding: '0.5rem 1rem',
+                            backgroundColor: '#3b82f6',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            cursor: 'pointer'
+                        }
+                    }, 'Reload Application')
+                )
+            );
+        }
+    }
+
+    // Initialize the app when DOM is ready
+    function initializeApp() {
+        console.log('🔄 Initializing Flash Fungi application...');
+        
+        const rootElement = document.getElementById('root');
+        
+        if (!rootElement) {
+            console.error('❌ Root element not found');
+            return;
+        }
+
+        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
+            console.error('❌ React libraries not available');
+            rootElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React libraries not loaded</h1></div>';
+            return;
+        }
+
+        try {
+            // Use React 18 createRoot API if available
+            if (ReactDOM.createRoot) {
+                console.log('✅ Using React 18 createRoot API');
+                const root = ReactDOM.createRoot(rootElement);
+                root.render(React.createElement(App));
+            } else {
+                // Fallback for older React versions
+                console.log('✅ Using legacy ReactDOM.render');
+                ReactDOM.render(React.createElement(App), rootElement);
+            }
+            
+            console.log('🎉 Flash Fungi application initialized successfully!');
+            
+            // Register global error handlers
+            window.addEventListener('error', (event) => {
+                console.error('🚨 Global error caught:', event.error);
+            });
+
+            window.addEventListener('unhandledrejection', (event) => {
+                console.error('🚨 Unhandled promise rejection:', event.reason);
+            });
+            
+        } catch (error) {
+            console.error('❌ Error initializing app:', error);
+            rootElement.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: red;">
+                    <h1>Error initializing Flash Fungi</h1>
+                    <p>${error.message}</p>
+                    <button onclick="window.location.reload()" style="
+                        padding: 0.5rem 1rem;
+                        background-color: #3b82f6;
+                        color: white;
+                        border: none;
+                        border-radius: 0.5rem;
+                        cursor: pointer;
+                        margin-top: 1rem;
+                    ">Reload</button>
+                </div>
+            `;
+        }
+    }
+
+    // Start the application
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+        initializeApp();
     }
 }
-}
+
+console.log('📋 Flash Fungi app.js orchestrator loaded successfully');

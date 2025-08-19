@@ -1,189 +1,205 @@
-// components/study/utils/fuzzyMatching.js
-// Utility functions for fuzzy string matching in species identification
+// fuzzyMatching.js - Enhanced Fuzzy Matching Utilities
+// Flash Fungi - Advanced text matching for answer validation
 
-// Calculate Levenshtein distance between two strings
-const calculateLevenshteinDistance = (str1, str2) => {
-    const matrix = Array(str2.length + 1).fill(null).map(() => 
-        Array(str1.length + 1).fill(null)
-    );
+(function() {
+    'use strict';
     
-    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
-    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
-    
-    for (let j = 1; j <= str2.length; j++) {
-        for (let i = 1; i <= str1.length; i++) {
-            const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-            matrix[j][i] = Math.min(
-                matrix[j][i - 1] + 1,
-                matrix[j - 1][i] + 1,
-                matrix[j - 1][i - 1] + substitutionCost
-            );
+    // Calculate Levenshtein distance between two strings
+    const calculateLevenshteinDistance = (str1, str2) => {
+        const matrix = Array(str2.length + 1).fill(null).map(() => 
+            Array(str1.length + 1).fill(null)
+        );
+        
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+        
+        for (let j = 1; j <= str2.length; j++) {
+            for (let i = 1; i <= str1.length; i++) {
+                const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                matrix[j][i] = Math.min(
+                    matrix[j][i - 1] + 1,
+                    matrix[j - 1][i] + 1,
+                    matrix[j - 1][i - 1] + substitutionCost
+                );
+            }
         }
-    }
-    
-    return matrix[str2.length][str1.length];
-};
+        
+        return matrix[str2.length][str1.length];
+    };
 
-// Calculate similarity percentage between two strings
-const calculateSimilarity = (str1, str2) => {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-    
-    if (longer.length === 0) return 1.0;
-    
-    const editDistance = calculateLevenshteinDistance(longer, shorter);
-    return (longer.length - editDistance) / longer.length;
-};
+    // Calculate similarity percentage between two strings
+    const calculateSimilarity = (str1, str2) => {
+        const longer = str1.length > str2.length ? str1 : str2;
+        const shorter = str1.length > str2.length ? str2 : str1;
+        
+        if (longer.length === 0) return 1.0;
+        
+        const editDistance = calculateLevenshteinDistance(longer, shorter);
+        return (longer.length - editDistance) / longer.length;
+    };
 
-// Normalize species name for comparison
-const normalizeSpeciesName = (name) => {
-    return name
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s]/g, '') // Remove special characters
-        .replace(/\s+/g, ' '); // Normalize whitespace
-};
+    // Enhanced answer validation with fuzzy matching and scoring
+    const validateSpeciesAnswer = (userAnswer, specimen) => {
+        if (!userAnswer || !specimen) return { isCorrect: false, score: 0, feedback: '' };
+        
+        const cleaned = userAnswer.toLowerCase().trim();
+        const species = specimen.species_name.toLowerCase();
+        const genus = specimen.genus.toLowerCase();
+        const family = specimen.family.toLowerCase();
+        const common = (specimen.common_name || '').toLowerCase();
+        
+        // Calculate base score based on match type
+        let baseScore = 0;
+        let feedback = '';
+        let isCorrect = false;
+        
+        // Perfect species match
+        if (cleaned === species) {
+            baseScore = 100;
+            feedback = 'Perfect! Complete species identification!';
+            isCorrect = true;
+        }
+        // Fuzzy species match (typos)
+        else if (calculateSimilarity(cleaned, species) > 0.85) {
+            baseScore = 95;
+            feedback = 'Correct! (Minor spelling variation accepted)';
+            isCorrect = true;
+        }
+        // Common name match
+        else if (common && cleaned === common) {
+            baseScore = 90;
+            feedback = 'Correct! You identified it by common name!';
+            isCorrect = true;
+        }
+        // Fuzzy common name match
+        else if (common && calculateSimilarity(cleaned, common) > 0.85) {
+            baseScore = 85;
+            feedback = 'Correct! Common name with minor spelling variation!';
+            isCorrect = true;
+        }
+        // Genus + wrong species
+        else if (cleaned.includes(genus) && cleaned.split(' ').length > 1) {
+            baseScore = 60;
+            feedback = `Good! Genus "${specimen.genus}" is correct, but wrong species epithet.`;
+        }
+        // Genus only
+        else if (cleaned === genus) {
+            baseScore = 50;
+            feedback = `Partial credit: Genus "${specimen.genus}" is correct. Need full species name.`;
+        }
+        // Fuzzy genus match
+        else if (calculateSimilarity(cleaned, genus) > 0.8) {
+            baseScore = 45;
+            feedback = `Close! You're near the genus "${specimen.genus}". Check spelling.`;
+        }
+        // Family only
+        else if (cleaned === family || cleaned.includes(family)) {
+            baseScore = 30;
+            feedback = `You identified the family "${specimen.family}". Try to get more specific.`;
+        }
+        // Fuzzy family match
+        else if (calculateSimilarity(cleaned, family) > 0.8) {
+            baseScore = 25;
+            feedback = `You're close to the family "${specimen.family}". Try to be more specific.`;
+        }
+        // No match
+        else {
+            baseScore = 0;
+            feedback = 'Not quite. Try using the hints!';
+        }
+        
+        return {
+            isCorrect: isCorrect,
+            baseScore: baseScore,
+            feedback: feedback
+        };
+    };
 
-// Check if two species names are similar enough to be considered a match
-const areSpeciesSimilar = (name1, name2, threshold = 0.85) => {
-    const normalized1 = normalizeSpeciesName(name1);
-    const normalized2 = normalizeSpeciesName(name2);
-    
-    // Exact match
-    if (normalized1 === normalized2) return true;
-    
-    // Fuzzy match with threshold
-    return calculateSimilarity(normalized1, normalized2) >= threshold;
-};
+    // Calculate final score with hint penalty
+    const calculateFinalScore = (baseScore, hintsUsed) => {
+        // Apply hint penalty (-5% per hint used)
+        const hintPenalty = Math.min(hintsUsed * 5, 40); // Max 40% penalty
+        const finalScore = Math.max(baseScore - hintPenalty, 0);
+        
+        return {
+            finalScore: finalScore,
+            hintPenalty: hintPenalty
+        };
+    };
 
-// Extract genus from full species name
-const extractGenus = (speciesName) => {
-    const parts = speciesName.trim().split(' ');
-    return parts[0]; // First part is typically the genus
-};
+    // Normalize text for comparison
+    const normalizeText = (text) => {
+        return text
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s]/g, '') // Remove punctuation
+            .replace(/\s+/g, ' '); // Normalize whitespace
+    };
 
-// Check if a user answer matches any part of the taxonomic hierarchy
-const validateTaxonomicAnswer = (userAnswer, specimen) => {
-    const cleaned = userAnswer.toLowerCase().trim();
-    const species = specimen.species_name.toLowerCase();
-    const genus = specimen.genus.toLowerCase();
-    const family = specimen.family.toLowerCase();
-    const common = (specimen.common_name || '').toLowerCase();
-    
-    const results = {
-        matchType: 'none',
-        score: 0,
-        feedback: '',
-        isCorrect: false
+    // Check if answer contains specific terms
+    const containsTerms = (answer, terms) => {
+        const normalizedAnswer = normalizeText(answer);
+        return terms.some(term => 
+            normalizedAnswer.includes(normalizeText(term))
+        );
+    };
+
+    // Get similarity score between two normalized strings
+    const getSimilarityScore = (str1, str2, threshold = 0.8) => {
+        const similarity = calculateSimilarity(
+            normalizeText(str1), 
+            normalizeText(str2)
+        );
+        return {
+            similarity: similarity,
+            isMatch: similarity >= threshold
+        };
+    };
+
+    // Advanced species name parsing
+    const parseSpeciesName = (input) => {
+        const cleaned = normalizeText(input);
+        const parts = cleaned.split(' ');
+        
+        if (parts.length >= 2) {
+            return {
+                genus: parts[0],
+                species: parts.slice(1).join(' '),
+                fullName: cleaned,
+                hasGenus: true,
+                hasSpecies: true
+            };
+        } else if (parts.length === 1) {
+            return {
+                genus: parts[0],
+                species: '',
+                fullName: cleaned,
+                hasGenus: true,
+                hasSpecies: false
+            };
+        } else {
+            return {
+                genus: '',
+                species: '',
+                fullName: cleaned,
+                hasGenus: false,
+                hasSpecies: false
+            };
+        }
+    };
+
+    // Export functions to global scope
+    window.FuzzyMatching = {
+        calculateLevenshteinDistance,
+        calculateSimilarity,
+        validateSpeciesAnswer,
+        calculateFinalScore,
+        normalizeText,
+        containsTerms,
+        getSimilarityScore,
+        parseSpeciesName
     };
     
-    // Perfect species match
-    if (cleaned === species) {
-        results.matchType = 'species_exact';
-        results.score = 100;
-        results.feedback = 'Perfect! Complete species identification!';
-        results.isCorrect = true;
-    }
-    // Fuzzy species match (typos)
-    else if (areSpeciesSimilar(cleaned, species)) {
-        results.matchType = 'species_fuzzy';
-        results.score = 95;
-        results.feedback = 'Correct! (Minor spelling variation accepted)';
-        results.isCorrect = true;
-    }
-    // Common name match
-    else if (common && cleaned === common) {
-        results.matchType = 'common_name';
-        results.score = 90;
-        results.feedback = 'Correct! You identified it by common name!';
-        results.isCorrect = true;
-    }
-    // Genus + species attempt (but wrong species)
-    else if (cleaned.includes(genus) && cleaned.split(' ').length > 1) {
-        results.matchType = 'genus_partial';
-        results.score = 60;
-        results.feedback = `Good! Genus "${specimen.genus}" is correct, but wrong species epithet.`;
-        results.isCorrect = false;
-    }
-    // Genus only
-    else if (cleaned === genus) {
-        results.matchType = 'genus_only';
-        results.score = 50;
-        results.feedback = `Partial credit: Genus "${specimen.genus}" is correct. Need full species name.`;
-        results.isCorrect = false;
-    }
-    // Family only
-    else if (cleaned === family || cleaned.includes(family)) {
-        results.matchType = 'family_only';
-        results.score = 30;
-        results.feedback = `You identified the family "${specimen.family}". Try to get more specific.`;
-        results.isCorrect = false;
-    }
-    // Fuzzy genus match
-    else if (areSpeciesSimilar(cleaned, genus, 0.8)) {
-        results.matchType = 'genus_fuzzy';
-        results.score = 45;
-        results.feedback = `Close! You're thinking of genus "${specimen.genus}". Try the full species name.`;
-        results.isCorrect = false;
-    }
-    // No match
-    else {
-        results.matchType = 'none';
-        results.score = 0;
-        results.feedback = 'Not quite. Try using the hints!';
-        results.isCorrect = false;
-    }
+    console.log('✅ Enhanced Fuzzy Matching utilities loaded');
     
-    return results;
-};
-
-// Calculate final score with hint penalties
-const calculateFinalScore = (baseScore, hintsUsed, maxHints = 4) => {
-    const hintPenalty = Math.min(hintsUsed * 5, 40); // 5% penalty per hint, max 40%
-    return Math.max(baseScore - hintPenalty, 0);
-};
-
-// Generate alternative spellings or common variants
-const generateVariants = (speciesName) => {
-    const variants = [speciesName];
-    
-    // Add variant with different capitalization
-    variants.push(speciesName.toLowerCase());
-    variants.push(speciesName.charAt(0).toUpperCase() + speciesName.slice(1).toLowerCase());
-    
-    // Add variant without special characters
-    variants.push(speciesName.replace(/[^\w\s]/g, ''));
-    
-    // Add variant with normalized spacing
-    variants.push(speciesName.replace(/\s+/g, ' ').trim());
-    
-    return [...new Set(variants)]; // Remove duplicates
-};
-
-// Smart species name suggestions
-const suggestCorrections = (userAnswer, availableSpecies, maxSuggestions = 3) => {
-    const suggestions = availableSpecies
-        .map(species => ({
-            name: species,
-            similarity: calculateSimilarity(userAnswer.toLowerCase(), species.toLowerCase())
-        }))
-        .filter(item => item.similarity > 0.3) // Only suggest if reasonably similar
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, maxSuggestions)
-        .map(item => item.name);
-    
-    return suggestions;
-};
-
-// Export functions to window for global access
-window.FuzzyMatching = {
-    calculateLevenshteinDistance,
-    calculateSimilarity,
-    normalizeSpeciesName,
-    areSpeciesSimilar,
-    extractGenus,
-    validateTaxonomicAnswer,
-    calculateFinalScore,
-    generateVariants,
-    suggestCorrections
-};
+})();
