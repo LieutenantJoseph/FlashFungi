@@ -13,8 +13,12 @@
         
         // Get user profile hook with fixed dependencies
         const { userProgress, saveProgress, loadUserProgress } = window.useUserProfile ? 
-            window.useUserProfile(user, () => '') : 
-            { userProgress: {}, saveProgress: () => {}, loadUserProgress: () => {} };
+            window.useUserProfile(user, () => {
+                // Get session from AuthProvider context
+                const authContext = window.useAuth ? window.useAuth() : null;
+                return authContext?.session?.access_token || '';
+            }) : 
+        { userProgress: {}, saveProgress: () => {}, loadUserProgress: () => {} };
         
         const [currentView, setCurrentView] = React.useState('loading');
         const [showAuthModal, setShowAuthModal] = React.useState(false);
