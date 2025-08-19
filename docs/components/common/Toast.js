@@ -1,204 +1,148 @@
-// Toast.js - Reusable Toast Notification Component
-// Flash Fungi - Common Components
+// components/common/Toast.js
+// Toast notification component for showing success/error messages
 
+const h = React.createElement;
 
-// Toast Hook for managing toast state
-function useToast() {
-    const [toasts, setToasts] = React.useState([]);
-    
-    const addToast = React.useCallback((message, type = 'info', duration = 4000) => {
-        const id = Date.now() + Math.random();
-        const toast = { id, message, type, duration };
-        
-        setToasts(prev => [...prev, toast]);
-        
-        // Auto-remove after duration
+function Toast({ message, type = 'info', onClose, duration = 3000 }) {
+    React.useEffect(() => {
         if (duration > 0) {
-            setTimeout(() => {
-                removeToast(id);
+            const timer = setTimeout(() => {
+                onClose && onClose();
             }, duration);
+            return () => clearTimeout(timer);
         }
-        
-        return id;
-    }, []);
-    
-    const removeToast = React.useCallback((id) => {
-        setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, []);
-    
-    const success = React.useCallback((message, duration) => 
-        addToast(message, 'success', duration), [addToast]);
-    
-    const error = React.useCallback((message, duration) => 
-        addToast(message, 'error', duration), [addToast]);
-    
-    const warning = React.useCallback((message, duration) => 
-        addToast(message, 'warning', duration), [addToast]);
-    
-    const info = React.useCallback((message, duration) => 
-        addToast(message, 'info', duration), [addToast]);
-    
-    return {
-        toasts,
-        addToast,
-        removeToast,
-        success,
-        error,
-        warning,
-        info
-    };
-}
+    }, [duration, onClose]);
 
-// Individual Toast Component
-function Toast({ toast, onRemove }) {
-    const getToastStyles = (type) => {
-        const baseStyles = {
-            padding: '0.75rem 1rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.5rem',
-            minWidth: '300px',
-            maxWidth: '500px',
-            animation: 'slideIn 0.3s ease-out',
-            marginBottom: '0.5rem'
-        };
-        
-        const typeStyles = {
-            success: {
-                backgroundColor: '#dcfce7',
-                borderLeft: '4px solid #10b981',
-                color: '#065f46'
-            },
-            error: {
-                backgroundColor: '#fef2f2',
-                borderLeft: '4px solid #ef4444',
-                color: '#991b1b'
-            },
-            warning: {
-                backgroundColor: '#fef3c7',
-                borderLeft: '4px solid #f59e0b',
-                color: '#92400e'
-            },
-            info: {
-                backgroundColor: '#eff6ff',
-                borderLeft: '4px solid #3b82f6',
-                color: '#1e40af'
-            }
-        };
-        
-        return { ...baseStyles, ...typeStyles[type] };
+    const getTypeStyles = () => {
+        switch (type) {
+            case 'success':
+                return {
+                    backgroundColor: '#10b981',
+                    borderColor: '#059669',
+                    icon: '✅'
+                };
+            case 'error':
+                return {
+                    backgroundColor: '#ef4444',
+                    borderColor: '#dc2626',
+                    icon: '❌'
+                };
+            case 'warning':
+                return {
+                    backgroundColor: '#f59e0b',
+                    borderColor: '#d97706',
+                    icon: '⚠️'
+                };
+            default:
+                return {
+                    backgroundColor: '#3b82f6',
+                    borderColor: '#2563eb',
+                    icon: 'ℹ️'
+                };
+        }
     };
-    
-    const getIcon = (type) => {
-        const icons = {
-            success: '✅',
-            error: '❌',
-            warning: '⚠️',
-            info: 'ℹ️'
-        };
-        return icons[type] || icons.info;
-    };
-    
-    return h('div', {
-        style: getToastStyles(toast.type)
-    },
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem' } },
-            h('span', { style: { fontSize: '1rem' } }, getIcon(toast.type)),
-            h('span', { style: { fontSize: '0.875rem', fontWeight: '500' } }, toast.message)
-        ),
-        h('button', {
-            onClick: () => onRemove(toast.id),
-            style: {
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1.125rem',
-                fontWeight: 'bold',
-                color: 'inherit',
-                opacity: 0.7,
-                padding: '0.25rem'
-            },
-            onMouseEnter: (e) => e.target.style.opacity = '1',
-            onMouseLeave: (e) => e.target.style.opacity = '0.7'
-        }, '×')
-    );
-}
 
-// Toast Container Component
-function ToastContainer({ toasts, onRemoveToast }) {
-    if (toasts.length === 0) return null;
-    
+    const styles = getTypeStyles();
+
     return h('div', {
         style: {
             position: 'fixed',
             top: '1rem',
             right: '1rem',
-            zIndex: 9999,
+            zIndex: 1000,
+            backgroundColor: styles.backgroundColor,
+            color: 'white',
+            padding: '1rem 1.5rem',
+            borderRadius: '0.5rem',
+            border: `2px solid ${styles.borderColor}`,
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end'
+            alignItems: 'center',
+            gap: '0.5rem',
+            maxWidth: '400px',
+            animation: 'slideIn 0.3s ease-out'
         }
     },
-        // Add CSS animation styles
-        h('style', null, `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
+        h('span', { style: { fontSize: '1rem' } }, styles.icon),
+        h('span', { style: { flex: 1, fontSize: '0.875rem' } }, message),
+        onClose && h('button', {
+            onClick: onClose,
+            style: {
+                background: 'none',
+                border: 'none',
+                color: 'white',
+                cursor: 'pointer',
+                fontSize: '1.25rem',
+                padding: '0',
+                marginLeft: '0.5rem'
             }
-        `),
-        toasts.map(toast =>
-            h(Toast, {
-                key: toast.id,
-                toast,
-                onRemove: onRemoveToast
-            })
-        )
+        }, '×')
     );
 }
 
-// Toast Provider Component for Context
-function ToastProvider({ children }) {
-    const toastMethods = useToast();
-    
-    // Expose toast methods globally for easy access
-    React.useEffect(() => {
-        window.toast = {
-            success: toastMethods.success,
-            error: toastMethods.error,
-            warning: toastMethods.warning,
-            info: toastMethods.info
-        };
+// Toast Manager Hook
+function useToast() {
+    const [toasts, setToasts] = React.useState([]);
+
+    const showToast = React.useCallback((message, type = 'info', duration = 3000) => {
+        const id = Date.now();
+        const toast = { id, message, type, duration };
         
-        return () => {
-            delete window.toast;
-        };
-    }, [toastMethods]);
-    
-    return h(React.Fragment, null,
-        children,
-        h(ToastContainer, {
-            toasts: toastMethods.toasts,
-            onRemoveToast: toastMethods.removeToast
-        })
+        setToasts(prev => [...prev, toast]);
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                setToasts(prev => prev.filter(t => t.id !== id));
+            }, duration);
+        }
+        
+        return id;
+    }, []);
+
+    const hideToast = React.useCallback((id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    const ToastContainer = React.useMemo(() => 
+        () => h('div', { style: { position: 'fixed', top: 0, right: 0, zIndex: 1000 } },
+            ...toasts.map((toast, index) =>
+                h(Toast, {
+                    key: toast.id,
+                    message: toast.message,
+                    type: toast.type,
+                    duration: 0, // Managed by the hook
+                    onClose: () => hideToast(toast.id),
+                    style: {
+                        marginTop: `${index * 70}px` // Stack toasts
+                    }
+                })
+            )
+        ), [toasts, hideToast]
     );
+
+    return {
+        showToast,
+        hideToast,
+        ToastContainer
+    };
 }
 
-// Export components and hook
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Toast, ToastContainer, ToastProvider, useToast };
-} else {
-    // Browser global assignment
-    window.Toast = Toast;
-    window.ToastContainer = ToastContainer;
-    window.ToastProvider = ToastProvider;
-    window.useToast = useToast;
-}
+// Add CSS animation for slide in effect
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Export to window for global access
+window.Toast = Toast;
+window.useToast = useToast;
