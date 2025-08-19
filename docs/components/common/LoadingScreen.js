@@ -1,8 +1,6 @@
 // components/common/LoadingScreen.js
 // Shared loading screen component used across the application
 
-const h = React.createElement;
-
 function LoadingScreen() {
     console.log('🔍 LoadingScreen rendering');
     return h('div', {

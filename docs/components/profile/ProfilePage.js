@@ -211,17 +211,18 @@
                         ),
                         h('div', { style: { display: 'flex', gap: '0.5rem' } },
                             h('button', {
-                                onClick: handleViewPublicProfile,
+                                disabled: true,
                                 style: {
                                     padding: '0.5rem 1rem',
-                                    backgroundColor: '#3b82f6',
+                                    backgroundColor: '#9ca3af',
                                     color: 'white',
                                     borderRadius: '0.375rem',
                                     border: 'none',
-                                    cursor: 'pointer',
-                                    fontSize: '0.875rem'
+                                    cursor: 'not-allowed',
+                                    fontSize: '0.875rem',
+                                    opacity: 0.6
                                 }
-                            }, 'View Public Profile'),
+                            }, 'Public Profile (Coming Soon)'),
                             h('button', {
                                 onClick: signOut,
                                 style: {

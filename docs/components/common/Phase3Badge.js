@@ -1,8 +1,6 @@
 // components/common/Phase3Badge.js
 // Badge component to indicate features coming in Phase 3
 
-const h = React.createElement;
-
 function Phase3Badge({ size = 'sm', className = '' }) {
     const sizeStyles = {
         xs: {
