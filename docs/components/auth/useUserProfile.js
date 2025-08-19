@@ -1,4 +1,4 @@
-// useUserProfile.js - User Profile Management Hook (Fixed)
+// useUserProfile.js - User Profile Management Hook (Debug Version)
 // Flash Fungi - Custom React hook for managing user progress and profile data
 
 (function() {
@@ -8,6 +8,7 @@
         const [userProgress, setUserProgress] = React.useState({});
         
         console.log('🔍 useUserProfile called with user:', authUser ? authUser.id : 'no user');
+        console.log('🔍 getAuthToken type:', typeof getAuthToken);
 
         // Fixed: Only depend on authUser.id to prevent infinite loop
         const loadUserProgress = React.useCallback(async () => {
@@ -18,7 +19,17 @@
             }
             
             try {
+                // DEBUG: Check getAuthToken function
+                console.log('🔍 About to call getAuthToken(), type:', typeof getAuthToken);
+                
+                if (typeof getAuthToken !== 'function') {
+                    console.error('❌ getAuthToken is not a function:', getAuthToken);
+                    setUserProgress({});
+                    return;
+                }
+                
                 const token = getAuthToken();
+                console.log('🔍 Token received:', token ? 'exists' : 'null/undefined');
                 console.log('🔍 Loading user progress for user:', authUser.id);
                 
                 const response = await fetch(`/api/user-progress-api?userId=${authUser.id}`, {
@@ -43,6 +54,7 @@
                 }
             } catch (error) {
                 console.error('❌ Error loading user progress:', error);
+                console.error('❌ Error stack:', error.stack);
                 setUserProgress({});
             }
         }, [authUser?.id]); // Only depend on user ID, not the getAuthToken function
@@ -54,6 +66,14 @@
             }
             
             try {
+                // DEBUG: Check getAuthToken function
+                console.log('🔍 About to call getAuthToken() in saveProgress, type:', typeof getAuthToken);
+                
+                if (typeof getAuthToken !== 'function') {
+                    console.error('❌ getAuthToken is not a function in saveProgress:', getAuthToken);
+                    return false;
+                }
+                
                 const token = getAuthToken();
                 console.log('🔍 Saving progress for user:', authUser.id, progressData);
 
@@ -79,9 +99,10 @@
                 }
             } catch (error) {
                 console.error('❌ Error saving progress:', error);
+                console.error('❌ Error stack:', error.stack);
                 return false;
             }
-        }, [authUser?.id, loadUserProgress]); // Safe to include loadUserProgress since it only depends on user ID
+        }, [authUser?.id, loadUserProgress]);
 
         // Load progress when user changes
         React.useEffect(() => {
@@ -96,6 +117,6 @@
         };
     };
     
-    console.log('✅ Fixed useUserProfile hook loaded');
+    console.log('✅ Debug useUserProfile hook loaded');
     
 })();
