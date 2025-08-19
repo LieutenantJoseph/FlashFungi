@@ -1,8 +1,9 @@
-// Flash Fungi Service Worker - Phase 3 Implementation
-// Enhanced caching, offline capabilities, and background sync
+// Flash Fungi Service Worker - Phase 3 Complete Implementation
+// Enhanced caching, offline capabilities, background sync, and session persistence
 
-const CACHE_NAME = 'flash-fungi-v3.0.0';
-const DATA_CACHE_NAME = 'flash-fungi-data-v3.0.0';
+const CACHE_NAME = 'flash-fungi-v3.2.0';
+const DATA_CACHE_NAME = 'flash-fungi-data-v3.2.0';
+const SESSION_CACHE_NAME = 'flash-fungi-sessions-v3.2.0';
 
 // Cache strategies by resource type
 const CACHE_STRATEGIES = {
@@ -12,7 +13,8 @@ const CACHE_STRATEGIES = {
     '/api/user': 'network-first',
     '/api/user-progress': 'network-first',
     '/api/study-sessions': 'network-first',
-    '/api/achievements': 'network-first'
+    '/api/achievements': 'network-first',
+    '/api/profiles': 'network-first'
 };
 
 // Resources to cache on install
@@ -20,433 +22,576 @@ const STATIC_RESOURCES = [
     '/',
     '/app.js',
     '/manifest.json',
-    '/config/supabase.js',
+    '/constants.js',
+    
+    // Utils
     '/utils/api.js',
     '/utils/fuzzyMatching.js',
+    '/utils/touchGestures.js',
+    
+    // Components - Common
     '/components/common/Toast.js',
     '/components/common/Phase3Badge.js',
     '/components/common/LoadingScreen.js',
+    
+    // Components - Study
     '/components/study/QuickStudy.js',
     '/components/study/FocusedStudy.js',
     '/components/study/MarathonMode.js',
     '/components/study/InteractiveSpeciesGuide.js',
+    
+    // Components - Training
     '/components/training/TrainingModules.js',
     '/components/training/GenusModules.js',
     '/components/training/ModulePlayer.js',
+    
+    // Components - Achievement
     '/components/achievements/AchievementSystem.js',
+    
+    // Components - Auth
+    '/components/auth/AuthProvider.js',
     '/components/auth/AuthenticatedApp.js',
     '/components/auth/useUserProfile.js',
+    
+    // Components - Other
     '/components/home/HomePage.js',
     '/components/profile/ProfilePage.js',
-    '/legacy/supabase-auth.js',
-    '/legacy/public-profile.js'
+    '/components/ui/PlaceholderAssets.js'
+];
+
+// Critical API endpoints to cache
+const CRITICAL_API_ENDPOINTS = [
+    '/api/specimens?status=eq.approved&limit=100',
+    '/api/species-hints',
+    '/api/achievements'
 ];
 
 // Offline queue for failed requests
 let offlineQueue = [];
 
-// Install event - cache static resources
+// Session persistence data
+let sessionData = {};
+
+// Install event - cache static resources and critical data
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Installing v3.0.0...');
+    console.log('[Service Worker] Installing v3.2.0...');
     
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
+        Promise.all([
+            // Cache static resources
+            caches.open(CACHE_NAME).then((cache) => {
                 console.log('[Service Worker] Caching static resources');
                 return cache.addAll(STATIC_RESOURCES);
+            }),
+            
+            // Cache critical API data
+            caches.open(DATA_CACHE_NAME).then((cache) => {
+                console.log('[Service Worker] Caching critical API data');
+                return Promise.all(
+                    CRITICAL_API_ENDPOINTS.map(endpoint => {
+                        return fetch(endpoint)
+                            .then(response => response.ok ? cache.put(endpoint, response) : null)
+                            .catch(error => console.log(`Failed to cache ${endpoint}:`, error));
+                    })
+                );
             })
-            .then(() => {
-                console.log('[Service Worker] Installation complete');
-                return self.skipWaiting();
-            })
-            .catch((error) => {
-                console.error('[Service Worker] Installation failed:', error);
-            })
+        ]).then(() => {
+            console.log('[Service Worker] Installation complete');
+            return self.skipWaiting();
+        }).catch((error) => {
+            console.error('[Service Worker] Installation failed:', error);
+        })
     );
 });
 
 // Activate event - cleanup old caches
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Activating v3.0.0...');
+    console.log('[Service Worker] Activating v3.2.0...');
     
     event.waitUntil(
-        caches.keys()
-            .then((cacheNames) => {
-                return Promise.all(
-                    cacheNames.map((cacheName) => {
-                        if (cacheName !== CACHE_NAME && cacheName !== DATA_CACHE_NAME) {
-                            console.log('[Service Worker] Deleting old cache:', cacheName);
-                            return caches.delete(cacheName);
-                        }
-                    })
-                );
-            })
-            .then(() => {
-                console.log('[Service Worker] Activation complete');
-                return self.clients.claim();
-            })
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME && 
+                        cacheName !== DATA_CACHE_NAME && 
+                        cacheName !== SESSION_CACHE_NAME) {
+                        console.log('[Service Worker] Deleting old cache:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            console.log('[Service Worker] Activation complete');
+            return self.clients.claim();
+        })
     );
 });
 
-// Fetch event - handle all network requests
+// Fetch event - handle requests with appropriate caching strategy
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
     
-    // Skip non-GET requests for caching (except for offline queue)
+    // Skip non-GET requests for caching
     if (request.method !== 'GET') {
-        if (request.method === 'POST' && isProgressUpdate(request)) {
-            event.respondWith(handleProgressUpdate(request));
-        }
-        return;
+        return handleNonGetRequest(event);
     }
     
     // Handle different types of requests
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(handleApiRequest(request));
-    } else if (url.pathname.startsWith('/images/') || isImageRequest(request)) {
+    } else if (url.pathname.match(/\.(js|css|html|json)$/)) {
+        event.respondWith(handleStaticRequest(request));
+    } else if (url.pathname.includes('/images/')) {
         event.respondWith(handleImageRequest(request));
     } else {
-        event.respondWith(handleAppRequest(request));
+        event.respondWith(handleNavigationRequest(request));
     }
 });
 
-// Background sync for offline progress updates
-self.addEventListener('sync', (event) => {
-    console.log('[Service Worker] Background sync triggered:', event.tag);
-    
-    if (event.tag === 'sync-progress') {
-        event.waitUntil(syncOfflineProgress());
-    } else if (event.tag === 'sync-achievements') {
-        event.waitUntil(syncOfflineAchievements());
-    }
-});
-
-// Handle app asset requests (HTML, JS, CSS)
-async function handleAppRequest(request) {
-    try {
-        // Try network first for HTML and critical assets
-        const networkResponse = await fetch(request);
-        
-        if (networkResponse.ok) {
-            // Update cache with fresh version
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        // Network failed, try cache
-        const cached = await caches.match(request);
-        
-        if (cached) {
-            console.log('[Service Worker] Serving from cache:', request.url);
-            return cached;
-        }
-        
-        // Return offline page for navigation requests
-        if (request.mode === 'navigate') {
-            return createOfflinePage();
-        }
-        
-        // Return error response
-        return new Response('Offline - Please check your connection', {
-            status: 503,
-            statusText: 'Service Unavailable',
-            headers: new Headers({
-                'Content-Type': 'text/plain'
-            })
-        });
-    }
-}
-
-// Handle API requests with different caching strategies
+// Handle API requests with appropriate caching strategy
 async function handleApiRequest(request) {
     const url = new URL(request.url);
-    const strategy = getCacheStrategy(url.pathname);
+    const pathname = url.pathname;
     
-    switch (strategy) {
-        case 'cache-first':
-            return handleCacheFirst(request);
-        case 'network-first':
-            return handleNetworkFirst(request);
-        default:
-            return handleNetworkOnly(request);
-    }
-}
-
-// Cache-first strategy (for static data like specimens)
-async function handleCacheFirst(request) {
-    const cached = await caches.match(request);
-    
-    if (cached) {
-        // Return cached version immediately
-        updateCacheInBackground(request);
-        return cached;
-    }
-    
-    // Not in cache, fetch from network
-    try {
-        const networkResponse = await fetch(request);
-        
-        if (networkResponse.ok) {
-            const cache = await caches.open(DATA_CACHE_NAME);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        console.error('[Service Worker] Cache-first request failed:', error);
-        return createErrorResponse('Data unavailable offline');
-    }
-}
-
-// Network-first strategy (for user data)
-async function handleNetworkFirst(request) {
-    try {
-        const networkResponse = await fetch(request);
-        
-        if (networkResponse.ok) {
-            // Update cache with fresh data
-            const cache = await caches.open(DATA_CACHE_NAME);
-            cache.put(request, networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        // Network failed, try cache
-        const cached = await caches.match(request);
-        
-        if (cached) {
-            console.log('[Service Worker] Serving stale data from cache:', request.url);
-            return cached;
-        }
-        
-        console.error('[Service Worker] Network-first request failed:', error);
-        return createErrorResponse('Data unavailable');
-    }
-}
-
-// Network-only strategy (for critical updates)
-async function handleNetworkOnly(request) {
-    try {
-        return await fetch(request);
-    } catch (error) {
-        console.error('[Service Worker] Network-only request failed:', error);
-        return createErrorResponse('Network required');
-    }
-}
-
-// Handle image requests with aggressive caching
-async function handleImageRequest(request) {
-    const cached = await caches.match(request);
-    
-    if (cached) {
-        return cached;
-    }
+    // Determine cache strategy
+    const strategy = Object.entries(CACHE_STRATEGIES).find(([pattern]) => 
+        pathname.includes(pattern)
+    )?.[1] || 'network-first';
     
     try {
-        const networkResponse = await fetch(request);
-        
-        if (networkResponse.ok) {
-            // Cache images aggressively
-            const cache = await caches.open(DATA_CACHE_NAME);
-            cache.put(request, networkResponse.clone());
+        if (strategy === 'cache-first') {
+            return await cacheFirst(request, DATA_CACHE_NAME);
+        } else {
+            return await networkFirst(request, DATA_CACHE_NAME);
         }
-        
-        return networkResponse;
     } catch (error) {
-        // Return placeholder image if available
-        const placeholder = await caches.match('/placeholder-mushroom.jpg');
-        if (placeholder) {
-            return placeholder;
-        }
-        
-        return new Response('', {
-            status: 404,
-            statusText: 'Image not available offline'
-        });
-    }
-}
-
-// Handle progress updates with offline queue
-async function handleProgressUpdate(request) {
-    try {
-        const response = await fetch(request);
-        return response;
-    } catch (error) {
-        // Queue for later sync
-        await queueProgressUpdate(request);
-        
-        // Return success response to app
+        console.error('[Service Worker] API request failed:', error);
         return new Response(JSON.stringify({ 
-            queued: true, 
-            message: 'Progress will be synced when online' 
+            error: 'Offline', 
+            message: 'This request requires an internet connection' 
         }), {
-            status: 202,
+            status: 503,
             headers: { 'Content-Type': 'application/json' }
         });
     }
 }
 
-// Queue progress update for background sync
-async function queueProgressUpdate(request) {
+// Handle static resource requests
+async function handleStaticRequest(request) {
+    return await cacheFirst(request, CACHE_NAME);
+}
+
+// Handle image requests with lazy loading
+async function handleImageRequest(request) {
+    return await cacheFirst(request, DATA_CACHE_NAME);
+}
+
+// Handle navigation requests (SPA routing)
+async function handleNavigationRequest(request) {
     try {
-        const requestData = {
-            url: request.url,
-            method: request.method,
-            headers: Object.fromEntries(request.headers.entries()),
-            body: await request.text(),
+        // Try network first for navigation
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+        }
+    } catch (error) {
+        console.log('[Service Worker] Network failed, serving from cache');
+    }
+    
+    // Fallback to cached index.html for SPA routing
+    const cache = await caches.open(CACHE_NAME);
+    return await cache.match('/') || new Response('Offline');
+}
+
+// Cache-first strategy
+async function cacheFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    const cachedResponse = await cache.match(request);
+    
+    if (cachedResponse) {
+        // Update cache in background
+        fetch(request).then(response => {
+            if (response.ok) {
+                cache.put(request, response.clone());
+            }
+        }).catch(() => {}); // Silent fail for background updates
+        
+        return cachedResponse;
+    }
+    
+    // Not in cache, fetch from network
+    const networkResponse = await fetch(request);
+    if (networkResponse.ok) {
+        cache.put(request, networkResponse.clone());
+    }
+    return networkResponse;
+}
+
+// Network-first strategy
+async function networkFirst(request, cacheName) {
+    const cache = await caches.open(cacheName);
+    
+    try {
+        const networkResponse = await fetch(request);
+        if (networkResponse.ok) {
+            cache.put(request, networkResponse.clone());
+            return networkResponse;
+        }
+    } catch (error) {
+        console.log('[Service Worker] Network failed, trying cache');
+    }
+    
+    // Network failed, try cache
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+        return cachedResponse;
+    }
+    
+    throw new Error('No network and no cache');
+}
+
+// Handle non-GET requests (POST, PUT, DELETE)
+function handleNonGetRequest(event) {
+    const { request } = event;
+    const url = new URL(request.url);
+    
+    // Handle session persistence requests
+    if (url.pathname === '/api/study-sessions') {
+        event.respondWith(handleSessionRequest(request));
+    } else if (url.pathname.includes('/api/')) {
+        event.respondWith(handleOfflineCapableRequest(request));
+    }
+}
+
+// Handle session persistence with offline support - NEW FEATURE
+async function handleSessionRequest(request) {
+    try {
+        // Try to save to server first
+        const response = await fetch(request);
+        
+        if (response.ok) {
+            // Successfully saved to server
+            const data = await request.clone().json();
+            
+            // Also cache session data locally
+            const cache = await caches.open(SESSION_CACHE_NAME);
+            await cache.put(
+                `/session/${data.user_id}/${data.mode}`, 
+                new Response(JSON.stringify(data))
+            );
+            
+            return response;
+        }
+    } catch (error) {
+        console.log('[Service Worker] Session save failed, storing offline');
+    }
+    
+    // Network failed, store in offline queue and IndexedDB
+    try {
+        const data = await request.clone().json();
+        
+        // Store in cache for immediate retrieval
+        const cache = await caches.open(SESSION_CACHE_NAME);
+        await cache.put(
+            `/session/${data.user_id}/${data.mode}`, 
+            new Response(JSON.stringify(data))
+        );
+        
+        // Queue for sync when online
+        offlineQueue.push({
+            type: 'session',
+            data: data,
             timestamp: Date.now()
-        };
+        });
         
         // Store in IndexedDB for persistence
-        const db = await openProgressDB();
-        const transaction = db.transaction(['queue'], 'readwrite');
-        const store = transaction.objectStore('queue');
-        await store.add(requestData);
+        await storeOfflineSession(data);
         
-        console.log('[Service Worker] Progress update queued for sync');
-        
-        // Register for background sync
-        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-            self.registration.sync.register('sync-progress');
-        }
-    } catch (error) {
-        console.error('[Service Worker] Failed to queue progress update:', error);
-    }
-}
-
-// Sync offline progress when connection restored
-async function syncOfflineProgress() {
-    console.log('[Service Worker] Syncing offline progress...');
-    
-    try {
-        const db = await openProgressDB();
-        const transaction = db.transaction(['queue'], 'readwrite');
-        const store = transaction.objectStore('queue');
-        const requests = await store.getAll();
-        
-        for (const requestData of requests) {
-            try {
-                const response = await fetch(requestData.url, {
-                    method: requestData.method,
-                    headers: requestData.headers,
-                    body: requestData.body
-                });
-                
-                if (response.ok) {
-                    // Remove from queue on success
-                    await store.delete(requestData.id);
-                    console.log('[Service Worker] Synced progress update:', requestData.url);
-                }
-            } catch (error) {
-                console.error('[Service Worker] Failed to sync progress:', error);
-                // Keep in queue for next sync attempt
-            }
-        }
-        
-        console.log('[Service Worker] Progress sync complete');
-    } catch (error) {
-        console.error('[Service Worker] Progress sync failed:', error);
-    }
-}
-
-// Helper functions
-function getCacheStrategy(pathname) {
-    for (const [path, strategy] of Object.entries(CACHE_STRATEGIES)) {
-        if (pathname.startsWith(path)) {
-            return strategy;
-        }
-    }
-    return 'network-only';
-}
-
-function isImageRequest(request) {
-    return request.destination === 'image' || 
-           /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(new URL(request.url).pathname);
-}
-
-function isProgressUpdate(request) {
-    return request.url.includes('/api/user-progress') || 
-           request.url.includes('/api/study-sessions');
-}
-
-function updateCacheInBackground(request) {
-    // Non-blocking cache update
-    fetch(request)
-        .then(response => {
-            if (response.ok) {
-                caches.open(DATA_CACHE_NAME)
-                    .then(cache => cache.put(request, response));
-            }
-        })
-        .catch(() => {
-            // Ignore background update failures
+        return new Response(JSON.stringify({ 
+            success: true, 
+            offline: true,
+            message: 'Session saved offline, will sync when online'
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
         });
+        
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to save session offline' 
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
 }
 
-function createErrorResponse(message) {
-    return new Response(JSON.stringify({ 
-        error: message,
-        offline: true 
-    }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-    });
-}
-
-function createOfflinePage() {
-    const offlineHTML = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Flash Fungi - Offline</title>
-            <script src="https://cdn.tailwindcss.com"></script>
-        </head>
-        <body class="bg-gray-50 min-h-screen flex items-center justify-center">
-            <div class="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
-                <div class="text-6xl mb-4">🍄</div>
-                <h1 class="text-2xl font-bold text-gray-800 mb-4">You're Offline</h1>
-                <p class="text-gray-600 mb-6">
-                    Flash Fungi is working offline. Some features may be limited, 
-                    but you can still study with cached content.
-                </p>
-                <button onclick="window.location.reload()" 
-                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                    Try Again
-                </button>
-            </div>
-        </body>
-        </html>
-    `;
+// Handle other API requests with offline queueing
+async function handleOfflineCapableRequest(request) {
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            return response;
+        }
+    } catch (error) {
+        console.log('[Service Worker] Request failed, queueing for sync');
+    }
     
-    return new Response(offlineHTML, {
-        headers: { 'Content-Type': 'text/html' }
+    // Queue for background sync
+    try {
+        const data = request.method === 'POST' || request.method === 'PUT' 
+            ? await request.clone().json() 
+            : null;
+            
+        offlineQueue.push({
+            type: 'api',
+            url: request.url,
+            method: request.method,
+            data: data,
+            timestamp: Date.now()
+        });
+        
+        return new Response(JSON.stringify({ 
+            success: true, 
+            offline: true,
+            message: 'Request queued for sync when online'
+        }), {
+            status: 202,
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+    } catch (error) {
+        return new Response(JSON.stringify({ 
+            error: 'Failed to queue request' 
+        }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+}
+
+// Background sync for offline data - NEW FEATURE
+self.addEventListener('sync', async (event) => {
+    console.log('[Service Worker] Background sync triggered:', event.tag);
+    
+    if (event.tag === 'sync-offline-data') {
+        event.waitUntil(syncOfflineData());
+    } else if (event.tag === 'sync-sessions') {
+        event.waitUntil(syncOfflineSessions());
+    }
+});
+
+// Sync offline data when connection restored
+async function syncOfflineData() {
+    console.log('[Service Worker] Syncing offline data...');
+    
+    const failedQueue = [];
+    
+    for (const item of offlineQueue) {
+        try {
+            if (item.type === 'session') {
+                await syncSessionData(item.data);
+            } else if (item.type === 'api') {
+                await syncApiRequest(item);
+            }
+        } catch (error) {
+            console.error('[Service Worker] Failed to sync item:', error);
+            failedQueue.push(item);
+        }
+    }
+    
+    // Keep failed items for retry
+    offlineQueue = failedQueue;
+    
+    // Notify clients of sync completion
+    notifyClients('sync-complete', { 
+        synced: offlineQueue.length - failedQueue.length,
+        failed: failedQueue.length 
     });
 }
 
-// IndexedDB for offline queue
-function openProgressDB() {
+// Sync session data
+async function syncSessionData(sessionData) {
+    const response = await fetch('/api/study-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Session sync failed: ${response.status}`);
+    }
+    
+    return response;
+}
+
+// Sync API requests
+async function syncApiRequest(item) {
+    const response = await fetch(item.url, {
+        method: item.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: item.data ? JSON.stringify(item.data) : undefined
+    });
+    
+    if (!response.ok) {
+        throw new Error(`API sync failed: ${response.status}`);
+    }
+    
+    return response;
+}
+
+// Store session in IndexedDB for persistence
+async function storeOfflineSession(sessionData) {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open('FlashFungiOffline', 1);
         
         request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-        
-        request.onupgradeneeded = () => {
+        request.onsuccess = () => {
             const db = request.result;
-            if (!db.objectStoreNames.contains('queue')) {
-                const store = db.createObjectStore('queue', { 
-                    keyPath: 'id', 
-                    autoIncrement: true 
-                });
-                store.createIndex('timestamp', 'timestamp');
+            const transaction = db.transaction(['sessions'], 'readwrite');
+            const store = transaction.objectStore('sessions');
+            
+            store.put({
+                id: `${sessionData.user_id}_${sessionData.mode}_${Date.now()}`,
+                data: sessionData,
+                timestamp: Date.now()
+            });
+            
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('sessions')) {
+                db.createObjectStore('sessions', { keyPath: 'id' });
             }
         };
     });
 }
 
-console.log('[Service Worker] Flash Fungi v3.0.0 service worker loaded');
+// Sync offline sessions from IndexedDB
+async function syncOfflineSessions() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('FlashFungiOffline', 1);
+        
+        request.onsuccess = async () => {
+            const db = request.result;
+            const transaction = db.transaction(['sessions'], 'readonly');
+            const store = transaction.objectStore('sessions');
+            const getAllRequest = store.getAll();
+            
+            getAllRequest.onsuccess = async () => {
+                const sessions = getAllRequest.result;
+                
+                for (const session of sessions) {
+                    try {
+                        await syncSessionData(session.data);
+                        
+                        // Remove from IndexedDB after successful sync
+                        const deleteTransaction = db.transaction(['sessions'], 'readwrite');
+                        const deleteStore = deleteTransaction.objectStore('sessions');
+                        deleteStore.delete(session.id);
+                        
+                    } catch (error) {
+                        console.error('Failed to sync session:', error);
+                    }
+                }
+                
+                resolve();
+            };
+        };
+        
+        request.onerror = () => reject(request.error);
+    });
+}
+
+// Notify clients of service worker events
+function notifyClients(type, data) {
+    self.clients.matchAll().then(clients => {
+        clients.forEach(client => {
+            client.postMessage({
+                type: type,
+                data: data
+            });
+        });
+    });
+}
+
+// Handle messages from main thread
+self.addEventListener('message', (event) => {
+    const { type, data } = event.data;
+    
+    switch (type) {
+        case 'SKIP_WAITING':
+            self.skipWaiting();
+            break;
+        case 'CACHE_SPECIMENS':
+            cacheSpecimens(data);
+            break;
+        case 'TRIGGER_SYNC':
+            self.registration.sync.register('sync-offline-data');
+            break;
+    }
+});
+
+// Cache specimen data for offline use
+async function cacheSpecimens(specimens) {
+    const cache = await caches.open(DATA_CACHE_NAME);
+    
+    for (const specimen of specimens) {
+        // Cache specimen images
+        if (specimen.primary_image_url) {
+            try {
+                await cache.add(specimen.primary_image_url);
+            } catch (error) {
+                console.log('Failed to cache image:', specimen.primary_image_url);
+            }
+        }
+    }
+}
+
+// Periodic background sync registration
+self.addEventListener('periodicsync', (event) => {
+    if (event.tag === 'sync-sessions-periodic') {
+        event.waitUntil(syncOfflineSessions());
+    }
+});
+
+// Handle push notifications for achievements - FUTURE FEATURE
+self.addEventListener('push', (event) => {
+    if (event.data) {
+        const data = event.data.json();
+        
+        if (data.type === 'achievement') {
+            event.waitUntil(
+                self.registration.showNotification('🏆 Achievement Unlocked!', {
+                    body: data.message,
+                    icon: '/icons/achievement-192x192.png',
+                    badge: '/icons/badge-72x72.png',
+                    tag: 'achievement',
+                    actions: [
+                        { action: 'view', title: 'View Achievement' },
+                        { action: 'dismiss', title: 'Dismiss' }
+                    ]
+                })
+            );
+        }
+    }
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    
+    if (event.action === 'view') {
+        event.waitUntil(
+            clients.openWindow('/profile?tab=achievements')
+        );
+    }
+});
+
+console.log('[Service Worker] Flash Fungi v3.2.0 service worker loaded with enhanced offline capabilities');

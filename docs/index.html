@@ -71,6 +71,23 @@
             outline: 2px solid #3b82f6;
             outline-offset: 2px;
         }
+        
+        /* Fade in animation for gesture hints and notifications */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        /* Mobile-first responsive design helpers */
+        @media (max-width: 768px) {
+            .mobile-hidden {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans">
@@ -80,80 +97,226 @@
             <div class="text-center">
                 <div class="loading-spinner w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">🍄 Flash Fungi</h1>
-                <p class="text-gray-600">Loading mushroom identification training...</p>
+                <p class="text-gray-600">Loading Phase 3 features...</p>
+                <div class="mt-4 text-sm text-gray-500">
+                    <div id="loading-status">Initializing components...</div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Component Load Tracker -->
+    <!-- Component Load Tracking System -->
     <script>
         window.componentLoadTracker = {
             loaded: [],
             failed: [],
-            track: function(name, success = true) {
+            track: function(componentName, success = true) {
                 if (success) {
-                    this.loaded.push(name);
-                    console.log(`✅ ${name} loaded`);
+                    this.loaded.push(componentName);
+                    console.log(`✅ ${componentName} loaded successfully`);
                 } else {
-                    this.failed.push(name);
-                    console.error(`❌ ${name} failed to load`);
+                    this.failed.push(componentName);
+                    console.error(`❌ ${componentName} failed to load`);
+                }
+                
+                // Update loading status
+                const statusEl = document.getElementById('loading-status');
+                if (statusEl) {
+                    statusEl.textContent = `Loaded: ${this.loaded.length}, Failed: ${this.failed.length}`;
+                }
+                
+                this.logReport();
+            },
+            logReport: function() {
+                if ((this.loaded.length + this.failed.length) % 5 === 0) {
+                    console.log('📊 Component Load Report:', {
+                        loaded: this.loaded.length,
+                        failed: this.failed.length,
+                        details: { loaded: this.loaded, failed: this.failed }
+                    });
                 }
             }
         };
     </script>
 
-    <!-- PHASE 1: Configuration & Utils (FIXED: Absolute paths) -->
-    <script src="/config/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
-    <script src="/config/supabase.js" onload="window.componentLoadTracker.track('supabase.js')" onerror="window.componentLoadTracker.track('supabase.js', false)"></script>
+    <!-- PHASE 1: Configuration and Constants -->
+    <script src="/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
+
+    <!-- PHASE 2: Utility Functions (FIXED: Absolute paths) -->
     <script src="/utils/api.js" onload="window.componentLoadTracker.track('api.js')" onerror="window.componentLoadTracker.track('api.js', false)"></script>
     <script src="/utils/fuzzyMatching.js" onload="window.componentLoadTracker.track('fuzzyMatching.js')" onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)"></script>
     <script src="/utils/touchGestures.js" onload="window.componentLoadTracker.track('touchGestures.js')" onerror="window.componentLoadTracker.track('touchGestures.js', false)"></script>
 
-    <!-- PHASE 2: Common Components (FIXED: Absolute paths) -->
+    <!-- PHASE 3: Common UI Components (FIXED: Absolute paths) -->
     <script src="/components/common/Toast.js" onload="window.componentLoadTracker.track('Toast.js')" onerror="window.componentLoadTracker.track('Toast.js', false)"></script>
     <script src="/components/common/Phase3Badge.js" onload="window.componentLoadTracker.track('Phase3Badge.js')" onerror="window.componentLoadTracker.track('Phase3Badge.js', false)"></script>
     <script src="/components/common/LoadingScreen.js" onload="window.componentLoadTracker.track('LoadingScreen.js')" onerror="window.componentLoadTracker.track('LoadingScreen.js', false)"></script>
 
-    <!-- PHASE 3: Authentication System (FIXED: Absolute paths) -->
+    <!-- PHASE 4: Authentication System (FIXED: Absolute paths) -->
     <script src="/components/auth/AuthProvider.js" onload="window.componentLoadTracker.track('AuthProvider.js')" onerror="window.componentLoadTracker.track('AuthProvider.js', false)"></script>
     <script src="/components/auth/useUserProfile.js" onload="window.componentLoadTracker.track('useUserProfile.js')" onerror="window.componentLoadTracker.track('useUserProfile.js', false)"></script>
 
-    <!-- PHASE 4: Study Components (FIXED: Absolute paths) -->
+    <!-- PHASE 5: Study Components (FIXED: Absolute paths) -->
     <script src="/components/study/InteractiveSpeciesGuide.js" onload="window.componentLoadTracker.track('InteractiveSpeciesGuide.js')" onerror="window.componentLoadTracker.track('InteractiveSpeciesGuide.js', false)"></script>
     <script src="/components/study/QuickStudy.js" onload="window.componentLoadTracker.track('QuickStudy.js')" onerror="window.componentLoadTracker.track('QuickStudy.js', false)"></script>
     <script src="/components/study/FocusedStudy.js" onload="window.componentLoadTracker.track('FocusedStudy.js')" onerror="window.componentLoadTracker.track('FocusedStudy.js', false)"></script>
     <script src="/components/study/MarathonMode.js" onload="window.componentLoadTracker.track('MarathonMode.js')" onerror="window.componentLoadTracker.track('MarathonMode.js', false)"></script>
 
-    <!-- PHASE 5: Training System (FIXED: Absolute paths) -->
+    <!-- PHASE 6: Training System (FIXED: Absolute paths) -->
     <script src="/components/training/TrainingModules.js" onload="window.componentLoadTracker.track('TrainingModules.js')" onerror="window.componentLoadTracker.track('TrainingModules.js', false)"></script>
     <script src="/components/training/ModulePlayer.js" onload="window.componentLoadTracker.track('ModulePlayer.js')" onerror="window.componentLoadTracker.track('ModulePlayer.js', false)"></script>
     <script src="/components/training/GenusModules.js" onload="window.componentLoadTracker.track('GenusModules.js')" onerror="window.componentLoadTracker.track('GenusModules.js', false)"></script>
 
-    <!-- PHASE 6: Profile & Achievement System (FIXED: Absolute paths) -->
+    <!-- PHASE 7: Profile & Achievement System (FIXED: Absolute paths) -->
     <script src="/components/profile/ProfilePage.js" onload="window.componentLoadTracker.track('ProfilePage.js')" onerror="window.componentLoadTracker.track('ProfilePage.js', false)"></script>
     <script src="/components/achievements/AchievementSystem.js" onload="window.componentLoadTracker.track('AchievementSystem.js')" onerror="window.componentLoadTracker.track('AchievementSystem.js', false)"></script>
+    
+    <!-- PHASE 8: Achievement Integration System (NEW - MUST load after AchievementSystem.js) -->
+    <script src="/components/achievements/AchievementIntegration.js" onload="window.componentLoadTracker.track('AchievementIntegration.js')" onerror="window.componentLoadTracker.track('AchievementIntegration.js', false)"></script>
 
-    <!-- PHASE 7: UI Components (FIXED: Absolute paths) -->
+    <!-- PHASE 9: UI Components (FIXED: Absolute paths) -->
     <script src="/components/ui/PlaceholderAssets.js" onload="window.componentLoadTracker.track('PlaceholderAssets.js')" onerror="window.componentLoadTracker.track('PlaceholderAssets.js', false)"></script>
 
-    <!-- PHASE 8: Main Application Components (FIXED: Absolute paths) -->
+    <!-- PHASE 10: Main Application Components (FIXED: Absolute paths) -->
     <script src="/components/home/HomePage.js" onload="window.componentLoadTracker.track('HomePage.js')" onerror="window.componentLoadTracker.track('HomePage.js', false)"></script>
     <script src="/components/auth/AuthenticatedApp.js" onload="window.componentLoadTracker.track('AuthenticatedApp.js')" onerror="window.componentLoadTracker.track('AuthenticatedApp.js', false)"></script>
 
-    <!-- PHASE 9: Central App Orchestrator (MUST BE LAST) (FIXED: Absolute path) -->
+    <!-- PHASE 11: Central App Orchestrator (MUST BE LAST) (FIXED: Absolute path) -->
     <script src="/app.js" onload="window.componentLoadTracker.track('app.js')" onerror="window.componentLoadTracker.track('app.js', false)"></script>
 
     <!-- Service Worker Registration (FIXED: Absolute path) -->
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then((registration) => {
-                    console.log('✅ Service Worker registered:', registration);
-                })
-                .catch((error) => {
-                    console.error('❌ Service Worker registration failed:', error);
-                });
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then((registration) => {
+                        console.log('✅ Service Worker registered:', registration);
+                        
+                        // Listen for service worker messages
+                        navigator.serviceWorker.addEventListener('message', (event) => {
+                            const { type, data } = event.data;
+                            
+                            switch (type) {
+                                case 'sync-complete':
+                                    console.log('📡 Background sync completed:', data);
+                                    if (window.showToast) {
+                                        window.showToast('📡 Data synced successfully', 'success');
+                                    }
+                                    break;
+                                case 'offline-data-saved':
+                                    console.log('💾 Data saved offline:', data);
+                                    if (window.showToast) {
+                                        window.showToast('💾 Saved offline, will sync when online', 'info');
+                                    }
+                                    break;
+                            }
+                        });
+                        
+                        // Check for updates
+                        if (registration.waiting) {
+                            console.log('🔄 Service Worker update available');
+                        }
+                        
+                        registration.addEventListener('updatefound', () => {
+                            console.log('🔄 Service Worker update found');
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('❌ Service Worker registration failed:', error);
+                    });
+            });
+        } else {
+            console.warn('⚠️ Service Worker not supported');
         }
+        
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('💡 PWA install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show custom install button after app loads
+            setTimeout(() => {
+                if (window.showToast && deferredPrompt) {
+                    window.showToast('📱 Install Flash Fungi as an app for better experience!', 'info');
+                }
+            }, 10000); // Show after 10 seconds
+        });
+        
+        // Handle app installation
+        window.addEventListener('appinstalled', () => {
+            console.log('🎉 PWA was installed');
+            if (window.showToast) {
+                window.showToast('🎉 Flash Fungi installed successfully!', 'success');
+            }
+            deferredPrompt = null;
+        });
+        
+        // Global PWA install function
+        window.promptPWAInstall = () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('✅ User accepted PWA install');
+                    } else {
+                        console.log('❌ User dismissed PWA install');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        };
+    </script>
+
+    <!-- Performance Monitoring -->
+    <script>
+        // Monitor app startup performance
+        window.addEventListener('load', () => {
+            const loadTime = performance.now();
+            console.log(`⚡ App loaded in ${Math.round(loadTime)}ms`);
+            
+            // Check if we're running as PWA
+            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                         window.navigator.standalone ||
+                         document.referrer.includes('android-app://');
+            
+            if (isPWA) {
+                console.log('📱 Running as PWA');
+            }
+            
+            // Monitor network status for offline features
+            const updateOnlineStatus = () => {
+                const condition = navigator.onLine ? 'online' : 'offline';
+                console.log(`🌐 Network status: ${condition}`);
+                
+                if (window.showToast) {
+                    if (condition === 'offline') {
+                        window.showToast('📴 You\'re offline. Some features may be limited.', 'warning');
+                    } else if (condition === 'online') {
+                        window.showToast('🌐 Back online! Syncing data...', 'success');
+                        // Trigger background sync
+                        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
+                            navigator.serviceWorker.ready.then(registration => {
+                                registration.sync.register('sync-offline-data');
+                            });
+                        }
+                    }
+                }
+            };
+            
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+        });
+        
+        // Global error handling for better debugging
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('🚨 Unhandled promise rejection:', event.reason);
+        });
     </script>
 </body>
 </html>
