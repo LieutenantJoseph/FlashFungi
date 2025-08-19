@@ -237,15 +237,31 @@ function AuthenticatedApp() {
     }
 
     // Show auth modal over current content
-    if (showAuthModal && window.AuthModal) {
-        return window.h('div', null,
-            // Render current view in background
-            getCurrentViewComponent(),
-            window.h(window.AuthModal, {
-                onClose: () => setShowAuthModal(false)
-            })
-        );
-    }
+if (showAuthModal && window.LoginForm) {
+    return window.h('div', null,
+        // Render current view in background
+        getCurrentViewComponent(),
+        // Modal backdrop and content directly
+        window.h('div', {
+            className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50',
+            onClick: () => setShowAuthModal(false)
+        },
+            window.h('div', {
+                className: 'bg-white rounded-xl p-8 max-w-md w-full mx-4',
+                onClick: (e) => e.stopPropagation()
+            },
+                window.h('div', { className: 'flex justify-between items-center mb-6' },
+                    window.h('h2', { className: 'text-2xl font-bold text-gray-800' }, '🍄 Flash Fungi'),
+                    window.h('button', {
+                        onClick: () => setShowAuthModal(false),
+                        className: 'text-gray-400 hover:text-gray-600 text-2xl'
+                    }, '×')
+                ),
+                window.h(window.LoginForm)
+            )
+        )
+    );
+}
 
     // Helper function to get current view component
     function getCurrentViewComponent() {
