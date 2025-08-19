@@ -1,4 +1,4 @@
-// app.js - Complete Flash Fungi Application Orchestrator
+// app.js - Complete Flash Fungi Application Orchestrator (Fixed Supabase Dependency)
 // Version 3.0 - Enhanced modular architecture with all original features
 
 console.log('🍄 Flash Fungi v3.0 - Complete Application Starting...');
@@ -60,7 +60,7 @@ if (typeof React === 'undefined') {
         // Initialize app dependencies and components
         React.useEffect(() => {
             let checkCount = 0;
-            const maxAttempts = 50; // 5 seconds max
+            const maxAttempts = 20; // Reduced to 2 seconds max
             
             const checkReady = () => {
                 checkCount++;
@@ -69,14 +69,7 @@ if (typeof React === 'undefined') {
                 console.log(`🔍 Checking app readiness (attempt ${checkCount})...`);
                 console.log('Available components:', Object.keys(window).filter(k => k.match(/^[A-Z]/) && typeof window[k] === 'function'));
                 
-                // Check for Supabase
-                if (!window.supabase) {
-                    setComponentStatus('Loading Supabase...');
-                    if (checkCount < maxAttempts) {
-                        setTimeout(checkReady, 100);
-                        return;
-                    }
-                }
+                // REMOVED: No longer waiting for window.supabase since AuthProvider handles it internally
                 
                 // Check for AuthProvider
                 if (!window.AuthProvider || !window.useAuth) {
@@ -123,8 +116,8 @@ if (typeof React === 'undefined') {
                     }
                 }
                 
-                // All components ready
-                if (window.supabase && window.AuthProvider && window.useAuth && 
+                // All critical components ready (REMOVED window.supabase requirement)
+                if (window.AuthProvider && window.useAuth && 
                     window.AuthenticatedApp && window.HomePage && window.QuickStudy &&
                     window.TrainingModules && window.ModulePlayer && window.useUserProfile &&
                     window.FuzzyMatching) {
@@ -173,7 +166,7 @@ if (typeof React === 'undefined') {
         
         // Show loading screen
         if (!appReady) {
-            return window.LoadingScreen ? 
+            return window.LoadingScreen ?
                 React.createElement(window.LoadingScreen, { message: componentStatus }) :
                 React.createElement('div', { 
                     style: { 
@@ -210,7 +203,7 @@ if (typeof React === 'undefined') {
                         
                         // Show retry button after some attempts
                         retryCount > 0 && React.createElement('button', {
-                            onClick: handleRetry,
+                           onClick: handleRetry,
                             style: {
                                 padding: '0.5rem 1rem',
                                 backgroundColor: '#10b981',
@@ -258,78 +251,56 @@ if (typeof React === 'undefined') {
                             borderRadius: '0.5rem',
                             cursor: 'pointer'
                         }
-                    }, 'Reload Application')
+                    }, 'Reload Page')
                 )
             );
         }
     }
 
-    // Initialize the app when DOM is ready
-    function initializeApp() {
-        console.log('🔄 Initializing Flash Fungi application...');
+    // Initialize application
+    const initializeApp = () => {
+        console.log('🔥 Initializing Flash Fungi application...');
         
-        const rootElement = document.getElementById('root');
-        
-        if (!rootElement) {
-            console.error('❌ Root element not found');
+        // Check if we have a container
+        const container = document.getElementById('root');
+        if (!container) {
+            console.error('❌ Root container not found');
             return;
         }
-
-        if (typeof React === 'undefined' || typeof ReactDOM === 'undefined') {
-            console.error('❌ React libraries not available');
-            rootElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;"><h1>Error: React libraries not loaded</h1></div>';
-            return;
-        }
-
+        
         try {
-            // Use React 18 createRoot API if available
-            if (ReactDOM.createRoot) {
+            // Use React 18's createRoot if available, fallback to ReactDOM.render
+            if (window.ReactDOM && window.ReactDOM.createRoot) {
                 console.log('✅ Using React 18 createRoot API');
-                const root = ReactDOM.createRoot(rootElement);
+                const root = window.ReactDOM.createRoot(container);
                 root.render(React.createElement(App));
-            } else {
-                // Fallback for older React versions
+            } else if (window.ReactDOM && window.ReactDOM.render) {
                 console.log('✅ Using legacy ReactDOM.render');
-                ReactDOM.render(React.createElement(App), rootElement);
+                window.ReactDOM.render(React.createElement(App), container);
+            } else {
+                throw new Error('ReactDOM not available');
             }
             
             console.log('🎉 Flash Fungi application initialized successfully!');
-            
-            // Register global error handlers
-            window.addEventListener('error', (event) => {
-                console.error('🚨 Global error caught:', event.error);
-            });
-
-            window.addEventListener('unhandledrejection', (event) => {
-                console.error('🚨 Unhandled promise rejection:', event.reason);
-            });
-            
         } catch (error) {
-            console.error('❌ Error initializing app:', error);
-            rootElement.innerHTML = `
-                <div style="padding: 20px; text-align: center; color: red;">
-                    <h1>Error initializing Flash Fungi</h1>
+            console.error('❌ Failed to initialize application:', error);
+            container.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: red;">
+                    <h1>Initialization Error</h1>
                     <p>${error.message}</p>
-                    <button onclick="window.location.reload()" style="
-                        padding: 0.5rem 1rem;
-                        background-color: #3b82f6;
-                        color: white;
-                        border: none;
-                        border-radius: 0.5rem;
-                        cursor: pointer;
-                        margin-top: 1rem;
-                    ">Reload</button>
+                    <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; margin-top: 1rem;">Reload Page</button>
                 </div>
             `;
         }
-    }
+    };
 
-    // Start the application
+    // Wait for DOM to be ready then initialize
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initializeApp);
     } else {
+        // DOM already loaded
         initializeApp();
     }
+    
+    console.log('🍄 Flash Fungi app.js orchestrator loaded successfully');
 }
-
-console.log('📋 Flash Fungi app.js orchestrator loaded successfully');
