@@ -1,4 +1,4 @@
-// AuthenticatedApp.js - Main Authenticated App Component (Fixed Login Modal)
+// AuthenticatedApp.js - Main Authenticated App Component (Fixed Hooks Rule Violation)
 // Flash Fungi - Complete app with proper auth modal handling
 
 (function() {
@@ -7,18 +7,23 @@
     window.AuthenticatedApp = function AuthenticatedApp() {
         console.log('🔍 AuthenticatedApp rendering...');
         
-        // Get auth context
+        // Get auth context (HOOKS RULE: Called at top level)
         const authContext = window.useAuth ? window.useAuth() : null;
-        const { user, loading: authLoading, signOut } = authContext || { user: null, loading: false, signOut: null };
+        const { user, loading: authLoading, signOut, session } = authContext || { user: null, loading: false, signOut: null, session: null };
+        
+        console.log('🔍 Auth context:', { user: user?.id || 'none', session: session ? 'exists' : 'none' });
+        
+        // Create token getter function that doesn't violate hooks rules
+        const getAuthToken = React.useCallback(() => {
+            const token = session?.access_token || authContext?.session?.access_token || '';
+            console.log('🔍 getAuthToken called, token exists:', !!token);
+            return token;
+        }, [session, authContext]);
         
         // Get user profile hook with fixed dependencies
         const { userProgress, saveProgress, loadUserProgress } = window.useUserProfile ? 
-            window.useUserProfile(user, () => {
-                // Get session from AuthProvider context
-                const authContext = window.useAuth ? window.useAuth() : null;
-                return authContext?.session?.access_token || '';
-            }) : 
-        { userProgress: {}, saveProgress: () => {}, loadUserProgress: () => {} };
+            window.useUserProfile(user, getAuthToken) :
+            { userProgress: {}, saveProgress: () => {}, loadUserProgress: () => {} };
         
         const [currentView, setCurrentView] = React.useState('loading');
         const [showAuthModal, setShowAuthModal] = React.useState(false);
@@ -66,260 +71,187 @@
         
         // Load initial data
         React.useEffect(() => {
-            const loadData = async () => {
-                try {
-                    console.log('🔍 Starting data load...');
-                    
-                    // Use global constants
-                    const url = window.SUPABASE_URL || 'https://oxgedcncrettasrbmwsl.supabase.co';
-                    const key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-                    
-                    // Load specimens
-                    console.log('🔍 Fetching specimens...');
-                    const specimensResponse = await fetch(`${url}/rest/v1/specimens?select=*&order=created_at.desc`, {
-                        headers: {
-                            'apikey': key,
-                            'Authorization': `Bearer ${key}`
-                        }
-                    });
-                    
-                    if (specimensResponse.ok) {
-                        const specimensData = await specimensResponse.json();
-                        console.log('🔍 Specimens loaded:', specimensData.length);
-                        setSpecimens(specimensData);
-                    }
-
-                    // Load species hints
-                    console.log('🔍 Fetching species hints...');
-                    const hintsResponse = await fetch(`${url}/rest/v1/species_hints?select=*`, {
-                        headers: {
-                            'apikey': key,
-                            'Authorization': `Bearer ${key}`
-                        }
-                    });
-
-                    if (hintsResponse.ok) {
-                        const hintsData = await hintsResponse.json();
-                        console.log('🔍 Hints loaded:', hintsData.length);
-                        const hintsMap = {};
-                        hintsData.forEach(hint => {
-                            hintsMap[hint.species_name] = hint;
-                        });
-                        setSpeciesHints(hintsMap);
-                    }
-
-                    // Load field guides (for reference photos)
-                    console.log('🔍 Fetching field guides...');
-                    const guidesResponse = await fetch(`${url}/rest/v1/field_guides?select=*`, {
-                        headers: {
-                            'apikey': key,
-                            'Authorization': `Bearer ${key}`
-                        }
-                    });
-
-                    if (guidesResponse.ok) {
-                        const guidesData = await guidesResponse.json();
-                        console.log('🔍 Guides loaded:', guidesData.length);
-                        const photosMap = {};
-                        guidesData.forEach(guide => {
-                            if (guide.reference_photos && guide.reference_photos.length > 0) {
-                                photosMap[guide.species_name] = guide.reference_photos;
-                            }
-                        });
-                        setReferencePhotos(photosMap);
-                    }
-                    
-                    console.log('🔍 Setting currentView to home...');
-                    setCurrentView('home');
-                } catch (err) {
-                    console.error('🔍 Error loading data:', err);
-                    setError('Failed to load application data');
-                } finally {
-                    console.log('🔍 Setting loading to false...');
-                    setLoading(false);
-                }
-            };
-
-            // Add a small delay to let auth system initialize
-            setTimeout(loadData, 1000);
-        }, []);
-
-        // Load specimen photos on demand
-        const loadSpecimenPhotos = React.useCallback(async (inaturalistId) => {
-            if (specimenPhotos[inaturalistId]) {
-                return specimenPhotos[inaturalistId];
-            }
-
-            try {
-                const response = await fetch(`https://api.inaturalist.org/v1/observations/${inaturalistId}`);
-                const data = await response.json();
-                
-                if (data.results && data.results[0] && data.results[0].photos) {
-                    const photos = data.results[0].photos.map(photo => ({
-                        id: photo.id,
-                        url: photo.url,
-                        medium_url: photo.url.replace('square', 'medium'),
-                        large_url: photo.url.replace('square', 'large')
-                    }));
-                    
-                    setSpecimenPhotos(prev => ({
-                        ...prev,
-                        [inaturalistId]: photos
-                    }));
-                    
-                    return photos;
-                }
-            } catch (error) {
-                console.error(`Error loading photos for ${inaturalistId}:`, error);
+            if (authLoading) {
+                setCurrentView('loading');
+                return;
             }
             
-            return [];
-        }, [specimenPhotos]);
-
-        // Event handlers
-        const handleStudyModeSelect = (mode) => {
-            setCurrentView(`study-${mode}`);
-        };
-
-        const handleTrainingModuleSelect = (category) => {
-            if (category === 'foundation') {
-                setCurrentView('training-modules');
+            loadInitialData();
+        }, [authLoading]);
+        
+        // Load app data
+        const loadInitialData = async () => {
+            console.log('🔍 Loading initial data...');
+            setLoading(true);
+            setError(null);
+            
+            try {
+                if (!window.FlashFungiAPI) {
+                    throw new Error('FlashFungiAPI not available');
+                }
+                
+                const [specimenData, hintsData, refPhotosData] = await Promise.all([
+                    window.FlashFungiAPI.loadSpecimens(),
+                    window.FlashFungiAPI.loadSpeciesHints(),
+                    window.FlashFungiAPI.loadReferencePhotos()
+                ]);
+                
+                setSpecimens(specimenData || []);
+                setSpeciesHints(hintsData || {});
+                setReferencePhotos(refPhotosData || {});
+                
+                console.log('✅ Initial data loaded successfully');
+                setCurrentView('home');
+                
+            } catch (error) {
+                console.error('❌ Error loading initial data:', error);
+                setError(error.message);
+                setCurrentView('home'); // Show home even if data fails
+            } finally {
+                setLoading(false);
             }
         };
-
+        
+        // Load specimen photos for a species
+        const loadSpecimenPhotos = async (speciesName) => {
+            if (specimenPhotos[speciesName]) {
+                return specimenPhotos[speciesName];
+            }
+            
+            try {
+                const photos = await window.FlashFungiAPI.loadSpecimenPhotos(speciesName);
+                setSpecimenPhotos(prev => ({
+                    ...prev,
+                    [speciesName]: photos
+                }));
+                return photos;
+            } catch (error) {
+                console.error('❌ Error loading specimen photos:', error);
+                return [];
+            }
+        };
+        
+        // Navigation handlers
+        const handleStudyModeSelect = (mode) => {
+            console.log('🎯 Study mode selected:', mode);
+            switch (mode) {
+                case 'quick':
+                    setCurrentView('study-quick');
+                    break;
+                case 'focused':
+                    setCurrentView('study-focused');
+                    break;
+                case 'marathon':
+                    setCurrentView('study-marathon');
+                    break;
+                default:
+                    console.warn('Unknown study mode:', mode);
+            }
+        };
+        
+        const handleTrainingModuleSelect = () => {
+            console.log('📚 Training modules selected');
+            setCurrentView('training-modules');
+        };
+        
         const handleModuleSelect = (module) => {
+            console.log('📖 Module selected:', module.id);
             setCurrentModule(module);
             setCurrentView('module-player');
         };
-
-        const handleModuleComplete = async (module) => {
-            console.log(`Module ${module.id} completed!`);
-            await loadUserProgress(); // Refresh progress
+        
+        const handleModuleComplete = (module) => {
+            console.log('🎉 Module completed:', module.id);
             setCurrentView('training-modules');
             setCurrentModule(null);
         };
-
-        const handleBackToHome = () => {
-            setCurrentView('home');
-            setCurrentModule(null);
-            // Clear profile username and update URL if needed
-            if (profileUsername) {
-                setProfileUsername(null);
-                window.history.pushState({}, '', '/');
-            }
-        };
-
+        
         const handleAuthRequired = () => {
+            console.log('🔐 Authentication required');
             setShowAuthModal(true);
         };
-
+        
         const handleProfileClick = () => {
-            if (window.ProfilePage) {
-                setCurrentView('profile');
-            }
+            console.log('👤 Profile clicked');
+            setCurrentView('profile');
         };
-
-        const handleSignOut = async () => {
+        
+        const handleSignOut = () => {
+            console.log('👋 Signing out...');
             if (signOut) {
-                await signOut();
-                setCurrentView('home');
-                setShowAuthModal(false); // Make sure modal is closed
+                signOut();
             }
+            setCurrentView('home');
         };
-
-        // Show loading
-        if (loading || currentView === 'loading') {
-            return window.LoadingScreen ? 
-                React.createElement(window.LoadingScreen) : 
-                React.createElement('div', { 
-                    style: { 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        minHeight: '100vh' 
-                    } 
+        
+        const handleBackToHome = () => {
+            console.log('🏠 Returning to home');
+            setCurrentView('home');
+            setCurrentModule(null);
+        };
+        
+        // Show loading screen during auth or data loading
+        if (authLoading || (loading && currentView === 'loading')) {
+            return window.LoadingScreen ? React.createElement(window.LoadingScreen, {
+                message: authLoading ? 'Authenticating...' : 'Loading application data...'
+            }) : React.createElement('div', { 
+                style: { 
+                    minHeight: '100vh', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center' 
+                } 
+            }, 'Loading...');
+        }
+        
+        // Auth Modal
+        if (showAuthModal) {
+            return React.createElement('div', {
+                style: {
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
                 },
-                    React.createElement('div', { style: { textAlign: 'center' } },
-                        React.createElement('div', { style: { fontSize: '4rem', marginBottom: '1rem' } }, '🍄'),
-                        React.createElement('h1', { style: { fontSize: '1.5rem', fontWeight: 'bold' } }, 'Flash Fungi'),
-                        React.createElement('p', { style: { color: '#6b7280' } }, 'Loading educational content...')
-                    )
-                );
-        }
-
-        // Show error
-        if (error) {
-            return React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                React.createElement('h1', { style: { color: '#ef4444', marginBottom: '1rem' } }, 'Error'),
-                React.createElement('p', { style: { marginBottom: '1rem' } }, error),
-                React.createElement('button', { 
-                    onClick: () => window.location.reload(),
-                    style: {
-                        padding: '0.5rem 1rem',
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer'
-                    }
-                }, 'Retry')
-            );
-        }
-
-        // Show auth modal over current content using LoginForm directly
-        if (showAuthModal && window.LoginForm) {
-            return React.createElement('div', null,
-                // Render current view in background
-                getCurrentViewComponent(),
-                // Modal backdrop and LoginForm
+                onClick: () => setShowAuthModal(false)
+            },
                 React.createElement('div', {
                     style: {
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 50
+                        backgroundColor: 'white',
+                        borderRadius: '1rem',
+                        padding: '2rem',
+                        width: '100%',
+                        maxWidth: '400px',
+                        margin: '1rem'
                     },
-                    onClick: () => setShowAuthModal(false)
+                    onClick: (e) => e.stopPropagation()
                 },
-                    React.createElement('div', {
-                        style: {
-                            backgroundColor: 'white',
-                            borderRadius: '0.75rem',
-                            padding: '2rem',
-                            maxWidth: '400px',
-                            width: '90%',
-                            maxHeight: '90vh',
-                            overflow: 'auto'
-                        },
-                        onClick: (e) => e.stopPropagation()
-                    },
-                        React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' } },
-                            React.createElement('h2', { 
-                                style: { 
-                                    fontSize: '1.5rem', 
-                                    fontWeight: 'bold', 
-                                    color: '#1f2937' 
-                                }
-                            }, '🍄 Flash Fungi'),
-                            React.createElement('button', {
-                                onClick: () => setShowAuthModal(false),
-                                style: {
-                                    background: 'none',
-                                    border: 'none',
-                                    fontSize: '1.5rem',
-                                    cursor: 'pointer',
-                                    color: '#6b7280'
-                                }
-                            }, '×')
-                        ),
-                        React.createElement(window.LoginForm)
-                    )
+                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' } },
+                        React.createElement('h2', { 
+                            style: { 
+                                fontSize: '1.5rem', 
+                                fontWeight: 'bold', 
+                                color: '#1f2937' 
+                            }
+                        }, '🍄 Flash Fungi'),
+                        React.createElement('button', {
+                            onClick: () => setShowAuthModal(false),
+                            style: {
+                                background: 'none',
+                                border: 'none',
+                                fontSize: '1.5rem',
+                                cursor: 'pointer',
+                                color: '#6b7280'
+                            }
+                        }, '×')
+                    ),
+                    React.createElement(window.LoginForm)
                 )
             );
         }
@@ -457,6 +389,6 @@
         return getCurrentViewComponent();
     };
     
-    console.log('✅ Fixed AuthenticatedApp loaded with proper login modal handling');
+    console.log('✅ Fixed AuthenticatedApp loaded with proper hooks compliance');
     
 })();
