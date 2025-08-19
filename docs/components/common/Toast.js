@@ -1,8 +1,6 @@
 // components/common/Toast.js
 // Toast notification component for showing success/error messages
 
-const h = React.createElement;
-
 function Toast({ message, type = 'info', onClose, duration = 3000 }) {
     React.useEffect(() => {
         if (duration > 0) {

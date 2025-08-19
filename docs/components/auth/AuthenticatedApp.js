@@ -1,5 +1,5 @@
-// AuthenticatedApp.js - Main Authenticated App Component with Enhanced Routing
-// Flash Fungi - Complete app with auth modal integration
+// AuthenticatedApp.js - Main Authenticated App Component (Fixed Login Modal)
+// Flash Fungi - Complete app with proper auth modal handling
 
 (function() {
     'use strict';
@@ -27,6 +27,14 @@
         const [error, setError] = React.useState(null);
         const [currentModule, setCurrentModule] = React.useState(null);
         
+        // FIXED: Close auth modal when user successfully signs in
+        React.useEffect(() => {
+            if (user && showAuthModal) {
+                console.log('✅ User signed in, closing auth modal');
+                setShowAuthModal(false);
+            }
+        }, [user, showAuthModal]);
+        
         // Handle URL routing for public profiles
         React.useEffect(() => {
             const handleRoute = () => {
@@ -37,6 +45,12 @@
                     const username = match[1];
                     setProfileUsername(username);
                     setCurrentView('public-profile');
+                } else if (path === '/' || path === '') {
+                    // Ensure we're on home view for root path
+                    if (currentView === 'public-profile') {
+                        setCurrentView('home');
+                        setProfileUsername(null);
+                    }
                 }
             };
             
@@ -44,7 +58,7 @@
             window.addEventListener('popstate', handleRoute);
             
             return () => window.removeEventListener('popstate', handleRoute);
-        }, []);
+        }, [currentView]);
         
         // Load initial data
         React.useEffect(() => {
@@ -184,6 +198,11 @@
         const handleBackToHome = () => {
             setCurrentView('home');
             setCurrentModule(null);
+            // Clear profile username and update URL if needed
+            if (profileUsername) {
+                setProfileUsername(null);
+                window.history.pushState({}, '', '/');
+            }
         };
 
         const handleAuthRequired = () => {
@@ -200,6 +219,7 @@
             if (signOut) {
                 await signOut();
                 setCurrentView('home');
+                setShowAuthModal(false); // Make sure modal is closed
             }
         };
 
@@ -433,6 +453,6 @@
         return getCurrentViewComponent();
     };
     
-    console.log('✅ Enhanced AuthenticatedApp loaded with LoginForm integration');
+    console.log('✅ Fixed AuthenticatedApp loaded with proper login modal handling');
     
 })();
