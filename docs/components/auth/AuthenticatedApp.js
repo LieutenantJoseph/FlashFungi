@@ -93,7 +93,7 @@
                 const [specimenData, hintsData, refPhotosData] = await Promise.all([
                     window.FlashFungiAPI.loadSpecimens(),
                     window.FlashFungiAPI.loadSpeciesHints(),
-                    window.FlashFungiAPI.loadReferencePhotos()
+                    window.FlashFungiAPI.loadFieldGuides()
                 ]);
                 
                 setSpecimens(specimenData || []);
