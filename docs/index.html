@@ -8,7 +8,7 @@
     <!-- FIXED: Add base href to ensure all paths resolve correctly -->
     <base href="/">
     
-    <!-- PWA Meta Tags -->
+    <!-- PWA Meta Tags (kept for potential future use) -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#8B4513">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -161,129 +161,13 @@
     <!-- PHASE 9: Central App Orchestrator (MUST BE LAST) (FIXED: Absolute path) -->
     <script src="/app.js" onload="window.componentLoadTracker.track('app.js')" onerror="window.componentLoadTracker.track('app.js', false)"></script>
 
-    <!-- Service Worker Registration (FIXED: Absolute path) -->
-   <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then((registration) => {
-                        console.log('✅ Service Worker registered:', registration);
-                        
-                        // Listen for service worker messages
-                        navigator.serviceWorker.addEventListener('message', (event) => {
-                            const { type, data } = event.data;
-                            
-                            switch (type) {
-                                case 'sync-complete':
-                                    console.log('📡 Background sync completed:', data);
-                                    if (window.showToast) {
-                                        window.showToast('📡 Data synced successfully', 'success');
-                                    }
-                                    break;
-                                case 'offline-data-saved':
-                                    console.log('💾 Data saved offline:', data);
-                                    if (window.showToast) {
-                                        window.showToast('💾 Saved offline, will sync when online', 'info');
-                                    }
-                                    break;
-                            }
-                        });
-                        
-                        // Check for updates
-                        if (registration.waiting) {
-                            console.log('🔄 Service Worker update available');
-                        }
-                        
-                        registration.addEventListener('updatefound', () => {
-                            console.log('🔄 Service Worker update found');
-                        });
-                    })
-                    .catch((error) => {
-                        console.error('❌ Service Worker registration failed:', error);
-                    });
-            });
-        } else {
-            console.warn('⚠️ Service Worker not supported');
-        }
-        
-        // PWA Install Prompt
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('💡 PWA install prompt available');
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Show custom install button after app loads
-            setTimeout(() => {
-                if (window.showToast && deferredPrompt) {
-                    window.showToast('📱 Install Flash Fungi as an app for better experience!', 'info');
-                }
-            }, 10000); // Show after 10 seconds
-        });
-        
-        // Handle app installation
-        window.addEventListener('appinstalled', () => {
-            console.log('🎉 PWA was installed');
-            if (window.showToast) {
-                window.showToast('🎉 Flash Fungi installed successfully!', 'success');
-            }
-            deferredPrompt = null;
-        });
-        
-        // Global PWA install function
-        window.promptPWAInstall = () => {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('✅ User accepted PWA install');
-                    } else {
-                        console.log('❌ User dismissed PWA install');
-                    }
-                    deferredPrompt = null;
-                });
-            }
-        };
-    </script>
-
-    <!-- Performance Monitoring -->
+    <!-- Performance Monitoring & Error Handling -->
     <script>
         // Monitor app startup performance
         window.addEventListener('load', () => {
             const loadTime = performance.now();
             console.log(`⚡ App loaded in ${Math.round(loadTime)}ms`);
-            
-            // Check if we're running as PWA
-            const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                         window.navigator.standalone ||
-                         document.referrer.includes('android-app://');
-            
-            if (isPWA) {
-                console.log('📱 Running as PWA');
-            }
-            
-            // Monitor network status for offline features
-            const updateOnlineStatus = () => {
-                const condition = navigator.onLine ? 'online' : 'offline';
-                console.log(`🌐 Network status: ${condition}`);
-                
-                if (window.showToast) {
-                    if (condition === 'offline') {
-                        window.showToast('📴 You\'re offline. Some features may be limited.', 'warning');
-                    } else if (condition === 'online') {
-                        window.showToast('🌐 Back online! Syncing data...', 'success');
-                        // Trigger background sync
-                        if ('serviceWorker' in navigator && 'sync' in window.ServiceWorkerRegistration.prototype) {
-                            navigator.serviceWorker.ready.then(registration => {
-                                registration.sync.register('sync-offline-data');
-                            });
-                        }
-                    }
-                }
-            };
-            
-            window.addEventListener('online', updateOnlineStatus);
-            window.addEventListener('offline', updateOnlineStatus);
+            console.log('🍄 Flash Fungi running in online-only mode (no service worker)');
         });
         
         // Global error handling for better debugging
