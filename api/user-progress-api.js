@@ -32,6 +32,7 @@ export default async function handler(req, res) {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser(token);
   if (authError || !user) {
+    console.error('Auth error:', authError);
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -54,17 +55,17 @@ export default async function handler(req, res) {
 
 async function handleGetProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
   const { moduleId, progressType } = req.query;
-  // Use authenticated user ID
-  const userId = authenticatedUserId;
 
-  // Build query for progress
-  let url = `${SUPABASE_URL}/rest/v1/user_progress?user_id=eq.${userId}`;
+  // Build query for progress using authenticated user ID
+  let url = `${SUPABASE_URL}/rest/v1/user_progress?user_id=eq.${authenticatedUserId}`;
   if (moduleId) {
     url += `&module_id=eq.${moduleId}`;
   }
   if (progressType) {
     url += `&progress_type=eq.${progressType}`;
   }
+
+  console.log('🔍 Fetching progress:', url);
 
   const response = await fetch(url, {
     headers: {
@@ -75,6 +76,7 @@ async function handleGetProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, a
 
   if (response.ok) {
     const data = await response.json();
+    console.log('✅ Progress fetched:', data.length, 'records');
     res.status(200).json(data);
   } else {
     const errorText = await response.text();
@@ -84,9 +86,32 @@ async function handleGetProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, a
 }
 
 async function handleSaveProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, authenticatedUserId) {
-  const { moduleId, specimenId, progressType, score, hintsUsed, completed, attempts } = req.body;
-  // Use authenticated user ID
+  // Extract data from request body
+  const { 
+    moduleId, 
+    specimenId, 
+    progressType, 
+    score, 
+    hintsUsed, 
+    completed, 
+    attempts,
+    metadata,
+    correct,
+    mode,
+    sessionStats,
+    quizPerformance
+  } = req.body;
+
+  // IMPORTANT: Use only the authenticated user ID, ignore any userId in the request body
   const userId = authenticatedUserId;
+
+  console.log('💾 Saving progress for user:', userId, {
+    moduleId,
+    specimenId,
+    progressType,
+    score,
+    completed
+  });
 
   if (!progressType) {
     return res.status(400).json({ error: 'Missing required field: progressType' });
@@ -98,6 +123,8 @@ async function handleSaveProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, 
   if (specimenId) checkUrl += `&specimen_id=eq.${specimenId}`;
   checkUrl += `&progress_type=eq.${progressType}`;
 
+  console.log('🔍 Checking existing progress:', checkUrl);
+
   const checkResponse = await fetch(checkUrl, {
     headers: {
       'apikey': SUPABASE_SERVICE_KEY,
@@ -105,52 +132,45 @@ async function handleSaveProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, 
     }
   });
 
-  let method = 'POST';
-  let url = `${SUPABASE_URL}/rest/v1/user_progress`;
-  let progressData = {
+  const existingProgress = await checkResponse.json();
+  const exists = existingProgress.length > 0;
+
+  // Prepare progress data
+  const progressData = {
     user_id: userId,
-    module_id: moduleId || null,
-    specimen_id: specimenId || null,
     progress_type: progressType,
-    score: score || 0,
-    hints_used: hintsUsed || 0,
-    attempts: attempts || 1,
-    completed: completed || false,
     last_attempted: new Date().toISOString()
   };
 
-  if (completed) {
-    progressData.completed_at = new Date().toISOString();
+  // Add optional fields
+  if (moduleId) progressData.module_id = moduleId;
+  if (specimenId) progressData.specimen_id = specimenId;
+  if (score !== undefined) progressData.score = score;
+  if (hintsUsed !== undefined) progressData.hints_used = hintsUsed;
+  if (completed !== undefined) progressData.completed = completed;
+  if (attempts !== undefined) progressData.attempts = attempts;
+
+  // Handle metadata (combining various progress types)
+  const combinedMetadata = {
+    ...(metadata || {}),
+    ...(correct !== undefined && { correct }),
+    ...(mode && { mode }),
+    ...(sessionStats && { sessionStats }),
+    ...(quizPerformance && { quizPerformance })
+  };
+
+  if (Object.keys(combinedMetadata).length > 0) {
+    progressData.metadata = combinedMetadata;
   }
 
-  if (checkResponse.ok) {
-    const existing = await checkResponse.json();
-    if (existing.length > 0) {
-      // Update existing progress
-      method = 'PATCH';
-      url = `${SUPABASE_URL}/rest/v1/user_progress?id=eq.${existing[0].id}`;
-      
-      progressData.attempts = (existing[0].attempts || 0) + 1;
-      
-      if (score && existing[0].score) {
-        progressData.score = Math.max(score, existing[0].score);
-      }
-      
-      progressData.completed = completed || existing[0].completed;
-      
-      if (completed && !existing[0].completed_at) {
-        progressData.completed_at = new Date().toISOString();
-      } else if (existing[0].completed_at) {
-        delete progressData.completed_at;
-      }
-
-      // Don't send unchanged fields in PATCH
-      delete progressData.user_id;
-      delete progressData.module_id;
-      delete progressData.specimen_id;
-      delete progressData.progress_type;
-    }
+  const method = exists ? 'PATCH' : 'POST';
+  let url = `${SUPABASE_URL}/rest/v1/user_progress`;
+  
+  if (exists) {
+    url += `?id=eq.${existingProgress[0].id}`;
   }
+
+  console.log(`📝 ${method} progress to:`, url, progressData);
 
   const response = await fetch(url, {
     method: method,
@@ -158,21 +178,22 @@ async function handleSaveProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY, 
       'apikey': SUPABASE_SERVICE_KEY,
       'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
       'Content-Type': 'application/json',
-      'Prefer': 'return=representation'
+      ...(method === 'POST' && { 'Prefer': 'return=representation' })
     },
     body: JSON.stringify(progressData)
   });
 
   if (response.ok) {
     const data = await response.json();
-    console.log(`Progress ${method === 'POST' ? 'saved' : 'updated'} for user ${userId}`);
+    console.log(`✅ Progress ${exists ? 'updated' : 'saved'} for user ${userId}`);
     res.status(method === 'POST' ? 201 : 200).json(data);
   } else {
     const errorText = await response.text();
-    console.error(`Failed to save progress:`, errorText);
+    console.error('Failed to save progress:', response.status, errorText);
     res.status(response.status).json({ 
-      error: `Failed to save progress`, 
-      details: errorText 
+      error: 'Failed to save progress', 
+      details: errorText,
+      status: response.status
     });
   }
 }
@@ -216,6 +237,7 @@ async function handleUpdateProgress(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY
   );
 
   if (response.ok) {
+    console.log('✅ Progress updated:', progressId);
     res.status(200).json({ success: true, message: 'Progress updated' });
   } else {
     const errorText = await response.text();
