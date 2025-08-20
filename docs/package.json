@@ -10,7 +10,8 @@
     "preview": "serve . -p 8080"
   },
   "dependencies": {
-    "serve": "^14.0.0"
+    "serve": "^14.0.0",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {},
   "keywords": ["mushroom", "education", "mycology"],
