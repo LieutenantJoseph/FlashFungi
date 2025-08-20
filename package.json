@@ -1,0 +1,12 @@
+{
+  "name": "flash-fungi",
+  "version": "1.0.0",
+  "description": "Flash Fungi API and Backend",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
