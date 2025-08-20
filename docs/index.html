@@ -23,7 +23,7 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Supabase - MUST load before any auth components -->
+    <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- React createElement helper -->
@@ -78,490 +78,265 @@
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">🍄 Flash Fungi</h1>
                 <p class="text-gray-600">Loading mushroom identification training...</p>
                 <div id="loading-status" class="text-xs text-gray-400 mt-2">Initializing...</div>
-                <div id="error-status" class="text-xs text-red-600 mt-1" style="display: none;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Component Load Tracker with Enhanced Error Handling -->
+    <!-- SIMPLIFIED APPROACH: All core components inline -->
     <script>
-        window.componentLoadTracker = {
-            loaded: [],
-            failed: [],
-            critical: ['supabase.js', 'supabase-auth.js', 'app.js'], // Critical components
+        console.log('🚀 Flash Fungi v3.1 - Direct Loading...');
+        
+        // Configuration
+        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+        
+        // Export configuration
+        window.SUPABASE_URL = SUPABASE_URL;
+        window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
+        
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📋 DOM loaded, starting initialization...');
+            initializeApp();
+        });
+        
+        function initializeApp() {
+            // Step 1: Wait for all libraries to be available
+            function waitForLibraries() {
+                return new Promise((resolve, reject) => {
+                    let attempts = 0;
+                    const checkInterval = setInterval(() => {
+                        attempts++;
+                        
+                        const hasReact = typeof React !== 'undefined' && typeof ReactDOM !== 'undefined';
+                        const hasSupabase = typeof window.createClient === 'function';
+                        
+                        console.log(`🔍 Check ${attempts}: React=${hasReact}, Supabase=${hasSupabase}`);
+                        
+                        if (hasReact && hasSupabase) {
+                            clearInterval(checkInterval);
+                            console.log('✅ All libraries ready');
+                            resolve();
+                        } else if (attempts > 100) {
+                            clearInterval(checkInterval);
+                            reject(new Error('Libraries not ready after 10 seconds'));
+                        }
+                    }, 100);
+                });
+            }
             
-            track: function(componentName, success = true) {
-                if (success) {
-                    this.loaded.push(componentName);
-                    console.log(`✅ ${componentName} loaded successfully`);
-                } else {
-                    this.failed.push(componentName);
-                    console.error(`❌ ${componentName} failed to load`);
+            // Step 2: Initialize Supabase client
+            function initializeSupabase() {
+                try {
+                    window.supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    console.log('✅ Supabase client created');
+                    return true;
+                } catch (error) {
+                    console.error('❌ Supabase client creation failed:', error);
+                    return false;
+                }
+            }
+            
+            // Step 3: Create auth system
+            function createAuthSystem() {
+                console.log('🔐 Creating auth system...');
+                
+                const AuthContext = React.createContext();
+                
+                // AuthProvider component
+                function AuthProvider({ children }) {
+                    const [user, setUser] = React.useState(null);
+                    const [loading, setLoading] = React.useState(true);
                     
-                    // Show error for critical components
-                    if (this.critical.includes(componentName)) {
-                        this.showCriticalError(componentName);
-                    }
-                }
-                
-                this.updateStatus();
-                this.logReport();
-            },
-            
-            updateStatus: function() {
-                const statusEl = document.getElementById('loading-status');
-                const errorEl = document.getElementById('error-status');
-                
-                if (statusEl) {
-                    statusEl.textContent = `Loaded: ${this.loaded.length}, Failed: ${this.failed.length}`;
-                }
-                
-                if (errorEl && this.failed.length > 0) {
-                    errorEl.style.display = 'block';
-                    errorEl.textContent = `Failed to load: ${this.failed.join(', ')}`;
-                }
-            },
-            
-            showCriticalError: function(componentName) {
-                console.error(`🚨 Critical component failed: ${componentName}`);
-                
-                // Show user-friendly error after a delay
-                setTimeout(() => {
-                    const root = document.getElementById('root');
-                    if (root && !window.APP_INITIALIZED) {
-                        root.innerHTML = `
-                            <div class="flex flex-col items-center justify-center min-h-screen p-4">
-                                <div class="text-center max-w-md">
-                                    <div class="text-6xl mb-4">⚠️</div>
-                                    <h1 class="text-2xl font-bold text-red-600 mb-2">Loading Error</h1>
-                                    <p class="text-gray-600 mb-4">Failed to load ${componentName}. Please check your internet connection and try refreshing the page.</p>
-                                    <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                        Refresh Page
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }, 5000);
-            },
-            
-            logReport: function() {
-                if ((this.loaded.length + this.failed.length) % 5 === 0) {
-                    console.log('📊 Component Load Report:', {
-                        loaded: this.loaded.length,
-                        failed: this.failed.length,
-                        details: { loaded: this.loaded, failed: this.failed }
-                    });
-                }
-            }
-        };
-    </script>
-
-    <!-- PHASE 1: Core Dependencies - MUST LOAD FIRST -->
-    <!-- Supabase Client Initialization -->
-    <script>
-        // Inline Supabase client setup to ensure it's ready before auth components
-        (function() {
-            'use strict';
-            
-            console.log('🔌 Setting up Supabase client...');
-            
-            const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-            
-            // Export configuration immediately
-            window.SUPABASE_URL = SUPABASE_URL;
-            window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-            
-            // Initialize when ready
-            function initSupabase() {
-                if (typeof window.createClient === 'function') {
-                    try {
-                        window.supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                        console.log('✅ Supabase client ready');
-                        window.componentLoadTracker.track('supabase-inline', true);
-                        return true;
-                    } catch (error) {
-                        console.error('❌ Supabase client creation failed:', error);
-                        window.componentLoadTracker.track('supabase-inline', false);
-                        return false;
-                    }
-                }
-                return false;
-            }
-            
-            // Try immediate initialization
-            if (!initSupabase()) {
-                // Wait for Supabase library
-                let attempts = 0;
-                const checkInterval = setInterval(() => {
-                    attempts++;
-                    if (initSupabase()) {
-                        clearInterval(checkInterval);
-                    } else if (attempts > 50) {
-                        clearInterval(checkInterval);
-                        console.error('❌ Supabase library not available after 5 seconds');
-                        window.componentLoadTracker.track('supabase-inline', false);
-                    }
-                }, 100);
-            }
-        })();
-    </script>
-
-    <!-- PHASE 2: Configuration & Utils (Optional files) -->
-    <script>
-        // Load optional config files with error handling
-        function loadOptionalScript(src, name) {
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = () => window.componentLoadTracker.track(name, true);
-            script.onerror = () => {
-                console.warn(`⚠️ Optional script ${name} failed to load, continuing...`);
-                window.componentLoadTracker.track(name, false);
-            };
-            document.head.appendChild(script);
-        }
-        
-        // Load optional configuration files
-        loadOptionalScript('/config/constants.js', 'constants.js');
-        loadOptionalScript('/utils/api.js', 'api.js');
-        loadOptionalScript('/utils/fuzzyMatching.js', 'fuzzyMatching.js');
-        loadOptionalScript('/utils/touchGestures.js', 'touchGestures.js');
-    </script>
-
-    <!-- PHASE 3: Common Components (Optional) -->
-    <script>
-        // Load optional common components
-        setTimeout(() => {
-            loadOptionalScript('/components/common/Toast.js', 'Toast.js');
-            loadOptionalScript('/components/common/Phase3Badge.js', 'Phase3Badge.js');
-            loadOptionalScript('/components/common/LoadingScreen.js', 'LoadingScreen.js');
-        }, 100);
-    </script>
-
-    <!-- PHASE 4: Authentication System - CRITICAL -->
-    <script>
-        // Wait for Supabase to be ready before loading auth
-        function loadAuthSystem() {
-            if (window.supabase && window.supabase.auth) {
-                console.log('🔐 Loading authentication system...');
-                
-                // Load auth components in sequence
-                const authScript = document.createElement('script');
-                authScript.innerHTML = `
-                    // components/auth/supabase-auth.js - Fixed Authentication with Defensive Programming
-                    (function() {
-                        'use strict';
-
-                        console.log('🔐 Loading Supabase Auth System v3.1...');
-
-                        // Function to check if Supabase is ready
-                        function isSupabaseReady() {
-                            return window.supabase && 
-                                   window.supabase.auth && 
-                                   typeof window.supabase.auth.getSession === 'function' &&
-                                   typeof window.supabase.auth.onAuthStateChange === 'function';
-                        }
-
-                        if (!isSupabaseReady()) {
-                            console.error('❌ Supabase not ready for auth system');
-                            window.componentLoadTracker.track('supabase-auth.js', false);
-                            return;
-                        }
-
-                        console.log('🔐 Initializing Supabase Auth...');
-
-                        // Create auth context
-                        const AuthContext = React.createContext();
-
-                        // Auth Provider Component with error handling
-                        function AuthProvider({ children }) {
-                            const [user, setUser] = React.useState(null);
-                            const [loading, setLoading] = React.useState(true);
-                            const [error, setError] = React.useState(null);
-                            
-                            console.log('🔐 AuthProvider initializing, loading:', loading);
-
-                            // Get current session on mount
-                            React.useEffect(() => {
-                                console.log('🔐 Getting initial session...');
-                                
-                                const getSession = async () => {
-                                    try {
-                                        const { data: { session }, error } = await window.supabase.auth.getSession();
-                                        console.log('🔐 Initial session:', session ? 'found' : 'none', error ? error.message : '');
-                                        
-                                        if (error) {
-                                            console.error('Session error:', error);
-                                            setError(error.message);
-                                        } else if (session?.user) {
-                                            setUser(session.user);
-                                            console.log('🔐 User set from session:', session.user.email);
-                                        }
-                                    } catch (err) {
-                                        console.error('🔐 Error getting session:', err);
-                                        setError(err.message);
-                                    } finally {
-                                        setLoading(false);
-                                        console.log('🔐 Auth loading complete');
-                                    }
-                                };
-
-                                getSession();
-
-                                // Listen for auth changes
-                                const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
-                                    async (event, session) => {
-                                        console.log('🔐 Auth state change:', event, session ? 'has session' : 'no session');
-                                        
-                                        if (session?.user) {
-                                            setUser(session.user);
-                                            console.log('🔐 User logged in:', session.user.email);
-                                        } else {
-                                            setUser(null);
-                                            console.log('🔐 User logged out');
-                                        }
-                                        setLoading(false);
-                                        setError(null);
-                                    }
-                                );
-
-                                return () => {
-                                    subscription?.unsubscribe();
-                                };
-                            }, []);
-
-                            // Sign up function
-                            const signUp = async (email, password, username) => {
-                                console.log('🔐 Attempting signup for:', email);
-                                
-                                try {
-                                    // Check if username is taken
-                                    const { data: existingUsers, error: checkError } = await window.supabase
-                                        .from('user_profiles')
-                                        .select('username')
-                                        .eq('username', username);
-                                        
-                                    if (checkError) {
-                                        console.error('Error checking username:', checkError);
-                                        throw new Error('Failed to validate username');
-                                    }
-                                    
-                                    if (existingUsers && existingUsers.length > 0) {
-                                        throw new Error('Username already taken');
-                                    }
-
-                                    // Create auth user
-                                    const { data, error } = await window.supabase.auth.signUp({
-                                        email,
-                                        password,
-                                        options: {
-                                            data: {
-                                                username: username,
-                                                display_name: username
-                                            }
-                                        }
-                                    });
-
-                                    if (error) {
-                                        console.error('Signup error:', error);
-                                        throw error;
-                                    }
-
-                                    console.log('🔐 Signup successful:', data);
-
-                                    // Create user profile
-                                    if (data.user) {
-                                        const { error: profileError } = await window.supabase
-                                            .from('user_profiles')
-                                            .insert({
-                                                id: data.user.id,
-                                                username: username,
-                                                display_name: username,
-                                                email: email,
-                                                created_at: new Date().toISOString()
-                                            });
-
-                                        if (profileError) {
-                                            console.error('Profile creation error:', profileError);
-                                        } else {
-                                            console.log('✅ User profile created');
-                                        }
-                                    }
-
-                                    return { data, error: null };
-                                } catch (err) {
-                                    console.error('🔐 Signup failed:', err);
-                                    return { data: null, error: err };
+                    React.useEffect(() => {
+                        console.log('🔐 AuthProvider effect starting...');
+                        
+                        async function getSession() {
+                            try {
+                                const { data: { session }, error } = await window.supabase.auth.getSession();
+                                if (error) {
+                                    console.error('Session error:', error);
+                                } else if (session?.user) {
+                                    setUser(session.user);
+                                    console.log('🔐 User found in session:', session.user.email);
                                 }
-                            };
-
-                            // Sign in function
-                            const signIn = async (email, password) => {
-                                console.log('🔐 Attempting signin for:', email);
-                                
-                                try {
-                                    const { data, error } = await window.supabase.auth.signInWithPassword({
-                                        email,
-                                        password
-                                    });
-
-                                    if (error) {
-                                        console.error('Signin error:', error);
-                                        throw error;
-                                    }
-
-                                    console.log('🔐 Signin successful');
-                                    return { data, error: null };
-                                } catch (err) {
-                                    console.error('🔐 Signin failed:', err);
-                                    return { data: null, error: err };
-                                }
-                            };
-
-                            // Sign out function
-                            const signOut = async () => {
-                                console.log('🔐 Signing out...');
-                                
-                                try {
-                                    const { error } = await window.supabase.auth.signOut();
-                                    if (error) {
-                                        console.error('Signout error:', error);
-                                        throw error;
-                                    }
-                                    console.log('🔐 Signout successful');
-                                    return { error: null };
-                                } catch (err) {
-                                    console.error('🔐 Signout failed:', err);
-                                    return { error: err };
-                                }
-                            };
-
-                            const value = {
-                                user,
-                                loading,
-                                error,
-                                signUp,
-                                signIn,
-                                signOut
-                            };
-
-                            return React.createElement(AuthContext.Provider, { value }, children);
-                        }
-
-                        // Custom hook to use auth
-                        function useAuth() {
-                            const context = React.useContext(AuthContext);
-                            if (!context) {
-                                throw new Error('useAuth must be used within an AuthProvider');
+                            } catch (err) {
+                                console.error('🔐 Error getting session:', err);
+                            } finally {
+                                setLoading(false);
                             }
-                            return context;
                         }
-
-                        // Export to window
-                        window.AuthProvider = AuthProvider;
-                        window.useAuth = useAuth;
-                        window.AuthContext = AuthContext;
-
-                        console.log('✅ Supabase Auth system loaded successfully');
-                        window.componentLoadTracker.track('supabase-auth.js', true);
-
-                    })();
-                `;
-                document.head.appendChild(authScript);
+                        
+                        getSession();
+                        
+                        // Listen for auth changes
+                        const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
+                            (event, session) => {
+                                console.log('🔐 Auth change:', event);
+                                if (session?.user) {
+                                    setUser(session.user);
+                                } else {
+                                    setUser(null);
+                                }
+                                setLoading(false);
+                            }
+                        );
+                        
+                        return () => subscription?.unsubscribe();
+                    }, []);
+                    
+                    const signUp = async (email, password, username) => {
+                        try {
+                            // Check username
+                            const { data: existing } = await window.supabase
+                                .from('user_profiles')
+                                .select('username')
+                                .eq('username', username);
+                                
+                            if (existing?.length > 0) {
+                                throw new Error('Username already taken');
+                            }
+                            
+                            // Create auth user
+                            const { data, error } = await window.supabase.auth.signUp({
+                                email,
+                                password,
+                                options: { data: { username, display_name: username } }
+                            });
+                            
+                            if (error) throw error;
+                            
+                            // Create profile
+                            if (data.user) {
+                                await window.supabase.from('user_profiles').insert({
+                                    id: data.user.id,
+                                    username,
+                                    display_name: username,
+                                    email,
+                                    created_at: new Date().toISOString()
+                                });
+                            }
+                            
+                            return { data, error: null };
+                        } catch (err) {
+                            return { data: null, error: err };
+                        }
+                    };
+                    
+                    const signIn = async (email, password) => {
+                        try {
+                            const { data, error } = await window.supabase.auth.signInWithPassword({
+                                email, password
+                            });
+                            if (error) throw error;
+                            return { data, error: null };
+                        } catch (err) {
+                            return { data: null, error: err };
+                        }
+                    };
+                    
+                    const signOut = async () => {
+                        try {
+                            const { error } = await window.supabase.auth.signOut();
+                            return { error };
+                        } catch (err) {
+                            return { error: err };
+                        }
+                    };
+                    
+                    return React.createElement(AuthContext.Provider, {
+                        value: { user, loading, signUp, signIn, signOut }
+                    }, children);
+                }
                 
-                // Load AuthModal after a brief delay
-                setTimeout(() => {
-                    loadOptionalScript('/components/auth/AuthModal.js', 'AuthModal.js');
-                }, 100);
+                // useAuth hook
+                function useAuth() {
+                    const context = React.useContext(AuthContext);
+                    if (!context) {
+                        throw new Error('useAuth must be used within AuthProvider');
+                    }
+                    return context;
+                }
                 
-            } else {
-                console.error('❌ Supabase not available for auth system');
-                window.componentLoadTracker.track('supabase-auth.js', false);
+                // Export to window
+                window.AuthProvider = AuthProvider;
+                window.useAuth = useAuth;
+                console.log('✅ Auth system created and exported');
             }
+            
+            // Step 4: Load app.js
+            function loadMainApp() {
+                console.log('📱 Loading main app...');
+                const script = document.createElement('script');
+                script.src = '/app.js';
+                script.onload = () => {
+                    console.log('✅ Main app loaded successfully');
+                    updateStatus('✅ App ready');
+                };
+                script.onerror = () => {
+                    console.error('❌ Failed to load main app');
+                    showError('Failed to load main application');
+                };
+                document.head.appendChild(script);
+            }
+            
+            // Utility functions
+            function updateStatus(message) {
+                const statusEl = document.getElementById('loading-status');
+                if (statusEl) {
+                    statusEl.textContent = message;
+                }
+            }
+            
+            function showError(message) {
+                const root = document.getElementById('root');
+                if (root) {
+                    root.innerHTML = `
+                        <div class="flex flex-col items-center justify-center min-h-screen p-4">
+                            <div class="text-center max-w-md">
+                                <div class="text-6xl mb-4">😞</div>
+                                <h1 class="text-2xl font-bold text-red-600 mb-2">Loading Error</h1>
+                                <p class="text-gray-600 mb-4">${message}</p>
+                                <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                    Refresh Page
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Execute initialization sequence
+            updateStatus('Loading libraries...');
+            waitForLibraries()
+                .then(() => {
+                    updateStatus('Initializing Supabase...');
+                    if (!initializeSupabase()) {
+                        throw new Error('Supabase initialization failed');
+                    }
+                    
+                    updateStatus('Creating auth system...');
+                    createAuthSystem();
+                    
+                    updateStatus('Loading main app...');
+                    loadMainApp();
+                })
+                .catch(error => {
+                    console.error('❌ Initialization failed:', error);
+                    showError(error.message);
+                });
         }
-        
-        // Load auth system after Supabase is ready
-        setTimeout(() => {
-            loadAuthSystem();
-        }, 200);
     </script>
 
-    <!-- PHASE 5: Study Components (Optional) -->
+    <!-- Performance monitoring -->
     <script>
-        setTimeout(() => {
-            loadOptionalScript('/components/shared/SharedFlashcard.js', 'SharedFlashcard.js');
-            loadOptionalScript('/components/study/InteractiveSpeciesGuide.js', 'InteractiveSpeciesGuide.js');
-            loadOptionalScript('/components/study/QuickStudy.js', 'QuickStudy.js');
-            loadOptionalScript('/components/study/FocusedStudy.js', 'FocusedStudy.js');
-            loadOptionalScript('/components/study/MarathonMode.js', 'MarathonMode.js');
-        }, 300);
-    </script>
-
-    <!-- PHASE 6: Training System (Optional) -->
-    <script>
-        setTimeout(() => {
-            loadOptionalScript('/components/training/TrainingModules.js', 'TrainingModules.js');
-            loadOptionalScript('/components/training/ModulePlayer.js', 'ModulePlayer.js');
-            loadOptionalScript('/components/training/GenusModules.js', 'GenusModules.js');
-        }, 400);
-    </script>
-
-    <!-- PHASE 7: Profile & Achievement System (Optional) -->
-    <script>
-        setTimeout(() => {
-            loadOptionalScript('/components/profile/ProfilePage.js', 'ProfilePage.js');
-            loadOptionalScript('/components/achievements/AchievementSystem.js', 'AchievementSystem.js');
-            loadOptionalScript('/components/achievements/AchievementIntegration.js', 'AchievementIntegration.js');
-        }, 500);
-    </script>
-
-    <!-- PHASE 8: Main Application (Critical) -->
-    <script src="/app.js" onload="window.componentLoadTracker.track('app.js', true); window.APP_INITIALIZED = true;" onerror="window.componentLoadTracker.track('app.js', false)"></script>
-
-    <!-- Performance Monitoring & Error Handling -->
-    <script>
-        // Monitor app startup performance
         window.addEventListener('load', () => {
             const loadTime = performance.now();
-            console.log(`⚡ App loaded in ${Math.round(loadTime)}ms`);
-            console.log('🍄 Flash Fungi v3.1 running');
-            
-            // Update loading status
-            const statusEl = document.getElementById('loading-status');
-            if (statusEl && window.APP_INITIALIZED) {
-                statusEl.textContent = `✅ Ready in ${Math.round(loadTime)}ms`;
-            }
+            console.log(`⚡ Page loaded in ${Math.round(loadTime)}ms`);
         });
         
-        // Global error handling
         window.addEventListener('error', (event) => {
             console.error('🚨 Global error:', event.error);
-            
-            // Show user-friendly error if app fails to load
-            if (!window.APP_INITIALIZED) {
-                setTimeout(() => {
-                    const root = document.getElementById('root');
-                    if (root && root.innerHTML.includes('Loading')) {
-                        root.innerHTML = `
-                            <div class="flex flex-col items-center justify-center min-h-screen p-4">
-                                <div class="text-center max-w-md">
-                                    <div class="text-6xl mb-4">😞</div>
-                                    <h1 class="text-2xl font-bold text-gray-800 mb-2">Something went wrong</h1>
-                                    <p class="text-gray-600 mb-4">The app failed to load properly. Please try refreshing the page.</p>
-                                    <button onclick="window.location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                        Refresh Page
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }, 8000);
-            }
-        });
-        
-        window.addEventListener('unhandledrejection', (event) => {
-            console.error('🚨 Unhandled promise rejection:', event.reason);
         });
     </script>
 </body>
