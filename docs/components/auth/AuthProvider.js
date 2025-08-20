@@ -1,5 +1,5 @@
-// AuthProvider - Phase 3 Authentication Provider Component (Improved Single Client)
-// Provides authentication context and user management with robust CDN handling
+// AuthProvider - Phase 3 Authentication Provider Component
+// Provides authentication context and user management
 
 (function() {
     'use strict';
@@ -15,32 +15,30 @@
         const [loading, setLoading] = useState(true);
         const [session, setSession] = useState(null);
         const [supabaseReady, setSupabaseReady] = useState(false);
-        const [initError, setInitError] = useState(null);
         
-        // Single Supabase client initialization with CDN fallback
+        // IMPROVED: Better Supabase initialization with fallback
         useEffect(() => {
+            const checkSupabase = () => {
+                if (window.supabase && window.supabase.auth) {
+                    console.log('✅ Supabase client ready for AuthProvider');
+                    setSupabaseReady(true);
+                    return true;
+                }
+                return false;
+            };
+            
             const initializeSupabase = async () => {
-                try {
-                    console.log('🔧 AuthProvider initializing Supabase client...');
-                    
-                    // Check if global client already exists and is working
-                    if (window.supabase && window.supabase.auth) {
-                        console.log('✅ Using existing global Supabase client');
-                        setSupabaseReady(true);
-                        return;
-                    }
-                    
-                    // Check for required dependencies
-                    if (!window.FLASH_FUNGI_CONFIG || !window.FLASH_FUNGI_CONFIG.SUPABASE) {
-                        throw new Error('Flash Fungi configuration not loaded');
-                    }
-                    
-                    const supabaseUrl = window.FLASH_FUNGI_CONFIG.SUPABASE.URL;
-                    const supabaseKey = window.FLASH_FUNGI_CONFIG.SUPABASE.ANON_KEY;
-                    
-                    // Try CDN method first (better for caching and performance)
-                    if (typeof supabase !== 'undefined') {
-                        console.log('🔧 Creating Supabase client via CDN');
+                // Check if already exists
+                if (checkSupabase()) {
+                    return;
+                }
+                
+                // Try to create Supabase client if CDN library is available but client isn't created
+                if (typeof supabase !== 'undefined' && window.FLASH_FUNGI_CONFIG) {
+                    try {
+                        console.log('🔧 Creating Supabase client...');
+                        const supabaseUrl = window.FLASH_FUNGI_CONFIG.SUPABASE.URL;
+                        const supabaseKey = window.FLASH_FUNGI_CONFIG.SUPABASE.ANON_KEY;
                         
                         window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
                             auth: {
@@ -50,43 +48,47 @@
                             }
                         });
                         
-                        // Test the client to make sure it works
-                        await window.supabase.from('specimens').select('count', { count: 'exact', head: true });
-                        
-                        console.log('✅ Supabase client created and tested via CDN');
                         setSupabaseReady(true);
+                        console.log('✅ Supabase client created successfully');
                         return;
+                    } catch (error) {
+                        console.error('❌ Failed to create Supabase client:', error);
                     }
-                    
-                    // CDN fallback: Load Supabase ES6 modules directly
-                    console.log('🔄 CDN failed, trying ES6 module fallback...');
-                    
-                    // Dynamic import fallback (this loads the ES module version)
-                    const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
-                    
-                    window.supabase = createClient(supabaseUrl, supabaseKey, {
-                        auth: {
-                            autoRefreshToken: true,
-                            persistSession: true,
-                            detectSessionInUrl: true
-                        }
-                    });
-                    
-                    // Test the fallback client
-                    await window.supabase.from('specimens').select('count', { count: 'exact', head: true });
-                    
-                    console.log('✅ Supabase client created via ES6 module fallback');
-                    setSupabaseReady(true);
-                    
-                } catch (error) {
-                    console.error('❌ Failed to initialize Supabase client:', error);
-                    setInitError(`Failed to load authentication system: ${error.message}`);
-                    setLoading(false);
                 }
             };
             
-            // Add a small delay to let other scripts load
-            setTimeout(initializeSupabase, 100);
+            // Check immediately
+            initializeSupabase();
+            
+            // Poll for Supabase availability
+            let attempts = 0;
+            const maxAttempts = 30; // Reduced to 3 seconds max
+            
+            const pollForSupabase = () => {
+                attempts++;
+                
+                if (checkSupabase()) {
+                    return; // Success
+                }
+                
+                if (attempts >= maxAttempts) {
+                    console.error('❌ Supabase client not available after 3 seconds');
+                    setLoading(false);
+                    return;
+                }
+                
+                setTimeout(() => {
+                    initializeSupabase().then(() => {
+                        if (!checkSupabase()) {
+                            pollForSupabase();
+                        }
+                    });
+                }, 100);
+            };
+            
+            if (!checkSupabase()) {
+                pollForSupabase();
+            }
         }, []);
         
         // Initialize Supabase auth once client is ready
@@ -95,12 +97,9 @@
                 return;
             }
             
-            let subscription;
-            
             // Get initial session
             const getInitialSession = async () => {
                 try {
-                    console.log('🔧 Getting initial session...');
                     const { data: { session }, error } = await window.supabase.auth.getSession();
                     
                     if (error) {
@@ -119,8 +118,8 @@
             
             getInitialSession();
             
-            // Listen for auth changes (single listener for the whole app)
-            const { data } = window.supabase.auth.onAuthStateChange(
+            // Listen for auth changes
+            const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
                 async (event, session) => {
                     console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
                     setSession(session);
@@ -129,17 +128,15 @@
                 }
             );
             
-            subscription = data.subscription;
-            
             return () => {
                 subscription?.unsubscribe();
             };
         }, [supabaseReady]);
         
-        // Auth functions (using the single global client)
+        // Auth functions
         const signIn = async (email, password) => {
             if (!window.supabase) {
-                return { data: null, error: { message: 'Authentication system not ready' } };
+                return { data: null, error: { message: 'Supabase not initialized' } };
             }
             
             try {
@@ -162,7 +159,7 @@
         
         const signUp = async (email, password, options = {}) => {
             if (!window.supabase) {
-                return { data: null, error: { message: 'Authentication system not ready' } };
+                return { data: null, error: { message: 'Supabase not initialized' } };
             }
             
             try {
@@ -188,7 +185,7 @@
         
         const signOut = async () => {
             if (!window.supabase) {
-                return { error: { message: 'Authentication system not ready' } };
+                return { error: { message: 'Supabase not initialized' } };
             }
             
             try {
@@ -208,7 +205,7 @@
         
         const resetPassword = async (email) => {
             if (!window.supabase) {
-                return { data: null, error: { message: 'Authentication system not ready' } };
+                return { data: null, error: { message: 'Supabase not initialized' } };
             }
             
             try {
@@ -235,37 +232,6 @@
             supabaseReady
         };
         
-        // Show error state if initialization failed
-        if (initError) {
-            return React.createElement('div', { 
-                className: 'min-h-screen flex items-center justify-center bg-gray-50'
-            },
-                React.createElement('div', { className: 'text-center max-w-md mx-auto p-6' },
-                    React.createElement('div', { 
-                        className: 'text-4xl mb-4'
-                    }, '🍄'),
-                    React.createElement('h2', { 
-                        className: 'text-xl font-bold text-gray-800 mb-2'
-                    }, 'Flash Fungi'),
-                    React.createElement('p', { 
-                        className: 'text-red-600 mb-4'
-                    }, 'Connection Issue'),
-                    React.createElement('p', { 
-                        className: 'text-gray-600 text-sm mb-4'
-                    }, initError),
-                    React.createElement('div', { className: 'space-y-2' },
-                        React.createElement('button', {
-                            onClick: () => window.location.reload(),
-                            className: 'block w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
-                        }, 'Retry'),
-                        React.createElement('p', {
-                            className: 'text-xs text-gray-500'
-                        }, 'If this persists, check your internet connection')
-                    )
-                )
-            );
-        }
-        
         // Show loading while waiting for Supabase
         if (!supabaseReady) {
             return React.createElement('div', { 
@@ -280,7 +246,7 @@
                     }, '🍄 Flash Fungi'),
                     React.createElement('p', { 
                         className: 'text-gray-600'
-                    }, 'Connecting to authentication system...')
+                    }, 'Initializing authentication system...')
                 )
             );
         }
@@ -383,41 +349,48 @@
             }
         };
         
-        return React.createElement('form', { onSubmit: handleSubmit },
-            React.createElement('div', { className: 'space-y-4' },
+        return React.createElement('div', { className: 'w-full max-w-md mx-auto' },
+            React.createElement('form', { onSubmit: handleSubmit, className: 'space-y-4' },
                 React.createElement('div', null,
+                    React.createElement('label', { 
+                        className: 'block text-sm font-medium text-gray-700 mb-1'
+                    }, 'Email'),
                     React.createElement('input', {
                         type: 'email',
-                        placeholder: 'Email',
                         value: email,
                         onChange: (e) => setEmail(e.target.value),
                         required: true,
-                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        placeholder: 'your@email.com'
                     })
                 ),
+                
                 React.createElement('div', null,
+                    React.createElement('label', { 
+                        className: 'block text-sm font-medium text-gray-700 mb-1'
+                    }, 'Password'),
                     React.createElement('input', {
                         type: 'password',
-                        placeholder: 'Password',
                         value: password,
                         onChange: (e) => setPassword(e.target.value),
                         required: true,
-                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        placeholder: '••••••••'
                     })
                 ),
                 
                 error && React.createElement('div', { 
-                    className: 'text-red-600 text-sm' 
+                    className: 'text-red-600 text-sm bg-red-50 p-3 rounded-lg'
                 }, error),
                 
                 message && React.createElement('div', { 
-                    className: 'text-green-600 text-sm' 
+                    className: 'text-green-600 text-sm bg-green-50 p-3 rounded-lg'
                 }, message),
                 
                 React.createElement('button', {
                     type: 'submit',
                     disabled: isLoading,
-                    className: 'w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50'
+                    className: 'w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium'
                 }, isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')),
                 
                 React.createElement('div', { className: 'text-center space-y-2' },
@@ -437,6 +410,6 @@
         );
     };
     
-    console.log('✅ AuthProvider with robust CDN handling loaded');
+    console.log('✅ AuthProvider, useAuth, AuthGuard, and LoginForm components loaded');
     
 })();
