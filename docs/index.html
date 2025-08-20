@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flash Fungi - Mushroom Identification Training</title>
     
-    <!-- FIXED: Add base href to ensure all paths resolve correctly -->
-    <base href="/">
-    
-    <!-- PWA Meta Tags (kept for potential future use) -->
+    <!-- PWA Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#8B4513">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,9 +26,8 @@
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- React createElement helper - MUST be defined before any components load -->
+    <!-- React createElement helper -->
     <script>
-        // Define h as shorthand for React.createElement (used by some components)
         window.h = React.createElement;
         console.log('✅ React createElement helper (h) defined globally');
     </script>
@@ -81,6 +77,7 @@
                 <div class="loading-spinner w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full mx-auto mb-4"></div>
                 <h1 class="text-2xl font-bold text-gray-800 mb-2">🍄 Flash Fungi</h1>
                 <p class="text-gray-600">Loading mushroom identification training...</p>
+                <div id="loading-status" class="text-xs text-gray-400 mt-2">Initializing...</div>
             </div>
         </div>
     </div>
@@ -119,46 +116,50 @@
         };
     </script>
 
-    <!-- PHASE 1: Configuration & Utils (FIXED: Absolute paths) -->
+    <!-- PHASE 1: Configuration & Utils -->
     <script src="/config/constants.js" onload="window.componentLoadTracker.track('constants.js')" onerror="window.componentLoadTracker.track('constants.js', false)"></script>
     <script src="/config/supabase.js" onload="window.componentLoadTracker.track('supabase.js')" onerror="window.componentLoadTracker.track('supabase.js', false)"></script>
     <script src="/utils/api.js" onload="window.componentLoadTracker.track('api.js')" onerror="window.componentLoadTracker.track('api.js', false)"></script>
     <script src="/utils/fuzzyMatching.js" onload="window.componentLoadTracker.track('fuzzyMatching.js')" onerror="window.componentLoadTracker.track('fuzzyMatching.js', false)"></script>
     <script src="/utils/touchGestures.js" onload="window.componentLoadTracker.track('touchGestures.js')" onerror="window.componentLoadTracker.track('touchGestures.js', false)"></script>
 
-    <!-- PHASE 2: Common Components (FIXED: Absolute paths) -->
+    <!-- PHASE 2: Common Components -->
     <script src="/components/common/Toast.js" onload="window.componentLoadTracker.track('Toast.js')" onerror="window.componentLoadTracker.track('Toast.js', false)"></script>
     <script src="/components/common/Phase3Badge.js" onload="window.componentLoadTracker.track('Phase3Badge.js')" onerror="window.componentLoadTracker.track('Phase3Badge.js', false)"></script>
     <script src="/components/common/LoadingScreen.js" onload="window.componentLoadTracker.track('LoadingScreen.js')" onerror="window.componentLoadTracker.track('LoadingScreen.js', false)"></script>
 
-    <!-- PHASE 3: Authentication System (FIXED: Absolute paths) -->
-    <script src="/components/auth/AuthProvider.js" onload="window.componentLoadTracker.track('AuthProvider.js')" onerror="window.componentLoadTracker.track('AuthProvider.js', false)"></script>
+    <!-- PHASE 3: Authentication System (UPDATED ORDER) -->
+    <script src="/components/auth/supabase-auth.js" onload="window.componentLoadTracker.track('supabase-auth.js')" onerror="window.componentLoadTracker.track('supabase-auth.js', false)"></script>
+    <script src="/components/auth/AuthModal.js" onload="window.componentLoadTracker.track('AuthModal.js')" onerror="window.componentLoadTracker.track('AuthModal.js', false)"></script>
     <script src="/components/auth/useUserProfile.js" onload="window.componentLoadTracker.track('useUserProfile.js')" onerror="window.componentLoadTracker.track('useUserProfile.js', false)"></script>
 
-    <!-- PHASE 4: Study Components (FIXED: Absolute paths) -->
+    <!-- PHASE 4: Shared Components (NEW) -->
+    <script src="/components/shared/SharedFlashcard.js" onload="window.componentLoadTracker.track('SharedFlashcard.js')" onerror="window.componentLoadTracker.track('SharedFlashcard.js', false)"></script>
+
+    <!-- PHASE 5: Study Components -->
     <script src="/components/study/InteractiveSpeciesGuide.js" onload="window.componentLoadTracker.track('InteractiveSpeciesGuide.js')" onerror="window.componentLoadTracker.track('InteractiveSpeciesGuide.js', false)"></script>
     <script src="/components/study/QuickStudy.js" onload="window.componentLoadTracker.track('QuickStudy.js')" onerror="window.componentLoadTracker.track('QuickStudy.js', false)"></script>
     <script src="/components/study/FocusedStudy.js" onload="window.componentLoadTracker.track('FocusedStudy.js')" onerror="window.componentLoadTracker.track('FocusedStudy.js', false)"></script>
     <script src="/components/study/MarathonMode.js" onload="window.componentLoadTracker.track('MarathonMode.js')" onerror="window.componentLoadTracker.track('MarathonMode.js', false)"></script>
 
-    <!-- PHASE 5: Training System (FIXED: Absolute paths) -->
+    <!-- PHASE 6: Training System -->
     <script src="/components/training/TrainingModules.js" onload="window.componentLoadTracker.track('TrainingModules.js')" onerror="window.componentLoadTracker.track('TrainingModules.js', false)"></script>
     <script src="/components/training/ModulePlayer.js" onload="window.componentLoadTracker.track('ModulePlayer.js')" onerror="window.componentLoadTracker.track('ModulePlayer.js', false)"></script>
     <script src="/components/training/GenusModules.js" onload="window.componentLoadTracker.track('GenusModules.js')" onerror="window.componentLoadTracker.track('GenusModules.js', false)"></script>
 
-    <!-- PHASE 6: Profile & Achievement System (FIXED: Absolute paths) -->
+    <!-- PHASE 7: Profile & Achievement System -->
     <script src="/components/profile/ProfilePage.js" onload="window.componentLoadTracker.track('ProfilePage.js')" onerror="window.componentLoadTracker.track('ProfilePage.js', false)"></script>
     <script src="/components/achievements/AchievementSystem.js" onload="window.componentLoadTracker.track('AchievementSystem.js')" onerror="window.componentLoadTracker.track('AchievementSystem.js', false)"></script>
     <script src="/components/achievements/AchievementIntegration.js" onload="window.componentLoadTracker.track('AchievementIntegration.js')" onerror="window.componentLoadTracker.track('AchievementIntegration.js', false)"></script>
 
-    <!-- PHASE 7: UI Components (FIXED: Absolute paths) -->
+    <!-- PHASE 8: UI Components -->
     <script src="/components/ui/PlaceholderAssets.js" onload="window.componentLoadTracker.track('PlaceholderAssets.js')" onerror="window.componentLoadTracker.track('PlaceholderAssets.js', false)"></script>
 
-    <!-- PHASE 8: Main Application Components (FIXED: Absolute paths) -->
+    <!-- PHASE 9: Main Application Components -->
     <script src="/components/home/HomePage.js" onload="window.componentLoadTracker.track('HomePage.js')" onerror="window.componentLoadTracker.track('HomePage.js', false)"></script>
     <script src="/components/auth/AuthenticatedApp.js" onload="window.componentLoadTracker.track('AuthenticatedApp.js')" onerror="window.componentLoadTracker.track('AuthenticatedApp.js', false)"></script>
 
-    <!-- PHASE 9: Central App Orchestrator (MUST BE LAST) (FIXED: Absolute path) -->
+    <!-- PHASE 10: Central App Orchestrator (MUST BE LAST) -->
     <script src="/app.js" onload="window.componentLoadTracker.track('app.js')" onerror="window.componentLoadTracker.track('app.js', false)"></script>
 
     <!-- Performance Monitoring & Error Handling -->
@@ -167,7 +168,13 @@
         window.addEventListener('load', () => {
             const loadTime = performance.now();
             console.log(`⚡ App loaded in ${Math.round(loadTime)}ms`);
-            console.log('🍄 Flash Fungi running in online-only mode (no service worker)');
+            console.log('🍄 Flash Fungi v3.1 running successfully');
+            
+            // Update loading status
+            const statusEl = document.getElementById('loading-status');
+            if (statusEl) {
+                statusEl.textContent = `✅ Loaded in ${Math.round(loadTime)}ms`;
+            }
         });
         
         // Global error handling for better debugging
