@@ -109,7 +109,7 @@
                         attempts++;
                         
                         const hasReact = typeof React !== 'undefined' && typeof ReactDOM !== 'undefined';
-                        const hasSupabase = typeof window.createClient === 'function';
+                        const hasSupabase = window.supabase && typeof window.supabase.createClient === 'function';
                         
                         console.log(`🔍 Check ${attempts}: React=${hasReact}, Supabase=${hasSupabase}`);
                         
@@ -128,7 +128,7 @@
             // Step 2: Initialize Supabase client
             function initializeSupabase() {
                 try {
-                    window.supabase = window.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                     console.log('✅ Supabase client created');
                     return true;
                 } catch (error) {
