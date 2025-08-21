@@ -1,5 +1,5 @@
 // app.js - Clean Flash Fungi App Initialization
-// Eliminates initialization conflicts and ensures proper event handler binding
+// Fixed to avoid conflicts with Supabase initialization
 
 (function() {
     'use strict';
@@ -15,21 +15,17 @@
         console.log('✅ Configuration loaded from constants.js');
     }
     
-    // HomePage component will be loaded from /components/home/HomePage.js
-    
     // Simple initialization function
     function initializeFlashFungi() {
         console.log('🚀 Starting Flash Fungi initialization...');
         
-        // Initialize Supabase
-        if (typeof window.supabase?.createClient !== 'function') {
-            console.error('❌ Supabase not available');
+        // Check if Supabase client already exists (created by supabase.js)
+        if (!window.supabase || typeof window.supabase.auth !== 'object') {
+            console.error('❌ Supabase client not initialized. Check supabase.js is loaded.');
             return;
         }
         
-        // Create Supabase client
-        window.supabase = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-        console.log('✅ Supabase client initialized');
+        console.log('✅ Supabase client already initialized');
         
         // Wait for all components to load
         const checkComponents = () => {
@@ -40,6 +36,9 @@
                 // Core UI components (critical)
                 'HomePage', 'LoadingScreen',
                 
+                // Auth components
+                'AuthModal',
+                
                 // Study components (core functionality)
                 'SharedFlashcard', 'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
                 
@@ -49,7 +48,7 @@
                 // Profile (core functionality)
                 'ProfilePage'
                 
-                // Note: Optional components (GenusModules, AchievementSystem, PlaceholderAssets, etc.) 
+                // Note: Optional components (GenusModules, AchievementSystem, PlaceholderAssets, etc.)
                 // will load in background and don't block app initialization
             ];
             

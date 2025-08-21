@@ -1,4 +1,4 @@
-// AuthenticatedApp.js - Main Authenticated App Component (Fixed Hooks Rule Violation)
+// AuthenticatedApp.js - Main Authenticated App Component (Fixed Auth Modal)
 // Flash Fungi - Complete app with proper auth modal handling
 
 (function() {
@@ -54,11 +54,9 @@
                     const username = match[1];
                     setProfileUsername(username);
                     setCurrentView('public-profile');
-                } else if (path === '/' || path === '') {
-                    // Ensure we're on home view for root path
-                    if (currentView === 'public-profile') {
+                } else if (path === '/') {
+                    if (currentView === 'loading') {
                         setCurrentView('home');
-                        setProfileUsername(null);
                     }
                 }
             };
@@ -66,74 +64,66 @@
             handleRoute();
             window.addEventListener('popstate', handleRoute);
             
-            return () => window.removeEventListener('popstate', handleRoute);
-        }, [currentView]);
+            return () => {
+                window.removeEventListener('popstate', handleRoute);
+            };
+        }, []);
         
         // Load initial data
         React.useEffect(() => {
-            if (authLoading) {
-                setCurrentView('loading');
-                return;
-            }
-            
-            loadInitialData();
-        }, [authLoading]);
-        
-        // Load app data
-        const loadInitialData = async () => {
             console.log('🔍 Loading initial data...');
-            setLoading(true);
-            setError(null);
             
-            try {
-                if (!window.FlashFungiAPI) {
-                    throw new Error('FlashFungiAPI not available');
+            const loadData = async () => {
+                try {
+                    setLoading(true);
+                    
+                    // Load specimens and hints
+                    const [specimensData, hintsData, guidesData] = await Promise.all([
+                        window.FlashFungiAPI?.fetchSpecimens({}) || Promise.resolve([]),
+                        window.FlashFungiAPI?.fetchSpeciesHints() || Promise.resolve({}),
+                        window.FlashFungiAPI?.fetchFieldGuides() || Promise.resolve([])
+                    ]);
+                    
+                    setSpecimens(specimensData);
+                    setSpeciesHints(hintsData);
+                    
+                    console.log('✅ Initial data loaded successfully');
+                } catch (err) {
+                    console.error('❌ Error loading data:', err);
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                    if (currentView === 'loading') {
+                        setCurrentView('home');
+                    }
                 }
-                
-                const [specimenData, hintsData, refPhotosData] = await Promise.all([
-                    window.FlashFungiAPI.loadSpecimens(),
-                    window.FlashFungiAPI.loadSpeciesHints(),
-                    window.FlashFungiAPI.loadFieldGuides()
-                ]);
-                
-                setSpecimens(specimenData || []);
-                setSpeciesHints(hintsData || {});
-                setReferencePhotos(refPhotosData || {});
-                
-                console.log('✅ Initial data loaded successfully');
-                setCurrentView('home');
-                
-            } catch (error) {
-                console.error('❌ Error loading initial data:', error);
-                setError(error.message);
-                setCurrentView('home'); // Show home even if data fails
-            } finally {
-                setLoading(false);
-            }
-        };
+            };
+            
+            loadData();
+        }, []);
         
-        // Load specimen photos for a species
-        const loadSpecimenPhotos = async (speciesName) => {
-            if (specimenPhotos[speciesName]) {
-                return specimenPhotos[speciesName];
+        // Load photos for a specimen
+        const loadSpecimenPhotos = React.useCallback(async (specimenId) => {
+            if (specimenPhotos[specimenId]) {
+                return specimenPhotos[specimenId];
             }
             
             try {
-                const photos = await window.FlashFungiAPI.loadSpecimenPhotos(speciesName);
+                const photos = await window.FlashFungiAPI?.fetchSpecimenPhotos(specimenId) || [];
                 setSpecimenPhotos(prev => ({
                     ...prev,
-                    [speciesName]: photos
+                    [specimenId]: photos
                 }));
                 return photos;
-            } catch (error) {
-                console.error('❌ Error loading specimen photos:', error);
+            } catch (err) {
+                console.error('Error loading specimen photos:', err);
                 return [];
             }
-        };
+        }, [specimenPhotos]);
         
-        // Navigation handlers
+        // Event handlers
         const handleStudyModeSelect = (mode) => {
-            console.log('🎯 Study mode selected:', mode);
+            console.log('📚 Study mode selected:', mode);
             switch (mode) {
                 case 'quick':
                     setCurrentView('study-quick');
@@ -192,87 +182,44 @@
         
         // Show loading screen during auth or data loading
         if (authLoading || (loading && currentView === 'loading')) {
-            return window.LoadingScreen ? React.createElement(window.LoadingScreen, {
-                message: authLoading ? 'Authenticating...' : 'Loading application data...'
-            }) : React.createElement('div', { 
-                style: { 
-                    minHeight: '100vh', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
-                } 
-            }, 'Loading...');
+            return window.LoadingScreen ? 
+                React.createElement(window.LoadingScreen, {
+                    message: authLoading ? 'Authenticating...' : 'Loading application data...'
+                }) : React.createElement('div', { 
+                    style: { 
+                        minHeight: '100vh', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center' 
+                    } 
+                }, 'Loading...');
         }
         
-        // Auth Modal
-        if (showAuthModal) {
-            return React.createElement('div', {
-                style: {
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                },
-                onClick: () => setShowAuthModal(false)
-            },
-                React.createElement('div', {
-                    style: {
-                        backgroundColor: 'white',
-                        borderRadius: '1rem',
-                        padding: '2rem',
-                        width: '100%',
-                        maxWidth: '400px',
-                        margin: '1rem'
-                    },
-                    onClick: (e) => e.stopPropagation()
-                },
-                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' } },
-                        React.createElement('h2', { 
-                            style: { 
-                                fontSize: '1.5rem', 
-                                fontWeight: 'bold', 
-                                color: '#1f2937' 
-                            }
-                        }, '🍄 Flash Fungi'),
-                        React.createElement('button', {
-                            onClick: () => setShowAuthModal(false),
-                            style: {
-                                background: 'none',
-                                border: 'none',
-                                fontSize: '1.5rem',
-                                cursor: 'pointer',
-                                color: '#6b7280'
-                            }
-                        }, '×')
-                    ),
-                    React.createElement(window.LoginForm)
-                )
-            );
+        // FIXED: Auth Modal - Use AuthModal component with proper onClose prop
+        if (showAuthModal && window.AuthModal) {
+            return React.createElement(window.AuthModal, {
+                onClose: () => setShowAuthModal(false)
+            });
         }
 
         // Helper function to get current view component
         function getCurrentViewComponent() {
             switch (currentView) {
                 case 'home':
-                    return window.HomePage ? React.createElement(window.HomePage, {
-                        specimens,
-                        user,
-                        userProgress,
-                        speciesWithHints: Object.keys(speciesHints).length,
-                        onStudyModeSelect: handleStudyModeSelect,
-                        onTrainingModuleSelect: handleTrainingModuleSelect,
-                        onAuthRequired: handleAuthRequired,
-                        onProfileClick: handleProfileClick,
-                        onSignOut: handleSignOut
-                    }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                        React.createElement('h1', null, 'HomePage component not loaded')
-                    );
+                    return window.HomePage ? 
+                        React.createElement(window.HomePage, {
+                            specimens,
+                            user,
+                            userProgress,
+                            speciesWithHints: Object.keys(speciesHints).length,
+                            onStudyModeSelect: handleStudyModeSelect,
+                            onTrainingModuleSelect: handleTrainingModuleSelect,
+                            onAuthRequired: handleAuthRequired,
+                            onProfileClick: handleProfileClick,
+                            onSignOut: handleSignOut
+                        }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
+                            React.createElement('h1', null, 'HomePage component not loaded')
+                        );
 
                 case 'profile':
                     return window.ProfilePage ? React.createElement(window.ProfilePage, {
@@ -312,19 +259,20 @@
                     );
 
                 case 'study-marathon':
-                    return window.MarathonMode ? React.createElement(window.MarathonMode, {
-                        specimens,
-                        speciesHints,
-                        referencePhotos,
-                        specimenPhotos,
-                        user,
-                        saveProgress,
-                        loadSpecimenPhotos,
-                        onBack: handleBackToHome
-                    }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                        React.createElement('h1', null, 'MarathonMode component not loaded'),
-                        React.createElement('button', { onClick: handleBackToHome }, 'Back to Home')
-                    );
+                    return window.MarathonMode ? 
+                        React.createElement(window.MarathonMode, {
+                            specimens,
+                            speciesHints,
+                            referencePhotos,
+                            specimenPhotos,
+                            user,
+                            saveProgress,
+                            loadSpecimenPhotos,
+                            onBack: handleBackToHome
+                        }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
+                            React.createElement('h1', null, 'MarathonMode component not loaded'),
+                            React.createElement('button', { onClick: handleBackToHome }, 'Back to Home')
+                        );
 
                 case 'training-modules':
                     return window.TrainingModules ? React.createElement(window.TrainingModules, {
@@ -368,20 +316,21 @@
                     return handleBackToHome();
 
                 default:
-                    return window.HomePage ? React.createElement(window.HomePage, {
-                        specimens,
-                        user,
-                        userProgress,
-                        speciesWithHints: Object.keys(speciesHints).length,
-                        onStudyModeSelect: handleStudyModeSelect,
-                        onTrainingModuleSelect: handleTrainingModuleSelect,
-                        onAuthRequired: handleAuthRequired,
-                        onProfileClick: handleProfileClick,
-                        onSignOut: handleSignOut
-                    }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                        React.createElement('h1', null, 'Components not loaded'),
-                        React.createElement('button', { onClick: () => window.location.reload() }, 'Reload')
-                    );
+                    return window.HomePage ? 
+                        React.createElement(window.HomePage, {
+                            specimens,
+                            user,
+                            userProgress,
+                            speciesWithHints: Object.keys(speciesHints).length,
+                            onStudyModeSelect: handleStudyModeSelect,
+                            onTrainingModuleSelect: handleTrainingModuleSelect,
+                            onAuthRequired: handleAuthRequired,
+                            onProfileClick: handleProfileClick,
+                            onSignOut: handleSignOut
+                        }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
+                            React.createElement('h1', null, 'Components not loaded'),
+                            React.createElement('button', { onClick: () => window.location.reload() }, 'Reload')
+                        );
             }
         }
 
@@ -389,6 +338,6 @@
         return getCurrentViewComponent();
     };
     
-    console.log('✅ Fixed AuthenticatedApp loaded with proper hooks compliance');
+    console.log('✅ Fixed AuthenticatedApp loaded with proper auth modal handling');
     
 })();
