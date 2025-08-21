@@ -1,5 +1,5 @@
 // app.js - Fixed Flash Fungi App Initialization
-// Properly handles Supabase initialization timing
+// Properly waits for Supabase client to be initialized
 
 (function() {
     'use strict';
@@ -19,52 +19,21 @@
     function initializeFlashFungi() {
         console.log('🚀 Starting Flash Fungi initialization...');
         
-        // Wait for Supabase library to be available
-        waitForSupabaseLibrary();
+        // Wait for Supabase client to be ready
+        waitForSupabaseClient();
     }
     
-    // Wait for the Supabase library to load from CDN
-    function waitForSupabaseLibrary() {
-        // Check if Supabase library is loaded (from CDN)
-        if (window.supabase && typeof window.supabase.createClient === 'function') {
-            console.log('✅ Supabase library loaded');
-            initializeSupabaseClient();
-        } else {
-            console.log('⏳ Waiting for Supabase library...');
-            setTimeout(waitForSupabaseLibrary, 100);
-        }
-    }
-    
-    // Initialize Supabase client only if not already initialized
-    function initializeSupabaseClient() {
-        // Check if client already exists (from supabase.js or elsewhere)
-        if (window.supabaseClient && typeof window.supabaseClient.auth === 'object') {
-            console.log('✅ Supabase client already exists');
-            window.supabase = window.supabaseClient; // Ensure window.supabase points to the client
-            waitForComponents();
-            return;
-        }
-        
-        // Check if window.supabase is already the initialized client (not the library)
+    // Wait for Supabase client to be initialized (by config/supabase.js)
+    function waitForSupabaseClient() {
+        // Check if Supabase client is ready (has auth object)
         if (window.supabase && typeof window.supabase.auth === 'object') {
-            console.log('✅ Supabase client already initialized');
+            console.log('✅ Supabase client is ready');
             waitForComponents();
             return;
         }
         
-        // Create new client since none exists
-        try {
-            console.log('🔧 Creating Supabase client...');
-            const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-            window.supabase = client; // Replace library reference with client instance
-            window.supabaseClient = client; // Also store as supabaseClient for compatibility
-            console.log('✅ Supabase client created successfully');
-            waitForComponents();
-        } catch (error) {
-            console.error('❌ Failed to create Supabase client:', error);
-            // Retry after a delay
-            setTimeout(initializeSupabaseClient, 500);
-        }
+        console.log('⏳ Waiting for Supabase client...');
+        setTimeout(waitForSupabaseClient, 100);
     }
     
     // Wait for all components to load
