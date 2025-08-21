@@ -1,5 +1,5 @@
-// AuthProvider - Phase 3 Authentication Provider Component
-// Provides authentication context and user management
+// AuthProvider.js - Enhanced Authentication Provider with Username Support
+// Flash Fungi - Complete auth system with improved UX
 
 (function() {
     'use strict';
@@ -12,90 +12,68 @@
     // Authentication Provider Component
     window.AuthProvider = function AuthProvider({ children }) {
         const [user, setUser] = useState(null);
-        const [loading, setLoading] = useState(true);
         const [session, setSession] = useState(null);
+        const [loading, setLoading] = useState(true);
         const [supabaseReady, setSupabaseReady] = useState(false);
         
-        // IMPROVED: Better Supabase initialization with fallback
+        // Enhanced Supabase initialization
         useEffect(() => {
-            const checkSupabase = () => {
-                if (window.supabase && window.supabase.auth) {
-                    console.log('✅ Supabase client ready for AuthProvider');
-                    setSupabaseReady(true);
-                    return true;
-                }
-                return false;
-            };
-            
             const initializeSupabase = async () => {
-                // Check if already exists
-                if (checkSupabase()) {
-                    return;
-                }
-                
-                // Try to create Supabase client if CDN library is available but client isn't created
-                if (typeof supabase !== 'undefined' && window.FLASH_FUNGI_CONFIG) {
-                    try {
-                        console.log('🔧 Creating Supabase client...');
-                        const supabaseUrl = window.FLASH_FUNGI_CONFIG.SUPABASE.URL;
-                        const supabaseKey = window.FLASH_FUNGI_CONFIG.SUPABASE.ANON_KEY;
+                // Check if Supabase is available
+                if (typeof window.supabase === 'undefined') {
+                    console.log('⏳ Waiting for Supabase...');
+                    
+                    // Create Supabase client if CDN library is available
+                    const maxAttempts = 50;
+                    let attempts = 0;
+                    
+                    const checkSupabase = () => {
+                        attempts++;
                         
-                        window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
-                            auth: {
-                                autoRefreshToken: true,
-                                persistSession: true,
-                                detectSessionInUrl: true
+                        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+                            console.log('✅ Supabase CDN loaded, creating client...');
+                            
+                            try {
+                                window.supabase = window.supabase.createClient(
+                                    window.SUPABASE_URL,
+                                    window.SUPABASE_ANON_KEY,
+                                    {
+                                        auth: {
+                                            autoRefreshToken: true,
+                                            persistSession: true,
+                                            detectSessionInUrl: true
+                                        }
+                                    }
+                                );
+                                
+                                console.log('✅ Supabase client created successfully');
+                                setSupabaseReady(true);
+                                
+                            } catch (error) {
+                                console.error('❌ Error creating Supabase client:', error);
                             }
-                        });
-                        
-                        setSupabaseReady(true);
-                        console.log('✅ Supabase client created successfully');
-                        return;
-                    } catch (error) {
-                        console.error('❌ Failed to create Supabase client:', error);
-                    }
-                }
-            };
-            
-            // Check immediately
-            initializeSupabase();
-            
-            // Poll for Supabase availability
-            let attempts = 0;
-            const maxAttempts = 30; // Reduced to 3 seconds max
-            
-            const pollForSupabase = () => {
-                attempts++;
-                
-                if (checkSupabase()) {
-                    return; // Success
-                }
-                
-                if (attempts >= maxAttempts) {
-                    console.error('❌ Supabase client not available after 3 seconds');
-                    setLoading(false);
-                    return;
-                }
-                
-                setTimeout(() => {
-                    initializeSupabase().then(() => {
-                        if (!checkSupabase()) {
-                            pollForSupabase();
+                        } else if (attempts < maxAttempts) {
+                            setTimeout(checkSupabase, 100);
+                        } else {
+                            console.error('❌ Supabase failed to load after 5 seconds');
                         }
-                    });
-                }, 100);
+                    };
+                    
+                    checkSupabase();
+                } else {
+                    console.log('✅ Supabase already available');
+                    setSupabaseReady(true);
+                }
             };
             
-            if (!checkSupabase()) {
-                pollForSupabase();
-            }
+            initializeSupabase();
         }, []);
         
-        // Initialize Supabase auth once client is ready
+        // Get initial session and set up auth listener
         useEffect(() => {
-            if (!supabaseReady || !window.supabase) {
-                return;
-            }
+            if (!supabaseReady || !window.supabase) return;
+            
+            console.log('🔐 Setting up authentication...');
             
             // Get initial session
             const getInitialSession = async () => {
@@ -103,14 +81,14 @@
                     const { data: { session }, error } = await window.supabase.auth.getSession();
                     
                     if (error) {
-                        console.error('Error getting session:', error);
+                        console.error('❌ Error getting session:', error);
                     } else {
+                        console.log('📱 Initial session:', session ? 'found' : 'none');
                         setSession(session);
                         setUser(session?.user || null);
-                        console.log('✅ Initial session loaded:', session?.user?.email || 'No user');
                     }
                 } catch (error) {
-                    console.error('Failed to get initial session:', error);
+                    console.error('❌ Error in getSession:', error);
                 } finally {
                     setLoading(false);
                 }
@@ -121,9 +99,16 @@
             // Listen for auth changes
             const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
                 async (event, session) => {
-                    console.log('🔄 Auth state changed:', event, session?.user?.email || 'No user');
+                    console.log('🔄 Auth state changed:', event, session ? 'session exists' : 'no session');
+                    
                     setSession(session);
                     setUser(session?.user || null);
+                    
+                    // Create or update user profile for new signups
+                    if (event === 'SIGNED_UP' && session?.user) {
+                        await createUserProfile(session.user);
+                    }
+                    
                     setLoading(false);
                 }
             );
@@ -133,7 +118,77 @@
             };
         }, [supabaseReady]);
         
-        // Auth functions
+        // Create user profile in database
+        const createUserProfile = async (user) => {
+            if (!window.supabase) return;
+            
+            try {
+                console.log('👤 Creating user profile for:', user.email);
+                
+                const profileData = {
+                    id: user.id,
+                    email: user.email,
+                    username: user.user_metadata?.username || user.user_metadata?.display_name || user.email.split('@')[0],
+                    display_name: user.user_metadata?.display_name || user.user_metadata?.username || user.email.split('@')[0],
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                
+                const { data, error } = await window.supabase
+                    .from('user_profiles')
+                    .upsert(profileData, { 
+                        onConflict: 'id',
+                        ignoreDuplicates: false 
+                    })
+                    .select()
+                    .single();
+                
+                if (error) {
+                    console.error('❌ Error creating user profile:', error);
+                } else {
+                    console.log('✅ User profile created:', data);
+                }
+            } catch (error) {
+                console.error('❌ Error in createUserProfile:', error);
+            }
+        };
+        
+        // Enhanced sign up function
+        const signUp = async (email, password, metadata = {}) => {
+            if (!window.supabase) {
+                return { data: null, error: { message: 'Supabase not initialized' } };
+            }
+            
+            try {
+                setLoading(true);
+                console.log('📝 Signing up user:', email, 'with metadata:', metadata);
+                
+                const { data, error } = await window.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            username: metadata.username || metadata.display_name,
+                            display_name: metadata.display_name || metadata.username,
+                            ...metadata
+                        }
+                    }
+                });
+                
+                if (error) throw error;
+                
+                console.log('✅ Sign up successful:', data);
+                return { data, error: null };
+                
+            } catch (error) {
+                console.error('❌ Sign up error:', error);
+                return { data: null, error };
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        // Enhanced sign in function
         const signIn = async (email, password) => {
             if (!window.supabase) {
                 return { data: null, error: { message: 'Supabase not initialized' } };
@@ -141,6 +196,8 @@
             
             try {
                 setLoading(true);
+                console.log('🔑 Signing in user:', email);
+                
                 const { data, error } = await window.supabase.auth.signInWithPassword({
                     email,
                     password
@@ -148,41 +205,18 @@
                 
                 if (error) throw error;
                 
+                console.log('✅ Sign in successful');
                 return { data, error: null };
+                
             } catch (error) {
-                console.error('Sign in error:', error);
+                console.error('❌ Sign in error:', error);
                 return { data: null, error };
             } finally {
                 setLoading(false);
             }
         };
         
-        const signUp = async (email, password, options = {}) => {
-            if (!window.supabase) {
-                return { data: null, error: { message: 'Supabase not initialized' } };
-            }
-            
-            try {
-                setLoading(true);
-                const { data, error } = await window.supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: options.metadata || {}
-                    }
-                });
-                
-                if (error) throw error;
-                
-                return { data, error: null };
-            } catch (error) {
-                console.error('Sign up error:', error);
-                return { data: null, error };
-            } finally {
-                setLoading(false);
-            }
-        };
-        
+        // Sign out function
         const signOut = async () => {
             if (!window.supabase) {
                 return { error: { message: 'Supabase not initialized' } };
@@ -190,32 +224,46 @@
             
             try {
                 setLoading(true);
+                console.log('👋 Signing out user');
+                
                 const { error } = await window.supabase.auth.signOut();
                 
                 if (error) throw error;
                 
+                console.log('✅ Sign out successful');
                 return { error: null };
+                
             } catch (error) {
-                console.error('Sign out error:', error);
+                console.error('❌ Sign out error:', error);
                 return { error };
             } finally {
                 setLoading(false);
             }
         };
         
+        // Reset password function
         const resetPassword = async (email) => {
             if (!window.supabase) {
                 return { data: null, error: { message: 'Supabase not initialized' } };
             }
             
             try {
-                const { data, error } = await window.supabase.auth.resetPasswordForEmail(email);
+                console.log('🔄 Sending password reset for:', email);
+                
+                const { data, error } = await window.supabase.auth.resetPasswordForEmail(
+                    email,
+                    {
+                        redirectTo: `${window.location.origin}/reset-password`
+                    }
+                );
                 
                 if (error) throw error;
                 
+                console.log('✅ Password reset email sent');
                 return { data, error: null };
+                
             } catch (error) {
-                console.error('Reset password error:', error);
+                console.error('❌ Reset password error:', error);
                 return { data: null, error };
             }
         };
@@ -228,24 +276,46 @@
             signIn,
             signUp,
             signOut,
-            resetPassword,
+            resetPassword: resetPassword,
             supabaseReady
         };
         
         // Show loading while waiting for Supabase
         if (!supabaseReady) {
             return React.createElement('div', { 
-                className: 'min-h-screen flex items-center justify-center bg-gray-50'
+                style: { 
+                    minHeight: '100vh', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    backgroundColor: '#f9fafb'
+                }
             },
-                React.createElement('div', { className: 'text-center' },
+                React.createElement('div', { style: { textAlign: 'center' } },
                     React.createElement('div', { 
-                        className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4'
+                        style: {
+                            width: '2rem',
+                            height: '2rem',
+                            border: '3px solid #e5e7eb',
+                            borderTop: '3px solid #3b82f6',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 1rem'
+                        }
                     }),
                     React.createElement('h2', { 
-                        className: 'text-xl font-bold text-gray-800 mb-2'
+                        style: { 
+                            fontSize: '1.25rem', 
+                            fontWeight: 'bold', 
+                            color: '#1f2937',
+                            marginBottom: '0.5rem'
+                        }
                     }, '🍄 Flash Fungi'),
                     React.createElement('p', { 
-                        className: 'text-gray-600'
+                        style: { 
+                            color: '#6b7280',
+                            fontSize: '0.875rem'
+                        }
                     }, 'Initializing authentication system...')
                 )
             );
@@ -275,16 +345,39 @@
         
         if (!user) {
             return fallback || React.createElement('div', { 
-                className: 'min-h-screen flex items-center justify-center bg-gray-50'
+                style: { 
+                    minHeight: '100vh', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    backgroundColor: '#f9fafb'
+                }
             },
                 React.createElement('div', { 
-                    className: 'bg-white p-8 rounded-xl shadow-lg text-center max-w-md'
+                    style: {
+                        backgroundColor: 'white',
+                        padding: '2rem',
+                        borderRadius: '1rem',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        textAlign: 'center',
+                        maxWidth: '400px',
+                        width: '100%',
+                        margin: '1rem'
+                    }
                 },
                     React.createElement('h2', { 
-                        className: 'text-2xl font-bold text-gray-800 mb-4'
+                        style: { 
+                            fontSize: '1.5rem', 
+                            fontWeight: 'bold', 
+                            color: '#1f2937',
+                            marginBottom: '1rem'
+                        }
                     }, '🍄 Flash Fungi'),
                     React.createElement('p', { 
-                        className: 'text-gray-600 mb-6'
+                        style: { 
+                            color: '#6b7280',
+                            marginBottom: '1.5rem'
+                        }
                     }, 'Please sign in to continue learning about mushroom identification.'),
                     React.createElement(window.LoginForm)
                 )
@@ -294,122 +387,6 @@
         return children;
     };
     
-    // Simple Login Form Component
-    window.LoginForm = function LoginForm() {
-        const [email, setEmail] = useState('');
-        const [password, setPassword] = useState('');
-        const [isSignUp, setIsSignUp] = useState(false);
-        const [isLoading, setIsLoading] = useState(false);
-        const [error, setError] = useState('');
-        const [message, setMessage] = useState('');
-        
-        const { signIn, signUp, resetPassword } = window.useAuth();
-        
-        const handleSubmit = async (e) => {
-            e.preventDefault();
-            setError('');
-            setMessage('');
-            setIsLoading(true);
-            
-            try {
-                if (isSignUp) {
-                    const { data, error } = await signUp(email, password);
-                    if (error) throw error;
-                    
-                    setMessage('Check your email for the confirmation link!');
-                } else {
-                    const { data, error } = await signIn(email, password);
-                    if (error) throw error;
-                    
-                    // Success handled by auth state change
-                }
-            } catch (error) {
-                setError(error.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        
-        const handleResetPassword = async () => {
-            if (!email) {
-                setError('Please enter your email address first');
-                return;
-            }
-            
-            setError('');
-            setMessage('');
-            
-            try {
-                const { error } = await resetPassword(email);
-                if (error) throw error;
-                
-                setMessage('Password reset email sent!');
-            } catch (error) {
-                setError(error.message);
-            }
-        };
-        
-        return React.createElement('div', { className: 'w-full max-w-md mx-auto' },
-            React.createElement('form', { onSubmit: handleSubmit, className: 'space-y-4' },
-                React.createElement('div', null,
-                    React.createElement('label', { 
-                        className: 'block text-sm font-medium text-gray-700 mb-1'
-                    }, 'Email'),
-                    React.createElement('input', {
-                        type: 'email',
-                        value: email,
-                        onChange: (e) => setEmail(e.target.value),
-                        required: true,
-                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                        placeholder: 'your@email.com'
-                    })
-                ),
-                
-                React.createElement('div', null,
-                    React.createElement('label', { 
-                        className: 'block text-sm font-medium text-gray-700 mb-1'
-                    }, 'Password'),
-                    React.createElement('input', {
-                        type: 'password',
-                        value: password,
-                        onChange: (e) => setPassword(e.target.value),
-                        required: true,
-                        className: 'w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                        placeholder: '••••••••'
-                    })
-                ),
-                
-                error && React.createElement('div', { 
-                    className: 'text-red-600 text-sm bg-red-50 p-3 rounded-lg'
-                }, error),
-                
-                message && React.createElement('div', { 
-                    className: 'text-green-600 text-sm bg-green-50 p-3 rounded-lg'
-                }, message),
-                
-                React.createElement('button', {
-                    type: 'submit',
-                    disabled: isLoading,
-                    className: 'w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium'
-                }, isLoading ? 'Loading...' : (isSignUp ? 'Sign Up' : 'Sign In')),
-                
-                React.createElement('div', { className: 'text-center space-y-2' },
-                    React.createElement('button', {
-                        type: 'button',
-                        onClick: () => setIsSignUp(!isSignUp),
-                        className: 'text-blue-600 hover:text-blue-700 text-sm'
-                    }, isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'),
-                    
-                    !isSignUp && React.createElement('button', {
-                        type: 'button',
-                        onClick: handleResetPassword,
-                        className: 'block w-full text-gray-600 hover:text-gray-700 text-sm'
-                    }, 'Forgot Password?')
-                )
-            )
-        );
-    };
-    
-    console.log('✅ AuthProvider, useAuth, AuthGuard, and LoginForm components loaded');
+    console.log('✅ Enhanced AuthProvider, useAuth, AuthGuard, and LoginForm components loaded');
     
 })();

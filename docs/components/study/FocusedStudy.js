@@ -1,573 +1,426 @@
-// FocusedStudy.js - Enhanced Focused Study Mode with Touch Gestures
-// Flash Fungi - Targeted practice with filters, performance tracking, and mobile gestures
-
 (function() {
     'use strict';
     
-    const { useState, useEffect, useCallback, useMemo } = React;
-    
-    window.FocusedStudy = function FocusedStudy({ 
-        specimens, 
-        speciesHints, 
-        referencePhotos, 
-        specimenPhotos, 
-        user, 
-        loadSpecimenPhotos, 
-        onBack,
-        saveProgress 
-    }) {
+    window.FocusedStudy = function FocusedStudy(props) {
+        const specimens = props.specimens || [];
+        const onBack = props.onBack;
+        
         // State
-        const [filters, setFilters] = useState({
-            family: 'all',
-            genus: 'all',
-            difficulty: 'all',
-            features: [],
-            dnAVerified: false
+        const [showFilters, setShowFilters] = React.useState(true);
+        const [filters, setFilters] = React.useState({
+            family: [],
+            genus: [],
+            features: []
         });
-        const [showFilters, setShowFilters] = useState(true);
-        const [studyStarted, setStudyStarted] = useState(false);
-        const [performanceData, setPerformanceData] = useState({});
-        const [savedPresets, setSavedPresets] = useState([]);
-        const [presetName, setPresetName] = useState('');
-        const [showSavePreset, setShowSavePreset] = useState(false);
-        const [gestureHint, setGestureHint] = useState(null);
-
-        // Touch gesture integration - NEW FEATURE
-        const gestureHandlers = window.useTouchGestures ? window.useTouchGestures({
-            onSwipeLeft: () => {
-                // Swipe left in filters = start study
-                if (showFilters && filteredSpecimens.length >= 5) {
-                    setStudyStarted(true);
-                    setShowFilters(false);
-                    showGestureHint('🎯 Starting focused study');
-                }
-            },
-            onSwipeRight: () => {
-                // Swipe right = go back to filters or main menu
-                if (studyStarted) {
-                    setStudyStarted(false);
-                    setShowFilters(true);
-                    showGestureHint('⚙️ Returned to filters');
-                } else if (showFilters) {
-                    onBack();
-                    showGestureHint('🏠 Returned to home');
-                }
-            },
-            onDoubleTap: () => {
-                // Double tap = toggle filter panel
-                if (!studyStarted) {
-                    setShowFilters(!showFilters);
-                    showGestureHint(showFilters ? '🔽 Hidden filters' : '🔼 Showing filters');
-                }
-            },
-            disabled: studyStarted && !showFilters // Only disable when study is active
-        }) : {};
-
-        // Show gesture hint temporarily
-        const showGestureHint = (message) => {
-            setGestureHint(message);
-            setTimeout(() => setGestureHint(null), 2000);
-        };
-
-        // Get unique values for filter options
-        const filterOptions = useMemo(() => {
-            const families = [...new Set(specimens.map(s => s.family).filter(Boolean))].sort();
-            const genera = [...new Set(specimens.map(s => s.genus).filter(Boolean))].sort();
+        const [studyStarted, setStudyStarted] = React.useState(false);
+        
+        // Extract available options from specimens
+        const availableOptions = React.useMemo(() => {
+            const families = [...new Set(specimens.map(s => s.family))].filter(f => f).sort();
+            const genera = [...new Set(specimens.map(s => s.genus))].filter(g => g).sort();
+            const features = [
+                { id: 'dna_verified', label: 'DNA Verified Only', count: specimens.filter(s => s.dna_sequenced).length },
+                { id: 'has_common_name', label: 'Has Common Name', count: specimens.filter(s => s.common_name).length }
+            ];
             
-            return { families, genera };
+            return { families, genera, features };
         }, [specimens]);
-
-        // Feature options for filtering
-        const featureOptions = [
-            { id: 'dna_verified', label: 'DNA Verified' },
-            { id: 'has_rings', label: 'Has Ring' },
-            { id: 'has_volva', label: 'Has Volva' },
-            { id: 'toxic', label: 'Toxic Species' },
-            { id: 'edible', label: 'Edible Species' },
-            { id: 'high_quality', label: 'High Quality Photos' }
-        ];
-
-        // Filter specimens based on current filters
-        const filteredSpecimens = useMemo(() => {
+        
+        // Count specimens that match current filters
+        const filteredCount = React.useMemo(() => {
             let filtered = specimens.filter(s => s.status === 'approved');
             
-            if (filters.family !== 'all') {
-                filtered = filtered.filter(s => s.family === filters.family);
+            if (filters.family.length > 0) {
+                filtered = filtered.filter(s => filters.family.includes(s.family));
+            }
+            if (filters.genus.length > 0) {
+                filtered = filtered.filter(s => filters.genus.includes(s.genus));
+            }
+            if (filters.features.includes('dna_verified')) {
+                filtered = filtered.filter(s => s.dna_sequenced);
+            }
+            if (filters.features.includes('has_common_name')) {
+                filtered = filtered.filter(s => s.common_name);
             }
             
-            if (filters.genus !== 'all') {
-                filtered = filtered.filter(s => s.genus === filters.genus);
-            }
-            
-            if (filters.difficulty !== 'all') {
-                const difficultyMap = {
-                    'easy': (s) => s.quality_score >= 80,
-                    'medium': (s) => s.quality_score >= 60 && s.quality_score < 80,
-                    'hard': (s) => s.quality_score < 60
-                };
-                filtered = filtered.filter(difficultyMap[filters.difficulty]);
-            }
-            
-            // Apply feature filters
-            filters.features.forEach(feature => {
-                switch (feature) {
-                    case 'dna_verified':
-                        filtered = filtered.filter(s => s.dna_verified);
-                        break;
-                    case 'has_rings':
-                        filtered = filtered.filter(s => s.has_ring);
-                        break;
-                    case 'has_volva':
-                        filtered = filtered.filter(s => s.has_volva);
-                        break;
-                    case 'toxic':
-                        filtered = filtered.filter(s => s.toxic_status === 'toxic');
-                        break;
-                    case 'edible':
-                        filtered = filtered.filter(s => s.edible_status === 'edible');
-                        break;
-                    case 'high_quality':
-                        filtered = filtered.filter(s => s.quality_score >= 85);
-                        break;
-                }
-            });
-            
-            return filtered;
+            return filtered.length;
         }, [specimens, filters]);
-
-        // Load saved presets on mount
-        useEffect(() => {
-            if (user?.id) {
-                loadSavedPresets();
-            }
-        }, [user]);
-
-        const loadSavedPresets = async () => {
-            try {
-                const response = await fetch(`${window.SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user.id}&select=saved_filters`, {
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.length > 0 && data[0].saved_filters) {
-                        setSavedPresets(data[0].saved_filters);
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading saved presets:', error);
-            }
-        };
-
-        const savePreset = async () => {
-            if (!presetName.trim() || !user?.id) return;
-            
-            const newPreset = {
-                name: presetName.trim(),
-                filters: filters,
-                created_at: new Date().toISOString()
-            };
-            
-            const updatedPresets = [...savedPresets, newPreset];
-            
-            try {
-                // Save to database
-                const response = await fetch(`${window.SUPABASE_URL}/rest/v1/user_preferences`, {
-                    method: 'POST',
-                    headers: {
-                        'apikey': window.SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',
-                        'Prefer': 'resolution=merge-duplicates'
-                    },
-                    body: JSON.stringify({
-                        user_id: user.id,
-                        saved_filters: updatedPresets
-                    })
-                });
-                
-                if (response.ok) {
-                    setSavedPresets(updatedPresets);
-                    setPresetName('');
-                    setShowSavePreset(false);
-                    showGestureHint('💾 Preset saved');
-                }
-            } catch (error) {
-                console.error('Error saving preset:', error);
-            }
-        };
-
-        const loadPreset = (preset) => {
-            setFilters(preset.filters);
-            showGestureHint(`📁 Loaded preset: ${preset.name}`);
-        };
-
-        const deletePreset = async (index) => {
-            const updatedPresets = savedPresets.filter((_, i) => i !== index);
-            setSavedPresets(updatedPresets);
-            
-            if (user?.id) {
-                try {
-                    await fetch(`${window.SUPABASE_URL}/rest/v1/user_preferences?user_id=eq.${user.id}`, {
-                        method: 'PATCH',
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            saved_filters: updatedPresets
-                        })
-                    });
-                } catch (error) {
-                    console.error('Error deleting preset:', error);
-                }
-            }
-        };
-
-        const toggleFeature = (featureId) => {
+        
+        const handleFilterChange = (type, value) => {
             setFilters(prev => ({
                 ...prev,
-                features: prev.features.includes(featureId) 
-                    ? prev.features.filter(f => f !== featureId)
-                    : [...prev.features, featureId]
+                [type]: prev[type].includes(value) 
+                    ? prev[type].filter(item => item !== value)
+                    : [...prev[type], value]
             }));
         };
-
-        // Performance tracking
-        const updatePerformance = useCallback(async (category, correct) => {
-            const key = `${category.type}:${category.value}`;
-            setPerformanceData(prev => {
-                const current = prev[key] || { correct: 0, attempts: 0 };
-                return {
-                    ...prev,
-                    [key]: {
-                        correct: current.correct + (correct ? 1 : 0),
-                        attempts: current.attempts + 1
-                    }
-                };
-            });
-            
-            // Save to database
-            if (user?.id && saveProgress) {
-                await saveProgress({
-                    progressType: 'focused_study',
-                    metadata: {
-                        category: key,
-                        correct: correct ? 1 : 0
-                    }
-                });
+        
+        const handleStartStudy = () => {
+            if (filteredCount < 5) {
+                alert('Please select filters that include at least 5 specimens for effective study.');
+                return;
             }
-        }, [user, saveProgress]);
+            setStudyStarted(true);
+        };
         
-        // Custom QuickStudy wrapper with performance tracking and achievement integration
-        const FocusedQuickStudy = (props) => {
-            return React.createElement(window.QuickStudy, {
+        const handleBackToFilters = () => {
+            setStudyStarted(false);
+        };
+        
+        if (studyStarted) {
+            return React.createElement(window.SharedFlashcard, {
                 ...props,
-                saveProgress: async (data) => {
-                    // Track category performance
-                    if (data.specimenId) {
-                        const specimen = filteredSpecimens.find(s => s.id === data.specimenId);
-                        if (specimen) {
-                            if (filters.family !== 'all') {
-                                await updatePerformance(
-                                    { type: 'family', value: filters.family },
-                                    data.score > 50
-                                );
-                            }
-                            if (filters.genus !== 'all') {
-                                await updatePerformance(
-                                    { type: 'genus', value: filters.genus },
-                                    data.score > 50
-                                );
-                            }
-                        }
-                    }
-                    
-                    // Trigger achievement check for focused study - NEW INTEGRATION
-                    if (window.checkAchievements) {
-                        window.checkAchievements('focused_study_complete', {
-                            ...data,
-                            filters: filters,
-                            category: filters.genus !== 'all' ? filters.genus : filters.family
-                        });
-                    }
-                    
-                    // Call original save progress
-                    if (saveProgress) {
-                        await saveProgress(data);
-                    }
-                }
+                mode: 'focused',
+                filters: filters,
+                onBack: handleBackToFilters
             });
-        };
+        }
         
-        // Get weak areas recommendations
-        const getWeakAreas = () => {
-            return Object.entries(performanceData)
-                .filter(([key, data]) => data.attempts >= 3 && (data.correct / data.attempts) < 0.7)
-                .map(([key, data]) => ({
-                    area: key,
-                    accuracy: Math.round((data.correct / data.attempts) * 100)
-                }))
-                .sort((a, b) => a.accuracy - b.accuracy);
-        };
-        
-        const weakAreas = getWeakAreas();
-        
-        // Render filters panel
-        const renderFilters = () => React.createElement('div', {
-            className: 'bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-200'
-        },
-            React.createElement('div', { className: 'flex justify-between items-center mb-6' },
-                React.createElement('h2', { className: 'text-xl font-bold text-gray-800' }, 
-                    '⚙️ Study Filters'
-                ),
-                React.createElement('button', {
-                    onClick: () => setShowSavePreset(!showSavePreset),
-                    className: 'px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200'
-                }, '💾 Save Preset')
-            ),
-            
-            // Save preset panel
-            showSavePreset && React.createElement('div', { className: 'mb-6 p-4 bg-blue-50 rounded-lg' },
-                React.createElement('div', { className: 'flex gap-2' },
-                    React.createElement('input', {
-                        type: 'text',
-                        placeholder: 'Preset name...',
-                        value: presetName,
-                        onChange: (e) => setPresetName(e.target.value),
-                        className: 'flex-1 px-3 py-2 border rounded'
-                    }),
-                    React.createElement('button', {
-                        onClick: savePreset,
-                        disabled: !presetName.trim(),
-                        className: 'px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300'
-                    }, 'Save'),
-                    React.createElement('button', {
-                        onClick: () => setShowSavePreset(false),
-                        className: 'px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400'
-                    }, 'Cancel')
-                )
-            ),
-            
-            // Filter controls
-            React.createElement('div', { className: 'grid grid-cols-1 md:grid-cols-2 gap-6' },
-                // Family filter
-                React.createElement('div', null,
-                    React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
-                        'Family'
-                    ),
-                    React.createElement('select', {
-                        value: filters.family,
-                        onChange: (e) => setFilters(prev => ({ ...prev, family: e.target.value })),
-                        className: 'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Families'),
-                        filterOptions.families.map(family =>
-                            React.createElement('option', { key: family, value: family }, family)
-                        )
-                    )
-                ),
-                
-                // Genus filter
-                React.createElement('div', null,
-                    React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
-                        'Genus'
-                    ),
-                    React.createElement('select', {
-                        value: filters.genus,
-                        onChange: (e) => setFilters(prev => ({ ...prev, genus: e.target.value })),
-                        className: 'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Genera'),
-                        filterOptions.genera.map(genus =>
-                            React.createElement('option', { key: genus, value: genus }, genus)
-                        )
-                    )
-                ),
-                
-                // Difficulty filter
-                React.createElement('div', null,
-                    React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
-                        'Difficulty'
-                    ),
-                    React.createElement('select', {
-                        value: filters.difficulty,
-                        onChange: (e) => setFilters(prev => ({ ...prev, difficulty: e.target.value })),
-                        className: 'w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500'
-                    },
-                        React.createElement('option', { value: 'all' }, 'All Difficulties'),
-                        React.createElement('option', { value: 'easy' }, 'Easy (High quality photos)'),
-                        React.createElement('option', { value: 'medium' }, 'Medium (Good quality photos)'),
-                        React.createElement('option', { value: 'hard' }, 'Hard (Lower quality photos)')
-                    )
-                )
-            ),
-            
-            // Features section
-            React.createElement('div', { className: 'mt-6' },
-                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-3' }, 
-                    'Features'
-                ),
-                React.createElement('div', { className: 'grid grid-cols-2 md:grid-cols-3 gap-3' },
-                    featureOptions.map(feature =>
-                        React.createElement('label', { 
-                            key: feature.id,
-                            className: 'flex items-center space-x-2 cursor-pointer'
-                        },
-                            React.createElement('input', {
-                                type: 'checkbox',
-                                checked: filters.features.includes(feature.id),
-                                onChange: () => toggleFeature(feature.id),
-                                className: 'rounded border-gray-300 text-blue-600 focus:ring-blue-500'
-                            }),
-                            React.createElement('span', { className: 'text-sm text-gray-700' }, 
-                                feature.label
-                            )
-                        )
-                    )
-                )
-            ),
-            
-            // Saved presets
-            savedPresets.length > 0 && React.createElement('div', { className: 'mt-6' },
-                React.createElement('label', { className: 'block text-sm font-medium text-gray-700 mb-3' }, 
-                    'Saved Presets'
-                ),
-                React.createElement('div', { className: 'flex flex-wrap gap-2' },
-                    savedPresets.map((preset, index) =>
-                        React.createElement('div', { 
-                            key: index,
-                            className: 'flex items-center bg-gray-100 rounded-lg px-3 py-2'
-                        },
-                            React.createElement('button', {
-                                onClick: () => loadPreset(preset),
-                                className: 'text-sm font-medium text-blue-600 hover:text-blue-700 mr-2'
-                            }, preset.name),
-                            React.createElement('button', {
-                                onClick: () => deletePreset(index),
-                                className: 'text-red-500 hover:text-red-700 text-xs'
-                            }, '×')
-                        )
-                    )
-                )
-            ),
-            
-            // Results summary
-            React.createElement('div', { className: 'mt-6 p-4 bg-gray-50 rounded-lg' },
-                React.createElement('div', { className: 'flex justify-between items-center' },
-                    React.createElement('span', { className: 'text-sm text-gray-600' },
-                        `Found ${filteredSpecimens.length} specimens`
-                    ),
-                    filteredSpecimens.length >= 5 && React.createElement('button', {
-                        onClick: () => {
-                            setStudyStarted(true);
-                            setShowFilters(false);
-                        },
-                        className: `px-6 py-2 text-white rounded-lg font-medium transition-all ${ 
-                            filteredSpecimens.length >= 10 ? 'bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl' : 
-                            'bg-yellow-600 hover:bg-yellow-700'
-                        }`
-                    }, `Start Focused Study (${filteredSpecimens.length} specimens)`)
-                ),
-                filteredSpecimens.length < 5 && React.createElement('p', { 
-                    className: 'text-sm text-red-600 mt-2' 
-                }, 'Need at least 5 specimens to start study')
-            ),
-            
-            // Weak areas recommendations
-            weakAreas.length > 0 && React.createElement('div', { className: 'mt-6 p-4 bg-orange-50 rounded-lg' },
-                React.createElement('h3', { className: 'text-sm font-medium text-orange-800 mb-2' }, 
-                    '📊 Areas for Improvement'
-                ),
-                React.createElement('div', { className: 'space-y-1' },
-                    weakAreas.slice(0, 3).map(area =>
-                        React.createElement('div', { 
-                            key: area.area,
-                            className: 'text-xs text-orange-700'
-                        }, `${area.area}: ${area.accuracy}% accuracy`)
-                    )
-                )
-            )
-        );
-        
-        // Main render
-        return React.createElement('div', { 
-            className: 'min-h-screen bg-gray-50',
-            ...gestureHandlers // Apply gesture handlers to main container
-        },
-            // Gesture feedback overlay - NEW FEATURE
-            gestureHint && React.createElement('div', {
-                style: {
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    color: 'white',
-                    padding: '1rem 2rem',
-                    borderRadius: '2rem',
-                    fontSize: '1rem',
-                    fontWeight: '500',
-                    zIndex: 40,
-                    animation: 'fadeIn 0.3s ease-in-out'
-                }
-            }, gestureHint),
-
+        return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
             // Header
-            React.createElement('div', { className: 'bg-white border-b border-gray-200 px-4 py-4' },
-                React.createElement('div', { className: 'max-w-6xl mx-auto flex items-center justify-between' },
-                    React.createElement('div', { className: 'flex items-center space-x-4' },
-                        React.createElement('button', {
-                            onClick: onBack,
-                            className: 'text-gray-600 hover:text-gray-800 text-lg'
+            React.createElement('div', { 
+                style: { 
+                    backgroundColor: 'white', 
+                    borderBottom: '1px solid #e5e7eb', 
+                    padding: '1rem' 
+                } 
+            },
+                React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
+                    React.createElement('div', { 
+                        style: { 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '1rem' 
+                        } 
+                    },
+                        React.createElement('button', { 
+                            onClick: onBack, 
+                            style: { 
+                                background: 'none', 
+                                border: 'none', 
+                                cursor: 'pointer', 
+                                fontSize: '1rem',
+                                color: '#6b7280'
+                            } 
                         }, '← Back'),
-                        React.createElement('h1', { className: 'text-2xl font-bold text-gray-800' }, 
-                            '🎯 Focused Study Mode'
-                        ),
-                        React.createElement(window.Phase3Badge)
+                        React.createElement('div', null,
+                            React.createElement('h1', { 
+                                style: { 
+                                    fontSize: '1.5rem', 
+                                    fontWeight: 'bold' 
+                                } 
+                            }, '🎯 Focused Study'),
+                            React.createElement('p', { 
+                                style: { 
+                                    fontSize: '0.875rem', 
+                                    color: '#6b7280' 
+                                } 
+                            }, 'Customize your study session with filters')
+                        )
+                    )
+                )
+            ),
+            
+            // Main Content
+            React.createElement('div', { 
+                style: { 
+                    maxWidth: '72rem', 
+                    margin: '0 auto', 
+                    padding: '2rem' 
+                } 
+            },
+                React.createElement('div', { 
+                    style: { 
+                        backgroundColor: 'white', 
+                        borderRadius: '0.75rem', 
+                        padding: '2rem',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                    } 
+                },
+                    React.createElement('h2', { 
+                        style: { 
+                            fontSize: '1.25rem', 
+                            fontWeight: 'bold', 
+                            marginBottom: '1rem' 
+                        } 
+                    }, 'Study Filters'),
+                    React.createElement('p', { 
+                        style: { 
+                            color: '#6b7280', 
+                            marginBottom: '2rem' 
+                        } 
+                    }, 'Select criteria to focus your study session. Mix and match filters to target specific areas.'),
+                    
+                    // Family Filter
+                    React.createElement('div', { style: { marginBottom: '2rem' } },
+                        React.createElement('h3', { 
+                            style: { 
+                                fontSize: '1rem', 
+                                fontWeight: '600', 
+                                marginBottom: '0.75rem' 
+                            } 
+                        }, '🏛️ Family'),
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                                gap: '0.5rem' 
+                            } 
+                        },
+                            availableOptions.families.map(family => {
+                                const count = specimens.filter(s => s.family === family && s.status === 'approved').length;
+                                const isSelected = filters.family.includes(family);
+                                
+                                return React.createElement('label', {
+                                    key: family,
+                                    style: {
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.5rem',
+                                        backgroundColor: isSelected ? '#f0f9ff' : '#f9fafb',
+                                        border: `1px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                                        borderRadius: '0.375rem',
+                                        cursor: 'pointer'
+                                    }
+                                },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: isSelected,
+                                        onChange: () => handleFilterChange('family', family),
+                                        style: { margin: 0 }
+                                    }),
+                                    React.createElement('span', { style: { fontSize: '0.875rem' } }, 
+                                        `${family} (${count})`
+                                    )
+                                );
+                            })
+                        )
                     ),
                     
-                    !studyStarted && React.createElement('div', { className: 'flex items-center space-x-3' },
-                        // Mobile gesture instructions - NEW FEATURE
-                        window.isMobileDevice && window.isMobileDevice() && React.createElement('div', {
-                            className: 'hidden md:block text-xs text-gray-500'
-                        }, '👆 Double tap: Toggle filters • 👈 Swipe: Start study'),
-                        
+                    // Genus Filter
+                    React.createElement('div', { style: { marginBottom: '2rem' } },
+                        React.createElement('h3', { 
+                            style: { 
+                                fontSize: '1rem', 
+                                fontWeight: '600', 
+                                marginBottom: '0.75rem' 
+                            } 
+                        }, '🧬 Genus'),
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+                                gap: '0.5rem',
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                                padding: '0.5rem',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '0.5rem'
+                            } 
+                        },
+                            availableOptions.genera.map(genus => {
+                                const count = specimens.filter(s => s.genus === genus && s.status === 'approved').length;
+                                const isSelected = filters.genus.includes(genus);
+                                
+                                return React.createElement('label', {
+                                    key: genus,
+                                    style: {
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.25rem',
+                                        backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                                        borderRadius: '0.25rem',
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem'
+                                    }
+                                },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: isSelected,
+                                        onChange: () => handleFilterChange('genus', genus),
+                                        style: { margin: 0, transform: 'scale(0.8)' }
+                                    }),
+                                    React.createElement('span', null, `${genus} (${count})`)
+                                );
+                            })
+                        )
+                    ),
+                    
+                    // Features Filter
+                    React.createElement('div', { style: { marginBottom: '2rem' } },
+                        React.createElement('h3', { 
+                            style: { 
+                                fontSize: '1rem', 
+                                fontWeight: '600', 
+                                marginBottom: '0.75rem' 
+                            } 
+                        }, '⚡ Features'),
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'flex', 
+                                gap: '1rem' 
+                            } 
+                        },
+                            availableOptions.features.map(feature => {
+                                const isSelected = filters.features.includes(feature.id);
+                                
+                                return React.createElement('label', {
+                                    key: feature.id,
+                                    style: {
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.75rem 1rem',
+                                        backgroundColor: isSelected ? '#f0f9ff' : '#f9fafb',
+                                        border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                                        borderRadius: '0.5rem',
+                                        cursor: 'pointer'
+                                    }
+                                },
+                                    React.createElement('input', {
+                                        type: 'checkbox',
+                                        checked: isSelected,
+                                        onChange: () => handleFilterChange('features', feature.id),
+                                        style: { margin: 0 }
+                                    }),
+                                    React.createElement('div', null,
+                                        React.createElement('div', { style: { fontWeight: '500' } }, feature.label),
+                                        React.createElement('div', { 
+                                            style: { 
+                                                fontSize: '0.75rem', 
+                                                color: '#6b7280' 
+                                            } 
+                                        }, `${feature.count} specimens`)
+                                    )
+                                );
+                            })
+                        )
+                    ),
+                    
+                    // Study Session Summary
+                    React.createElement('div', {
+                        style: {
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            marginBottom: '2rem'
+                        }
+                    },
+                        React.createElement('h4', { 
+                            style: { 
+                                fontWeight: '600', 
+                                marginBottom: '0.5rem' 
+                            } 
+                        }, '📊 Study Session Preview'),
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', 
+                                gap: '1rem' 
+                            } 
+                        },
+                            React.createElement('div', { style: { textAlign: 'center' } },
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '2rem', 
+                                        fontWeight: 'bold',
+                                        color: filteredCount >= 5 ? '#10b981' : '#ef4444'
+                                    } 
+                                }, filteredCount),
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: '#6b7280' 
+                                    } 
+                                }, 'Total Specimens')
+                            ),
+                            React.createElement('div', { style: { textAlign: 'center' } },
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '2rem', 
+                                        fontWeight: 'bold',
+                                        color: '#3b82f6'
+                                    } 
+                                }, Math.min(20, filteredCount)),
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: '#6b7280' 
+                                    } 
+                                }, 'Questions')
+                            ),
+                            React.createElement('div', { style: { textAlign: 'center' } },
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '2rem', 
+                                        fontWeight: 'bold',
+                                        color: '#8b5cf6'
+                                    } 
+                                }, `~${Math.ceil(Math.min(20, filteredCount) * 1.5)}`),
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: '#6b7280' 
+                                    } 
+                                }, 'Est. Minutes')
+                            )
+                        ),
+                        filteredCount < 5 && React.createElement('div', {
+                            style: {
+                                marginTop: '0.75rem',
+                                padding: '0.5rem',
+                                backgroundColor: '#fef2f2',
+                                color: '#dc2626',
+                                borderRadius: '0.25rem',
+                                fontSize: '0.875rem',
+                                textAlign: 'center'
+                            }
+                        }, '⚠️ Need at least 5 specimens for effective study. Adjust your filters.')
+                    ),
+                    
+                    // Action Buttons
+                    React.createElement('div', { 
+                        style: { 
+                            display: 'flex', 
+                            gap: '1rem', 
+                            justifyContent: 'center' 
+                        } 
+                    },
                         React.createElement('button', {
-                            onClick: () => setShowFilters(!showFilters),
-                            className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
-                        }, showFilters ? 'Hide Filters' : 'Show Filters')
+                            onClick: () => setFilters({ family: [], genus: [], features: [] }),
+                            style: {
+                                padding: '0.75rem 1.5rem',
+                                backgroundColor: '#6b7280',
+                                color: 'white',
+                                borderRadius: '0.5rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontWeight: '500'
+                            }
+                        }, 'Clear All'),
+                        React.createElement('button', {
+                            onClick: handleStartStudy,
+                            disabled: filteredCount < 5,
+                            style: {
+                                padding: '0.75rem 2rem',
+                                backgroundColor: filteredCount >= 5 ? '#10b981' : '#d1d5db',
+                                color: 'white',
+                                borderRadius: '0.5rem',
+                                border: 'none',
+                                cursor: filteredCount >= 5 ? 'pointer' : 'not-allowed',
+                                fontWeight: '500',
+                                fontSize: '1rem'
+                            }
+                        }, `🎯 Start Focused Study (${filteredCount} specimens)`)
                     )
                 )
-            ),
-            
-            // Main content
-            React.createElement('div', { className: 'max-w-6xl mx-auto p-6' },
-                // Show filters or study interface
-                !studyStarted && showFilters && renderFilters(),
-                
-                // Study interface (reuse enhanced QuickStudy with filtered specimens)
-                studyStarted && window.QuickStudy && React.createElement(FocusedQuickStudy, {
-                    specimens: filteredSpecimens.slice(0, 20), // Limit for performance
-                    speciesHints,
-                    referencePhotos,
-                    specimenPhotos,
-                    user,
-                    loadSpecimenPhotos,
-                    onBack: () => {
-                        setStudyStarted(false);
-                        setShowFilters(true);
-                    },
-                    saveProgress // Pass through enhanced save progress
-                })
             )
         );
     };
     
-    console.log('✅ Enhanced FocusedStudy component with touch gestures loaded');
+    console.log('✅ FocusedStudy component loaded');
     
 })();
