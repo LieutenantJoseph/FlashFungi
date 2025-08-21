@@ -109,7 +109,7 @@
             }
             
             try {
-                const photos = await window.FlashFungiAPI?.fetchSpecimenPhotos(specimenId) || [];
+                const photos = await window.FlashFungiAPI?.loadSpecimenPhotos(specimenId) || [];
                 setSpecimenPhotos(prev => ({
                     ...prev,
                     [specimenId]: photos
