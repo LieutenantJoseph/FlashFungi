@@ -1,0 +1,11 @@
+[Error] ❌ Error loading data: – TypeError: window.FlashFungiAPI?.fetchSpecimens is not a function. (In 'window.FlashFungiAPI?.fetchSpecimens({})', 'window.FlashFungiAPI?.fetchSpecimens' is undefined) — https://flash-fungi-q11c0zn9j-spencers-projects-3f…08.vercel.app/components/auth/AuthenticatedApp.js:81
+TypeError: window.FlashFungiAPI?.fetchSpecimens is not a function. (In 'window.FlashFungiAPI?.fetchSpecimens({})', 'window.FlashFungiAPI?.fetchSpecimens' is undefined) — https://flash-fungi-q11c0zn9j-spencers-projects-3f…08.vercel.app/components/auth/AuthenticatedApp.js:81
+	(anonymous function) (AuthenticatedApp.js:92)
+	loadData (AuthenticatedApp.js:76)
+	(anonymous function) (AuthenticatedApp.js:102)
+	Id (react-dom.production.min.js:165:139)
+	Xb (react-dom.production.min.js:200:287)
+	(anonymous function) (react-dom.production.min.js:197:109)
+	S (react.production.min.js:17)
+	U (react.production.min.js:21:231)
+[Error] Failed to load resource: the server responded with a status of 401 () (user-progress-api, line 0)

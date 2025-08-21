@@ -1,5 +1,5 @@
-// InteractiveSpeciesGuide.js - Interactive Species Guide Component with Photo Expansion
-// Flash Fungi - Complete species identification guide with expandable photos
+// InteractiveSpeciesGuide.js - Interactive Species Guide Component
+// Flash Fungi - Complete species identification guide with tabs
 
 (function() {
     'use strict';
@@ -7,7 +7,7 @@
     window.InteractiveSpeciesGuide = function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhotos, onClose, onTryAgain }) {
         const [activeTab, setActiveTab] = React.useState('overview');
         const [comparisonMode, setComparisonMode] = React.useState(false);
-        const [expandedPhoto, setExpandedPhoto] = React.useState(null);
+        const [expandedPhoto, setExpandedPhoto] = React.useState(null); // Added for photo expansion
         
         const hints = speciesHints?.hints || [];
         
@@ -52,59 +52,58 @@
                 // Header
                 React.createElement('div', {
                     style: {
-                        background: 'linear-gradient(to right, #059669, #10b981)',
+                        background: 'linear-gradient(to right, #059669, #047857)',
                         color: 'white',
                         padding: '1.5rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                        borderBottom: '1px solid #e5e7eb'
                     }
                 },
-                    React.createElement('div', null,
-                        React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold' } }, 
-                            '🍄 Interactive Species Guide'
+                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start' } },
+                        React.createElement('div', null,
+                            React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
+                                '🔍 Interactive Species Guide'
+                            ),
+                            React.createElement('h3', { style: { fontSize: '1.25rem', marginBottom: '0.25rem' } }, specimen.species_name),
+                            specimen.common_name && React.createElement('p', { style: { opacity: 0.9 } }, specimen.common_name)
                         ),
-                        React.createElement('p', { style: { fontSize: '1.125rem', marginTop: '0.25rem' } },
-                            specimen.species_name || 'Unknown Species'
-                        )
-                    ),
-                    React.createElement('button', {
-                        onClick: onClose,
-                        style: {
-                            backgroundColor: 'rgba(255,255,255,0.2)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '0.5rem',
-                            padding: '0.5rem 1rem',
-                            cursor: 'pointer',
-                            fontSize: '1.25rem'
-                        }
-                    }, '×')
+                        React.createElement('button', {
+                            onClick: onClose,
+                            style: {
+                                background: 'none',
+                                border: 'none',
+                                color: 'white',
+                                fontSize: '1.5rem',
+                                cursor: 'pointer'
+                            }
+                        }, '×')
+                    )
                 ),
                 
                 // Tabs
                 React.createElement('div', {
                     style: {
-                        display: 'flex',
+                        backgroundColor: '#f9fafb',
                         borderBottom: '1px solid #e5e7eb',
-                        backgroundColor: '#f9fafb'
+                        padding: '0 1.5rem'
                     }
                 },
-                    ['overview', 'photos', 'features', 'ecology', 'comparison'].map(tab =>
-                        React.createElement('button', {
-                            key: tab,
-                            onClick: () => setActiveTab(tab),
-                            style: {
-                                padding: '1rem 1.5rem',
-                                backgroundColor: activeTab === tab ? 'white' : 'transparent',
-                                borderBottom: activeTab === tab ? '2px solid #059669' : 'none',
-                                color: activeTab === tab ? '#059669' : '#6b7280',
-                                cursor: 'pointer',
-                                textTransform: 'capitalize',
-                                fontWeight: activeTab === tab ? '600' : '400',
-                                transition: 'all 0.2s'
-                            }
-                        }, tab)
+                    React.createElement('div', { style: { display: 'flex', gap: '2rem' } },
+                        ['overview', 'comparison', 'features', 'ecology'].map(tab =>
+                            React.createElement('button', {
+                                key: tab,
+                                onClick: () => setActiveTab(tab),
+                                style: {
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '1rem 0',
+                                    textTransform: 'capitalize',
+                                    fontWeight: activeTab === tab ? '600' : '400',
+                                    color: activeTab === tab ? '#059669' : '#6b7280',
+                                    borderBottom: activeTab === tab ? '2px solid #059669' : 'none',
+                                    cursor: 'pointer'
+                                }
+                            }, tab === 'comparison' ? '🔸 Photo Comparison' : tab)
+                        )
                     )
                 ),
                 
@@ -117,81 +116,150 @@
                     }
                 },
                     // Overview Tab
-                    activeTab === 'overview' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Species Overview'),
-                        speciesHints?.comprehensive_description ?
-                            React.createElement('div', {
-                                style: {
-                                    backgroundColor: '#f0fdf4',
-                                    border: '1px solid #86efac',
-                                    borderRadius: '0.5rem',
-                                    padding: '1rem'
-                                }
-                            },
-                                React.createElement('p', { style: { lineHeight: '1.6' } }, speciesHints.comprehensive_description)
-                            ) :
-                            React.createElement('div', null,
-                                React.createElement('p', { style: { color: '#374151', marginBottom: '1rem' } },
-                                    `${specimen.species_name} is a mushroom species found in ${specimen.location || 'Arizona'}.`
-                                ),
-                                React.createElement('div', { style: { marginTop: '1rem' } },
-                                    React.createElement('p', null, React.createElement('strong', null, 'Found in: '), specimen.location),
-                                    specimen.description && React.createElement('p', { style: { marginTop: '0.5rem' } }, 
-                                        React.createElement('strong', null, 'Field Notes: '), specimen.description
-                                    )
-                                )
+                    activeTab === 'overview' && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
+                        React.createElement('div', null,
+                            React.createElement('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, 'Classification'),
+                            React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' } },
+                                React.createElement('p', null, React.createElement('strong', null, 'Species: '), React.createElement('em', null, specimen.species_name)),
+                                React.createElement('p', null, React.createElement('strong', null, 'Genus: '), specimen.genus),
+                                React.createElement('p', null, React.createElement('strong', null, 'Family: '), specimen.family),
+                                specimen.common_name && React.createElement('p', null, React.createElement('strong', null, 'Common: '), specimen.common_name)
+                            ),
+                            
+                            React.createElement('h4', { style: { fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem' } }, 'Location & Context'),
+                            React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' } },
+                                React.createElement('p', null, React.createElement('strong', null, 'Location: '), specimen.location),
+                                specimen.description && React.createElement('p', null, React.createElement('strong', null, 'Notes: '), specimen.description)
                             )
+                        ),
+                        
+                        // Reference Photos
+                        React.createElement('div', null,
+                            React.createElement('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, '📸 Reference Photos'),
+                            adminPhotos.length > 0 ?
+                                React.createElement('div', null,
+                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                        adminPhotos.slice(0, 4).map((photo, idx) =>
+                                            React.createElement('img', {
+                                                key: idx,
+                                                src: photo.medium_url || photo.url,
+                                                alt: `Reference ${idx + 1}`,
+                                                style: {
+                                                    width: '100%',
+                                                    height: '150px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '0.5rem',
+                                                    cursor: 'pointer'
+                                                },
+                                                onClick: () => setExpandedPhoto(photo) // Added click handler
+                                            })
+                                        )
+                                    ),
+                                    React.createElement('p', { 
+                                        style: { 
+                                            fontSize: '0.75rem', 
+                                            color: '#6b7280', 
+                                            marginTop: '0.5rem',
+                                            fontStyle: 'italic'
+                                        } 
+                                    }, 'Admin-curated reference images for accurate identification')
+                                ) :
+                                React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '2rem', borderRadius: '0.5rem', textAlign: 'center' } },
+                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No reference photos available')
+                                )
+                        )
                     ),
                     
-                    // Photos Tab with Expansion Feature
-                    activeTab === 'photos' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Specimen Photos'),
-                        adminPhotos.length > 0 ?
-                            React.createElement('div', {
-                                style: {
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                    gap: '1rem'
-                                }
-                            },
-                                adminPhotos.map((photo, idx) =>
-                                    React.createElement('div', {
-                                        key: idx,
-                                        style: {
-                                            backgroundColor: '#f9fafb',
-                                            borderRadius: '0.5rem',
-                                            overflow: 'hidden',
-                                            border: '1px solid #e5e7eb',
-                                            cursor: 'pointer',
-                                            transition: 'transform 0.2s',
-                                        },
-                                        onMouseEnter: (e) => e.currentTarget.style.transform = 'scale(1.02)',
-                                        onMouseLeave: (e) => e.currentTarget.style.transform = 'scale(1)',
-                                        onClick: () => setExpandedPhoto(photo)
-                                    },
-                                        React.createElement('img', {
-                                            src: photo.medium_url || photo.url,
-                                            alt: `Photo ${idx + 1}`,
-                                            style: {
-                                                width: '100%',
-                                                height: '200px',
-                                                objectFit: 'cover'
-                                            }
-                                        }),
-                                        photo.attribution && React.createElement('p', {
-                                            style: {
-                                                padding: '0.5rem',
-                                                fontSize: '0.75rem',
-                                                color: '#6b7280',
-                                                textAlign: 'center'
-                                            }
-                                        }, `© ${photo.attribution}`)
-                                    )
-                                )
-                            ) :
-                            React.createElement('p', { style: { color: '#6b7280', textAlign: 'center', padding: '2rem' } },
-                                'No photos available for this specimen'
+                    // Photo Comparison Tab
+                    activeTab === 'comparison' && React.createElement('div', null,
+                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 
+                            'Side-by-Side Comparison: Your Specimen vs. Reference'
+                        ),
+                        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
+                            // Your Specimen Photos
+                            React.createElement('div', null,
+                                React.createElement('h5', { 
+                                    style: { 
+                                        fontWeight: '500', 
+                                        marginBottom: '0.5rem',
+                                        padding: '0.5rem',
+                                        backgroundColor: '#fef3c7',
+                                        borderRadius: '0.25rem'
+                                    } 
+                                }, '🔬 Your Specimen'),
+                                photos.length > 0 ?
+                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                        photos.slice(0, 4).map((photo, idx) =>
+                                            React.createElement('img', {
+                                                key: idx,
+                                                src: photo.medium_url || photo.url,
+                                                alt: `Specimen ${idx + 1}`,
+                                                style: {
+                                                    width: '100%',
+                                                    height: '120px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '0.25rem',
+                                                    border: '2px solid #fbbf24',
+                                                    cursor: 'pointer'
+                                                },
+                                                onClick: () => setExpandedPhoto(photo) // Added click handler
+                                            })
+                                        )
+                                    ) :
+                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No specimen photos')
+                            ),
+                            
+                            // Reference Photos
+                            React.createElement('div', null,
+                                React.createElement('h5', { 
+                                    style: { 
+                                        fontWeight: '500', 
+                                        marginBottom: '0.5rem',
+                                        padding: '0.5rem',
+                                        backgroundColor: '#dcfce7',
+                                        borderRadius: '0.25rem'
+                                    } 
+                                }, '✅ Reference Photos'),
+                                adminPhotos.length > 0 ?
+                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
+                                        adminPhotos.slice(0, 4).map((photo, idx) =>
+                                            React.createElement('img', {
+                                                key: idx,
+                                                src: photo.medium_url || photo.url,
+                                                alt: `Reference ${idx + 1}`,
+                                                style: {
+                                                    width: '100%',
+                                                    height: '120px',
+                                                    objectFit: 'cover',
+                                                    borderRadius: '0.25rem',
+                                                    border: '2px solid #22c55e',
+                                                    cursor: 'pointer'
+                                                },
+                                                onClick: () => setExpandedPhoto(photo) // Added click handler
+                                            })
+                                        )
+                                    ) :
+                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No reference photos')
                             )
+                        ),
+                        React.createElement('div', {
+                            style: {
+                                marginTop: '1rem',
+                                padding: '1rem',
+                                backgroundColor: '#f0f9ff',
+                                borderRadius: '0.5rem',
+                                fontSize: '0.875rem'
+                            }
+                        },
+                            React.createElement('p', { style: { marginBottom: '0.5rem' } },
+                                React.createElement('strong', null, '💡 Comparison Tip: '),
+                                'Look for key differences in cap shape, gill attachment, stem features, and overall coloration.'
+                            ),
+                            hints.filter(h => h.type === 'comparative').length > 0 &&
+                                React.createElement('p', { style: { color: '#0369a1' } },
+                                    hints.find(h => h.type === 'comparative')?.text
+                                )
+                        )
                     ),
                     
                     // Features Tab
@@ -254,37 +322,10 @@
                                     )
                                 )
                             )
-                    ),
-                    
-                    // Comparison Tab
-                    activeTab === 'comparison' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Similar Species'),
-                        hints.filter(h => h.type === 'comparative').length > 0 ?
-                            hints.filter(h => h.type === 'comparative').map((hint, idx) =>
-                                React.createElement('div', {
-                                    key: idx,
-                                    style: {
-                                        backgroundColor: '#fef3c7',
-                                        border: '1px solid #fcd34d',
-                                        borderRadius: '0.5rem',
-                                        padding: '1rem',
-                                        marginBottom: '1rem'
-                                    }
-                                },
-                                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                        React.createElement('span', null, '⚠️'),
-                                        React.createElement('strong', { style: { color: '#d97706' } }, 'Look-Alike Warning')
-                                    ),
-                                    React.createElement('p', { style: { color: '#374151' } }, hint.text)
-                                )
-                            ) :
-                            React.createElement('p', { style: { color: '#6b7280' } }, 
-                                'Comparison data with similar species will be added as the database expands.'
-                            )
                     )
                 ),
                 
-                // Footer with single "Got It!" button
+                // Footer - Changed to single button
                 React.createElement('div', {
                     style: {
                         padding: '1.5rem',
@@ -324,8 +365,7 @@
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        zIndex: 200,
-                        cursor: 'pointer'
+                        zIndex: 200
                     },
                     onClick: () => setExpandedPhoto(null)
                 },
@@ -373,6 +413,6 @@
         );
     };
     
-    console.log('✅ InteractiveSpeciesGuide component updated with photo expansion and single button');
+    console.log('✅ InteractiveSpeciesGuide component loaded successfully');
     
 })();
