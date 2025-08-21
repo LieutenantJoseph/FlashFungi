@@ -79,9 +79,9 @@
                     
                     // Load specimens and hints
                     const [specimensData, hintsData, guidesData] = await Promise.all([
-                        window.FlashFungiAPI?.fetchSpecimens({}) || Promise.resolve([]),
-                        window.FlashFungiAPI?.fetchSpeciesHints() || Promise.resolve({}),
-                        window.FlashFungiAPI?.fetchFieldGuides() || Promise.resolve([])
+                        window.FlashFungiAPI?.loadSpecimens({}) || Promise.resolve([]),
+                        window.FlashFungiAPI?.loadSpeciesHints() || Promise.resolve({}),
+                        window.FlashFungiAPI?.loadFieldGuides() || Promise.resolve([])
                     ]);
                     
                     setSpecimens(specimensData);
