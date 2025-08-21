@@ -73,14 +73,14 @@
         </div>
     </div>
 
-    <!-- Load configuration first -->
+    <!-- Load configuration constants first -->
     <script src="/constants.js"></script>
     
     <!-- Load utility scripts -->
     <script src="/utils/api.js"></script>
     <script src="/utils/fuzzyMatching.js"></script>
     
-    <!-- Load UI components -->
+    <!-- Load UI placeholder components -->
     <script src="/components/ui/PlaceholderAssets.js"></script>
     
     <!-- Load common components -->
@@ -88,26 +88,27 @@
     <script src="/components/common/Toast.js"></script>
     <script src="/components/common/Phase3Badge.js"></script>
     
-    <!-- Load auth system -->
+    <!-- Load authentication system (order matters) -->
     <script src="/components/auth/AuthProvider.js"></script>
     <script src="/components/auth/useUserProfile.js"></script>
     <script src="/components/auth/AuthenticatedApp.js"></script>
     
-    <!-- Load home page -->
+    <!-- Load home page component -->
     <script src="/components/home/HomePage.js"></script>
     
-    <!-- Load study components -->
+    <!-- Load study mode components -->
+    <script src="/components/study/SharedFlashcard.js"></script>
     <script src="/components/study/QuickStudy.js"></script>
     <script src="/components/study/FocusedStudy.js"></script>
     <script src="/components/study/MarathonMode.js"></script>
     <script src="/components/study/InteractiveSpeciesGuide.js"></script>
     
-    <!-- Load training components -->
+    <!-- Load training system components -->
     <script src="/components/training/TrainingModules.js"></script>
     <script src="/components/training/ModulePlayer.js"></script>
     <script src="/components/training/GenusModules.js"></script>
     
-    <!-- Load profile and achievements -->
+    <!-- Load profile and achievement components -->
     <script src="/components/profile/ProfilePage.js"></script>
     <script src="/components/achievements/AchievementSystem.js"></script>
     

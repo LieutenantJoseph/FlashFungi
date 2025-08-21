@@ -6,17 +6,13 @@
     
     console.log('🍄 Flash Fungi v3.1 - Clean Initialization');
     
-    // Configuration will be loaded from constants.js
-    // Export configuration globally (fallback if constants.js not loaded)
-    if (!window.SUPABASE_URL) {
-        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
-        
-        window.SUPABASE_URL = SUPABASE_URL;
-        window.SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
-        console.log('⚠️ Using fallback configuration');
+    // Configuration from constants.js (fallback if not loaded)
+    if (!window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
+        console.log('⚠️ Using fallback configuration - constants.js may not have loaded');
+        window.SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+        window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
     } else {
-        console.log('✅ Using configuration from constants.js');
+        console.log('✅ Configuration loaded from constants.js');
     }
     
     // HomePage component will be loaded from /components/home/HomePage.js
@@ -38,13 +34,26 @@
         // Wait for all components to load
         const checkComponents = () => {
             const requiredComponents = [
-                'AuthProvider', 'useAuth', 'AuthenticatedApp', 'HomePage',
-                'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
-                'TrainingModules', 'ModulePlayer', 'ProfilePage', 'LoadingScreen',
-                'Toast', 'useUserProfile'
+                // Auth system (critical)
+                'AuthProvider', 'useAuth', 'AuthenticatedApp', 'useUserProfile',
+                
+                // Main components (critical)
+                'HomePage', 'LoadingScreen', 'Toast',
+                
+                // Study components (critical)
+                'SharedFlashcard', 'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
+                
+                // Training components (critical)
+                'TrainingModules', 'ModulePlayer', 'GenusModules',
+                
+                // Profile and other components
+                'ProfilePage', 'AchievementSystem', 'Phase3Badge',
+                
+                // UI components  
+                'PlaceholderAssets'
             ];
             
-            // Check utils
+            // Check utils (critical)
             const requiredUtils = [
                 'FlashFungiAPI'  // From api.js
             ];
@@ -54,10 +63,10 @@
             const missing = [...missingComponents, ...missingUtils];
             
             if (missing.length === 0) {
-                console.log('✅ All components loaded, mounting app...');
+                console.log('✅ All components and utils loaded, mounting app...');
                 mountApp();
             } else {
-                console.log('⏳ Waiting for components:', missing);
+                console.log('⏳ Waiting for components/utils:', missing);
                 setTimeout(checkComponents, 100);
             }
         };
