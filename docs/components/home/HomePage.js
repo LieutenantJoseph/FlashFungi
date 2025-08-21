@@ -1,5 +1,5 @@
-// HomePage.js - Enhanced Home Page Component
-// Flash Fungi - Complete home page with training progress and authentication
+// HomePage.js - Restored Original Design from Legacy App
+// Flash Fungi - Complete home page preserving original UI/UX
 
 (function() {
     'use strict';
@@ -14,28 +14,30 @@
         const onProfileClick = props.onProfileClick;
         const onSignOut = props.onSignOut;
         
-        const approvedCount = specimens.filter(s => s.status === 'approved').length;
+        // Calculate statistics (restored from original)
+        const approvedCount = specimens.filter(s => s.status === 'approved' || s.quality_grade === 'research').length;
         const dnaCount = specimens.filter(s => s.dna_sequenced).length;
         const speciesWithHints = props.speciesWithHints || 0;
         
-        // Calculate training progress
+        // Calculate training progress (restored from original)
         const completedModules = Object.values(userProgress).filter(p => p.completed).length;
         const totalModules = 5; // Foundation modules count
         const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
         return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
-            // Header with Auth Status
+            // Header with Auth Status (restored original design)
             React.createElement('header', { style: { backgroundColor: 'white', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' } },
                 React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
                     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                        // Centered title section (original design)
                         React.createElement('div', { style: { textAlign: 'center', flex: 1 } },
                             React.createElement('div', { style: { fontSize: '2.5rem', marginBottom: '0.5rem' } }, '🍄'),
                             React.createElement('h1', { style: { fontSize: '1.875rem', fontWeight: 'bold' } }, 'Flash Fungi'),
                             React.createElement('p', { style: { color: '#6b7280' } }, 'Master mushroom identification with DNA-verified specimens')
                         ),
-                        // Auth buttons
+                        // Auth buttons (original design - positioned absolutely to the right)
                         React.createElement('div', { style: { position: 'absolute', right: '1.5rem' } },
-                            user ? 
+                            user ?
                                 React.createElement('div', { style: { display: 'flex', gap: '0.5rem', alignItems: 'center' } },
                                     React.createElement('div', { style: { textAlign: 'right', marginRight: '0.5rem' } },
                                         React.createElement('div', { style: { fontSize: '0.875rem', fontWeight: '500' } }, 
@@ -87,9 +89,9 @@
                 )
             ),
 
-            // Main content
+            // Main content (restored original layout)
             React.createElement('main', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
-                // User Profile Banner or Sign In Prompt
+                // User Profile Banner or Sign In Prompt (restored original)
                 user ? 
                     React.createElement('div', {
                         style: {
@@ -101,45 +103,31 @@
                         }
                     },
                         React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
-                            `Welcome back, ${user.display_name || user.username}! 🍄`
+                            `Welcome back, ${user.display_name || user.username || 'User'}!`
                         ),
-                        React.createElement('p', { style: { marginBottom: '1rem', opacity: 0.9 } }, 'Your learning journey continues...'),
-                        React.createElement('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap' } },
-                            React.createElement('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                                `📊 ${specimens.length} Total Specimens`
-                            ),
-                            React.createElement('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                                `✅ ${approvedCount} Approved for Study`
-                            ),
-                            React.createElement('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                                `🧬 ${dnaCount} DNA Verified`
-                            ),
-                            React.createElement('div', { style: { backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.5rem 1rem', borderRadius: '0.5rem' } },
-                                `🎓 ${completedModules}/${totalModules} Modules Complete`
-                            )
+                        React.createElement('p', { style: { opacity: 0.9, marginBottom: '1rem' } }, 
+                            'Ready to continue your mushroom identification training?'
                         ),
-                        
-                        // Progress visualization
-                        progressPercentage > 0 && React.createElement('div', { style: { marginTop: '1rem' } },
-                            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } },
-                                React.createElement('span', { style: { fontSize: '0.875rem', opacity: 0.9 } }, 'Foundation Progress'),
-                                React.createElement('span', { style: { fontSize: '0.875rem', fontWeight: 'bold' } }, `${progressPercentage}%`)
+                        React.createElement('div', { style: { display: 'flex', gap: '1rem', alignItems: 'center' } },
+                            React.createElement('div', { style: { fontSize: '0.875rem' } },
+                                `Foundation Modules: ${completedModules}/${totalModules} complete`
                             ),
-                            React.createElement('div', { 
-                                style: { 
-                                    height: '6px', 
-                                    backgroundColor: 'rgba(255,255,255,0.2)', 
-                                    borderRadius: '3px',
+                            React.createElement('div', {
+                                style: {
+                                    flex: 1,
+                                    height: '0.5rem',
+                                    backgroundColor: 'rgba(255,255,255,0.3)',
+                                    borderRadius: '0.25rem',
                                     overflow: 'hidden'
-                                } 
+                                }
                             },
                                 React.createElement('div', {
                                     style: {
                                         width: `${progressPercentage}%`,
                                         height: '100%',
-                                        backgroundColor: 'rgba(255,255,255,0.8)',
-                                        borderRadius: '3px',
-                                        transition: 'width 0.3s ease'
+                                        backgroundColor: 'white',
+                                        borderRadius: '0.25rem',
+                                        transition: 'width 0.3s'
                                     }
                                 })
                             )
@@ -147,46 +135,46 @@
                     ) :
                     React.createElement('div', {
                         style: {
-                            background: 'linear-gradient(to right, #f59e0b, #dc2626)',
+                            backgroundColor: 'white',
                             borderRadius: '0.75rem',
-                            color: 'white',
                             padding: '1.5rem',
                             marginBottom: '2rem',
-                            textAlign: 'center'
+                            textAlign: 'center',
+                            border: '2px dashed #e5e7eb'
                         }
                     },
                         React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' } }, 
-                            '🚀 Sign in to Track Your Progress'
+                            '🔒 Sign In to Start Learning'
                         ),
-                        React.createElement('p', { style: { marginBottom: '1rem' } }, 
-                            'Create an account to save your learning progress, track your scores, and unlock all features'
+                        React.createElement('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
+                            'Track your progress, save achievements, and access personalized training'
                         ),
                         React.createElement('button', {
                             onClick: onAuthRequired,
                             style: {
-                                padding: '0.75rem 2rem',
-                                backgroundColor: 'white',
-                                color: '#dc2626',
+                                padding: '0.75rem 1.5rem',
+                                backgroundColor: '#10b981',
+                                color: 'white',
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 cursor: 'pointer',
-                                fontWeight: '600',
+                                fontWeight: '500',
                                 fontSize: '1rem'
                             }
-                        }, 'Get Started Free')
+                        }, 'Get Started')
                     ),
 
-                // Training Modules Section
+                // Training Modules Section (restored original)
                 React.createElement('div', { style: { marginBottom: '2rem' } },
                     React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
-                        '🎓 Training Modules'
+                        '📚 Training Modules'
                     ),
                     React.createElement('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
-                        'Build your foundation with structured lessons before practicing identification'
+                        'Structured learning paths for systematic mastery'
                     ),
                     
                     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' } },
-                        // Foundation Modules Card
+                        // Foundation Modules (restored original)
                         React.createElement('div', {
                             style: {
                                 backgroundColor: 'white',
@@ -198,98 +186,48 @@
                                 transition: 'all 0.2s'
                             },
                             onClick: () => user ? onTrainingModuleSelect('foundation') : onAuthRequired(),
-                            onMouseEnter: (e) => {
-                                e.currentTarget.style.borderColor = '#10b981';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            },
-                            onMouseLeave: (e) => {
-                                e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }
+                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#8b5cf6',
+                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                         },
-                            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' } },
-                                React.createElement('div', { style: { fontSize: '2.5rem' } }, '📖'),
-                                React.createElement('div', { style: { flex: 1 } },
-                                    React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' } }, 
-                                        'Foundation Modules'
-                                    ),
-                                    React.createElement('p', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                        'Essential knowledge for beginners'
-                                    )
-                                )
+                            React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎓'),
+                            React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                                'Foundation Modules'
                             ),
-                            
                             React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Master the basics: diagnostic features, spore prints, safety, terminology, and Arizona families'
+                                'Essential skills: diagnostic features, spore prints, safety'
                             ),
-                            
-                            user ? 
+                            user ? (
                                 React.createElement('div', null,
-                                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } },
-                                        React.createElement('span', { style: { fontSize: '0.875rem', color: '#059669', fontWeight: '500' } }, 
-                                            `${completedModules}/5 Complete`
-                                        ),
-                                        React.createElement('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                            '~20 min each'
-                                        )
+                                    React.createElement('div', { style: { fontSize: '0.75rem', color: '#8b5cf6', marginBottom: '0.5rem' } }, 
+                                        `${completedModules}/${totalModules} modules completed`
                                     ),
-                                    // Progress bar
-                                    React.createElement('div', { 
-                                        style: { 
-                                            marginBottom: '1rem',
-                                            height: '6px', 
-                                            backgroundColor: '#e5e7eb', 
-                                            borderRadius: '3px',
+                                    React.createElement('div', {
+                                        style: {
+                                            width: '100%',
+                                            height: '4px',
+                                            backgroundColor: '#e5e7eb',
+                                            borderRadius: '2px',
                                             overflow: 'hidden'
-                                        } 
+                                        }
                                     },
                                         React.createElement('div', {
                                             style: {
                                                 width: `${progressPercentage}%`,
                                                 height: '100%',
-                                                backgroundColor: '#10b981',
-                                                borderRadius: '3px',
+                                                backgroundColor: '#8b5cf6',
+                                                borderRadius: '2px',
                                                 transition: 'width 0.3s'
                                             }
                                         })
-                                    ),
-                                    // Achievement badges
-                                    completedModules > 0 && React.createElement('div', { style: { display: 'flex', gap: '0.25rem', marginBottom: '0.5rem' } },
-                                        completedModules >= 1 && React.createElement('span', { 
-                                            style: { 
-                                                fontSize: '0.75rem', 
-                                                backgroundColor: '#dcfce7', 
-                                                color: '#059669',
-                                                padding: '0.125rem 0.5rem',
-                                                borderRadius: '0.25rem'
-                                            } 
-                                        }, '🎯 Started'),
-                                        completedModules >= 3 && React.createElement('span', { 
-                                            style: { 
-                                                fontSize: '0.75rem', 
-                                                backgroundColor: '#fef3c7', 
-                                                color: '#d97706',
-                                                padding: '0.125rem 0.5rem',
-                                                borderRadius: '0.25rem'
-                                            } 
-                                        }, '🚀 Progress'),
-                                        completedModules === 5 && React.createElement('span', { 
-                                            style: { 
-                                                fontSize: '0.75rem', 
-                                                backgroundColor: '#f3e8ff', 
-                                                color: '#7c3aed',
-                                                padding: '0.125rem 0.5rem',
-                                                borderRadius: '0.25rem'
-                                            } 
-                                        }, '👑 Master')
                                     )
-                                ) :
-                                React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b' } }, 
-                                    '🔒 Sign in to access training modules'
                                 )
+                            ) :
+                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b' } }, 
+                                '🔒 Sign in to access'
+                            )
                         ),
 
-                        // Advanced Modules Card (Coming Soon)
+                        // Coming Soon Card (restored original)
                         React.createElement('div', {
                             style: {
                                 backgroundColor: 'white',
@@ -297,43 +235,34 @@
                                 padding: '1.5rem',
                                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
                                 border: '2px dashed #e5e7eb',
-                                opacity: completedModules === 5 ? 1 : 0.6
+                                opacity: 0.7
                             }
                         },
-                            React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' } },
-                                React.createElement('div', { style: { fontSize: '2.5rem' } }, '🚧'),
-                                React.createElement('div', { style: { flex: 1 } },
-                                    React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.25rem' } }, 
-                                        'Advanced Modules'
-                                    ),
-                                    React.createElement('p', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                        'Genus-specific and advanced techniques'
-                                    )
-                                )
+                            React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🚀'),
+                            React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                                'Advanced Modules'
                             ),
                             React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Deep dives into specific genera, microscopy, chemical testing, and advanced identification techniques'
+                                'Genus-specific and advanced techniques'
                             ),
                             React.createElement('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                completedModules === 5 ? 
-                                    '🎉 Foundation complete! Advanced modules coming soon.' :
-                                    `🔒 Complete foundation first (${5 - completedModules} modules remaining)`
+                                'Unlocked after foundation completion'
                             )
                         )
                     )
                 ),
 
-                // Study Modes Section
+                // Study Modes Section (restored original design)
                 React.createElement('div', { style: { marginBottom: '2rem' } },
                     React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
-                        '📚 Study Modes'
+                        '🎯 Study Modes'
                     ),
                     React.createElement('p', { style: { color: '#6b7280', marginBottom: '1rem' } }, 
-                        'Practice identification with real specimens and progressive hints'
+                        'Practice identification with real specimens'
                     ),
                     
                     React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' } },
-                        // Quick Study
+                        // Quick Study (restored original)
                         React.createElement('div', {
                             style: {
                                 backgroundColor: 'white',
@@ -345,116 +274,130 @@
                                 transition: 'all 0.2s'
                             },
                             onClick: () => user ? onStudyModeSelect('quick') : onAuthRequired(),
-                            onMouseEnter: (e) => {
-                                e.currentTarget.style.borderColor = '#3b82f6';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            },
-                            onMouseLeave: (e) => {
-                                e.currentTarget.style.borderColor = 'transparent';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }
+                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#3b82f6',
+                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                         },
                             React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '⚡'),
                             React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
                                 'Quick Study'
                             ),
                             React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                '10 random specimens with progressive hints and detailed scoring'
+                                '10 random specimens with progressive hints'
                             ),
-                            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' } },
-                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#3b82f6', fontWeight: '500' } }, 
-                                    `${approvedCount} Available`
+                            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#3b82f6' } }, 
+                                    `${approvedCount} specimens`
                                 ),
                                 React.createElement('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
                                     '~15 min'
                                 )
                             ),
-                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#6b7280' } },
-                                '• Fuzzy answer matching • Photo comparisons • Spore print hints • Progress tracking'
-                            ),
                             !user && React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' } }, 
-                                '🔒 Sign in to track your progress'
+                                '🔒 Sign in to play'
                             )
                         ),
 
-                        // Focused Study (Coming Soon)
+                        // Focused Study (restored original)
                         React.createElement('div', {
                             style: {
                                 backgroundColor: 'white',
                                 borderRadius: '0.75rem',
                                 padding: '1.5rem',
                                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px dashed #e5e7eb',
-                                opacity: 0.6
-                            }
+                                cursor: 'pointer',
+                                border: '2px solid transparent',
+                                transition: 'all 0.2s'
+                            },
+                            onClick: () => user ? onStudyModeSelect('focused') : onAuthRequired(),
+                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#8b5cf6',
+                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                         },
                             React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎯'),
                             React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
                                 'Focused Study'
                             ),
                             React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Filter by family, genus, or specific features for targeted practice'
+                                'Filter by family, genus, or features'
                             ),
-                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                'Coming in Phase 3 • Family filters • Genus selection • Feature-based study'
+                            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#8b5cf6' } }, 
+                                    'Now Available!'
+                                ),
+                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                                    '~25 min'
+                                )
+                            ),
+                            !user && React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' } }, 
+                                '🔒 Sign in to access'
                             )
                         ),
 
-                        // Marathon Mode (Coming Soon)
+                        // Marathon Mode (restored original)
                         React.createElement('div', {
                             style: {
                                 backgroundColor: 'white',
                                 borderRadius: '0.75rem',
                                 padding: '1.5rem',
                                 boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px dashed #e5e7eb',
-                                opacity: 0.6
-                            }
+                                cursor: 'pointer',
+                                border: '2px solid transparent',
+                                transition: 'all 0.2s'
+                            },
+                            onClick: () => user ? onStudyModeSelect('marathon') : onAuthRequired(),
+                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#10b981',
+                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
                         },
                             React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🏃'),
                             React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
                                 'Marathon Mode'
                             ),
                             React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Unlimited questions with spaced repetition and adaptive difficulty'
+                                'Unlimited practice with spaced repetition'
                             ),
-                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                'Coming in Phase 3 • Spaced repetition • Adaptive hints • Performance analytics'
+                            React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#10b981' } }, 
+                                    'Enhanced!'
+                                ),
+                                React.createElement('span', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
+                                    'Unlimited'
+                                )
+                            ),
+                            !user && React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b', marginTop: '0.5rem' } }, 
+                                '🔒 Sign in to access'
                             )
                         )
                     )
                 ),
 
-                // Database Statistics Section
+                // Statistics and Quality Indicators (restored original)
                 React.createElement('div', {
                     style: {
                         backgroundColor: 'white',
                         borderRadius: '0.75rem',
                         padding: '1.5rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                        marginBottom: '2rem'
                     }
                 },
                     React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '1rem' } }, 
-                        '📊 Database Statistics'
+                        '📊 Dataset Overview'
                     ),
-                    React.createElement('p', { style: { fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' } },
-                        'Flash Fungi contains a curated collection of Arizona mushroom specimens, each verified for accurate identification training.'
-                    ),
-                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' } },
+                    
+                    // Statistics grid (restored original)
+                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginBottom: '1rem' } },
                         [
-                            { label: 'Total Specimens', value: specimens.length, icon: '🔬', color: '#3b82f6' },
-                            { label: 'DNA Verified', value: dnaCount, icon: '🧬', color: '#8b5cf6' },
-                            { label: 'Arizona Families', value: new Set(specimens.map(s => s.family)).size, icon: '🏜️', color: '#f59e0b' },
-                            { label: 'Species Available', value: new Set(specimens.map(s => s.species_name)).size, icon: '🍄', color: '#10b981' }
-                        ].map((stat, idx) =>
+                            { icon: '🍄', value: approvedCount, label: 'Specimens', color: '#3b82f6' },
+                            { icon: '🔬', value: dnaCount, label: 'DNA Verified', color: '#10b981' },
+                            { icon: '💡', value: speciesWithHints, label: 'With Hints', color: '#8b5cf6' },
+                            { icon: '📍', value: 'Arizona', label: 'Geographic Focus', color: '#f59e0b' }
+                        ].map((stat, index) =>
                             React.createElement('div', {
-                                key: idx,
+                                key: index,
                                 style: {
                                     textAlign: 'center',
-                                    padding: '1rem',
-                                    backgroundColor: '#f8fafc',
-                                    borderRadius: '0.5rem',
-                                    border: `2px solid ${stat.color}20`
+                                    padding: '0.75rem',
+                                    backgroundColor: '#f9fafb',
+                                    borderRadius: '0.5rem'
                                 }
                             },
                                 React.createElement('div', { style: { fontSize: '1.5rem', marginBottom: '0.25rem' } }, stat.icon),
@@ -464,7 +407,7 @@
                         )
                     ),
                     
-                    // Quality indicators
+                    // Quality indicators (restored original)
                     React.createElement('div', { style: { marginTop: '1rem', padding: '1rem', backgroundColor: '#f0f9ff', borderRadius: '0.5rem' } },
                         React.createElement('div', { style: { display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' } },
                             React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' } },
@@ -490,6 +433,6 @@
         );
     };
     
-    console.log('✅ Enhanced HomePage component loaded');
+    console.log('✅ HomePage component loaded with restored original design');
     
 })();
