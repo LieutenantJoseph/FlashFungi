@@ -1,238 +1,67 @@
-// supabase-auth.js - Fixed Authentication System
-// Maintains existing patterns but fixes broken functionality
+// config/supabase.js - Supabase Client Initialization
+// Creates and manages the Supabase client instance
 
 (function() {
     'use strict';
 
-    console.log('🔐 Loading Supabase Auth System v3.0...');
+    console.log('🔐 Loading Supabase configuration...');
 
-    // Wait for Supabase to be available
-    function waitForSupabase() {
-        return new Promise((resolve, reject) => {
-            let attempts = 0;
-            const checkInterval = setInterval(() => {
-                attempts++;
-                if (window.supabase) {
-                    clearInterval(checkInterval);
-                    console.log('✅ Supabase client available');
-                    resolve();
-                } else if (attempts > 50) {
-                    clearInterval(checkInterval);
-                    reject(new Error('Supabase client not available after 5 seconds'));
-                }
-            }, 100);
-        });
+    // Wait for the Supabase library to be available from CDN
+    function initializeSupabaseClient() {
+        // Check if library is loaded
+        if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+            console.log('⏳ Waiting for Supabase library from CDN...');
+            setTimeout(initializeSupabaseClient, 50);
+            return;
+        }
+
+        // Check if client already exists (avoid duplicates)
+        if (window.supabaseClient || (window.supabase && typeof window.supabase.auth === 'object')) {
+            console.log('✅ Supabase client already exists');
+            return;
+        }
+
+        // Get configuration
+        const SUPABASE_URL = window.SUPABASE_URL || 'https://oxgedcncrettasrbmwsl.supabase.co';
+        const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+
+        try {
+            // Create the client
+            console.log('🔧 Creating Supabase client...');
+            const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            
+            // Replace the library reference with the client instance
+            window.supabase = client;
+            window.supabaseClient = client; // Also store as supabaseClient for compatibility
+            
+            console.log('✅ Supabase client available');
+            console.log('🔐 Initializing Supabase Auth...');
+            
+            // Test the connection
+            testSupabaseConnection();
+            
+            console.log('✅ Supabase Auth system loaded successfully');
+            
+        } catch (error) {
+            console.error('❌ Failed to create Supabase client:', error);
+        }
     }
 
-    // Initialize auth system
-    waitForSupabase().then(() => {
-        console.log('🔐 Initializing Supabase Auth...');
-
-        // Create auth context
-        const AuthContext = React.createContext();
-
-        // Auth Provider Component
-        function AuthProvider({ children }) {
-            const [user, setUser] = React.useState(null);
-            const [loading, setLoading] = React.useState(true);
-            
-            console.log('🔐 AuthProvider initializing, loading:', loading);
-
-            // Get current session on mount
-            React.useEffect(() => {
-                console.log('🔐 Getting initial session...');
-                
-                const getSession = async () => {
-                    try {
-                        const { data: { session }, error } = await window.supabase.auth.getSession();
-                        console.log('🔐 Initial session:', session ? 'found' : 'none', error ? error.message : '');
-                        
-                        if (error) {
-                            console.error('Session error:', error);
-                        } else if (session?.user) {
-                            setUser(session.user);
-                            console.log('🔐 User set from session:', session.user.email);
-                        }
-                    } catch (err) {
-                        console.error('🔐 Error getting session:', err);
-                    } finally {
-                        setLoading(false);
-                        console.log('🔐 Auth loading complete');
-                    }
-                };
-
-                getSession();
-
-                // Listen for auth changes
-                const { data: { subscription } } = window.supabase.auth.onAuthStateChange(
-                    async (event, session) => {
-                        console.log('🔐 Auth state change:', event, session ? 'has session' : 'no session');
-                        
-                        if (session?.user) {
-                            setUser(session.user);
-                            console.log('🔐 User logged in:', session.user.email);
-                        } else {
-                            setUser(null);
-                            console.log('🔐 User logged out');
-                        }
-                        setLoading(false);
-                    }
-                );
-
-                return () => {
-                    subscription?.unsubscribe();
-                };
-            }, []);
-
-            // Sign up function
-            const signUp = async (email, password, username) => {
-                console.log('🔐 Attempting signup for:', email);
-                
-                try {
-                    // First check if username is taken
-                    const { data: existingUsers, error: checkError } = await window.supabase
-                        .from('user_profiles')
-                        .select('username')
-                        .eq('username', username);
-                        
-                    if (checkError) {
-                        console.error('Error checking username:', checkError);
-                        throw new Error('Failed to validate username');
-                    }
-                    
-                    if (existingUsers && existingUsers.length > 0) {
-                        throw new Error('Username already taken');
-                    }
-
-                    // Create auth user
-                    const { data, error } = await window.supabase.auth.signUp({
-                        email,
-                        password,
-                        options: {
-                            data: {
-                                username: username,
-                                display_name: username
-                            }
-                        }
-                    });
-
-                    if (error) {
-                        console.error('Signup error:', error);
-                        throw error;
-                    }
-
-                    console.log('🔐 Signup successful:', data);
-
-                    // Create user profile
-                    if (data.user) {
-                        const { error: profileError } = await window.supabase
-                            .from('user_profiles')
-                            .insert({
-                                id: data.user.id,
-                                username: username,
-                                display_name: username,
-                                email: email,
-                                created_at: new Date().toISOString()
-                            });
-
-                        if (profileError) {
-                            console.error('Profile creation error:', profileError);
-                            // Don't throw here - auth user was created successfully
-                        } else {
-                            console.log('✅ User profile created');
-                        }
-                    }
-
-                    return { data, error: null };
-                } catch (err) {
-                    console.error('🔐 Signup failed:', err);
-                    return { data: null, error: err };
-                }
-            };
-
-            // Sign in function
-            const signIn = async (email, password) => {
-                console.log('🔐 Attempting signin for:', email);
-                
-                try {
-                    const { data, error } = await window.supabase.auth.signInWithPassword({
-                        email,
-                        password
-                    });
-
-                    if (error) {
-                        console.error('Signin error:', error);
-                        throw error;
-                    }
-
-                    console.log('🔐 Signin successful');
-                    return { data, error: null };
-                } catch (err) {
-                    console.error('🔐 Signin failed:', err);
-                    return { data: null, error: err };
-                }
-            };
-
-            // Sign out function
-            const signOut = async () => {
-                console.log('🔐 Signing out...');
-                
-                try {
-                    const { error } = await window.supabase.auth.signOut();
-                    if (error) {
-                        console.error('Signout error:', error);
-                        throw error;
-                    }
-                    console.log('🔐 Signout successful');
-                    return { error: null };
-                } catch (err) {
-                    console.error('🔐 Signout failed:', err);
-                    return { error: err };
-                }
-            };
-
-            const value = {
-                user,
-                loading,
-                signUp,
-                signIn,
-                signOut
-            };
-
-            return React.createElement(AuthContext.Provider, { value }, children);
-        }
-
-        // Custom hook to use auth
-        function useAuth() {
-            const context = React.useContext(AuthContext);
-            if (!context) {
-                throw new Error('useAuth must be used within an AuthProvider');
+    // Test Supabase connection
+    async function testSupabaseConnection() {
+        try {
+            const { data, error } = await window.supabase.auth.getSession();
+            if (error) {
+                console.warn('⚠️ Supabase session check error:', error.message);
+            } else {
+                console.log('✅ Supabase connection verified');
             }
-            return context;
+        } catch (err) {
+            console.warn('⚠️ Could not verify Supabase connection:', err);
         }
+    }
 
-        // Export to window
-        window.AuthProvider = AuthProvider;
-        window.useAuth = useAuth;
-        window.AuthContext = AuthContext;
-
-        console.log('✅ Supabase Auth system loaded successfully');
-
-    }).catch(error => {
-        console.error('❌ Failed to initialize auth system:', error);
-        
-        // Provide fallback auth system
-        window.AuthProvider = ({ children }) => {
-            console.warn('🔐 Using fallback auth system');
-            return React.createElement(React.Fragment, null, children);
-        };
-        window.useAuth = () => ({
-            user: null,
-            loading: false,
-            signUp: () => Promise.resolve({ data: null, error: new Error('Auth not available') }),
-            signIn: () => Promise.resolve({ data: null, error: new Error('Auth not available') }),
-            signOut: () => Promise.resolve({ error: null })
-        });
-    });
+    // Start initialization immediately
+    initializeSupabaseClient();
 
 })();

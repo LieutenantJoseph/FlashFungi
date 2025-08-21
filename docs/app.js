@@ -1,5 +1,5 @@
-// app.js - Clean Flash Fungi App Initialization
-// Fixed to avoid conflicts with Supabase initialization
+// app.js - Fixed Flash Fungi App Initialization
+// Properly handles Supabase initialization timing
 
 (function() {
     'use strict';
@@ -19,15 +19,56 @@
     function initializeFlashFungi() {
         console.log('🚀 Starting Flash Fungi initialization...');
         
-        // Check if Supabase client already exists (created by supabase.js)
-        if (!window.supabase || typeof window.supabase.auth !== 'object') {
-            console.error('❌ Supabase client not initialized. Check supabase.js is loaded.');
+        // Wait for Supabase library to be available
+        waitForSupabaseLibrary();
+    }
+    
+    // Wait for the Supabase library to load from CDN
+    function waitForSupabaseLibrary() {
+        // Check if Supabase library is loaded (from CDN)
+        if (window.supabase && typeof window.supabase.createClient === 'function') {
+            console.log('✅ Supabase library loaded');
+            initializeSupabaseClient();
+        } else {
+            console.log('⏳ Waiting for Supabase library...');
+            setTimeout(waitForSupabaseLibrary, 100);
+        }
+    }
+    
+    // Initialize Supabase client only if not already initialized
+    function initializeSupabaseClient() {
+        // Check if client already exists (from supabase.js or elsewhere)
+        if (window.supabaseClient && typeof window.supabaseClient.auth === 'object') {
+            console.log('✅ Supabase client already exists');
+            window.supabase = window.supabaseClient; // Ensure window.supabase points to the client
+            waitForComponents();
             return;
         }
         
-        console.log('✅ Supabase client already initialized');
+        // Check if window.supabase is already the initialized client (not the library)
+        if (window.supabase && typeof window.supabase.auth === 'object') {
+            console.log('✅ Supabase client already initialized');
+            waitForComponents();
+            return;
+        }
         
-        // Wait for all components to load
+        // Create new client since none exists
+        try {
+            console.log('🔧 Creating Supabase client...');
+            const client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+            window.supabase = client; // Replace library reference with client instance
+            window.supabaseClient = client; // Also store as supabaseClient for compatibility
+            console.log('✅ Supabase client created successfully');
+            waitForComponents();
+        } catch (error) {
+            console.error('❌ Failed to create Supabase client:', error);
+            // Retry after a delay
+            setTimeout(initializeSupabaseClient, 500);
+        }
+    }
+    
+    // Wait for all components to load
+    function waitForComponents() {
         const checkComponents = () => {
             const requiredComponents = [
                 // Auth system (critical for app to function)
@@ -47,9 +88,6 @@
                 
                 // Profile (core functionality)
                 'ProfilePage'
-                
-                // Note: Optional components (GenusModules, AchievementSystem, PlaceholderAssets, etc.)
-                // will load in background and don't block app initialization
             ];
             
             // Check utils (critical)
