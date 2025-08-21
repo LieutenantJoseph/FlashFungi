@@ -34,23 +34,23 @@
         // Wait for all components to load
         const checkComponents = () => {
             const requiredComponents = [
-                // Auth system (critical)
+                // Auth system (critical for app to function)
                 'AuthProvider', 'useAuth', 'AuthenticatedApp', 'useUserProfile',
                 
-                // Main components (critical)
-                'HomePage', 'LoadingScreen', 'Toast',
+                // Core UI components (critical)
+                'HomePage', 'LoadingScreen',
                 
-                // Study components (critical)
+                // Study components (core functionality)
                 'SharedFlashcard', 'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
                 
-                // Training components (critical)
-                'TrainingModules', 'ModulePlayer', 'GenusModules',
+                // Training components (core functionality)
+                'TrainingModules', 'ModulePlayer',
                 
-                // Profile and other components
-                'ProfilePage', 'AchievementSystem', 'Phase3Badge',
+                // Profile (core functionality)
+                'ProfilePage'
                 
-                // UI components  
-                'PlaceholderAssets'
+                // Note: Optional components (GenusModules, AchievementSystem, PlaceholderAssets, etc.) 
+                // will load in background and don't block app initialization
             ];
             
             // Check utils (critical)
