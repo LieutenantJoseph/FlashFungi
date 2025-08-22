@@ -1158,24 +1158,13 @@
                     }
                 };
 
-                // Load training modules
+                // Load training modules - SIMPLIFIED VERSION
                 const loadTrainingModules = async () => {
                     setLoadingModules(true);
                     try {
                         // Load all modules (including unpublished for admin)
                         const loadedModules = await ModuleLoader.loadModules({ published: undefined });
                         setModules(loadedModules);
-                        
-                        // Check if we need to initialize defaults
-                        if (loadedModules.length === 0) {
-                            const result = await ModuleLoader.initializeDefaults();
-                            if (result.success) {
-                                // Reload modules after initialization
-                                const newModules = await ModuleLoader.loadModules({ published: undefined });
-                                setModules(newModules);
-                                showToast('Default modules initialized', 'success');
-                            }
-                        }
                     } catch (error) {
                         console.error('Error loading modules:', error);
                         showToast('Failed to load modules', 'error');
@@ -1463,7 +1452,7 @@
                             )
                         ),
 
-                        // Training Modules Management View (UPDATED)
+                        // Training Modules Management View (FIXED)
                         currentView === 'training-modules' && h('div', { className: 'space-y-6 fade-in' },
                             h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
                                 h('div', { className: 'flex justify-between items-center mb-6' },
@@ -1497,20 +1486,26 @@
                                     )
                                 ),
                                 
-                                // Module categories tabs
+                                // Module categories tabs - FIXED
                                 h('div', { className: 'border-b mb-6' },
                                     h('div', { className: 'flex gap-4' },
                                         ['All', 'Foundation', 'Genus', 'Advanced', 'Regional'].map(category =>
                                             h('button', {
                                                 key: category,
-                                                onClick: () => {
-                                                    if (category === 'All') {
-                                                        loadTrainingModules();
-                                                    } else {
-                                                        ModuleLoader.loadModules({ 
-                                                            category: category.toLowerCase(), 
-                                                            published: undefined 
-                                                        }).then(setModules);
+                                                onClick: async () => {
+                                                    setLoadingModules(true);
+                                                    try {
+                                                        const loadedModules = category === 'All' 
+                                                            ? await ModuleLoader.loadModules({ published: undefined })
+                                                            : await ModuleLoader.loadModules({ 
+                                                                category: category.toLowerCase(), 
+                                                                published: undefined 
+                                                            });
+                                                        setModules(loadedModules);
+                                                    } catch (error) {
+                                                        showToast('Failed to load modules', 'error');
+                                                    } finally {
+                                                        setLoadingModules(false);
                                                     }
                                                 },
                                                 className: 'px-4 py-2 border-b-2 hover:border-blue-500 transition-colors',
@@ -1533,15 +1528,7 @@
                                 modules.length === 0 ?
                                     h('div', { className: 'text-center py-12 bg-gray-50 rounded-lg' },
                                         h('p', { className: 'text-gray-600 mb-4' }, 'No modules found'),
-                                        h('button', {
-                                            onClick: async () => {
-                                                const result = await ModuleLoader.initializeDefaults();
-                                                if (result.success) {
-                                                    loadTrainingModules();
-                                                }
-                                            },
-                                            className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
-                                        }, 'Initialize Default Modules')
+                                        h('p', { className: 'text-sm text-gray-500' }, 'Click "Create Module" to add your first training module')
                                     ) :
                                     
                                 h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
