@@ -1104,7 +1104,8 @@
                 const [selectedModule, setSelectedModule] = useState(null);
                 const [toast, setToast] = useState(null);
                 const [searchTerm, setSearchTerm] = useState('');
-                const [filterStatus, setFilterStatus] = useState('all');
+                const [filterCategory, setFilterCategory] = useState('All');
+                const [filterStatus, setFilterStatus] = useState('All');
 
                 useEffect(() => {
                     loadData();
@@ -1163,11 +1164,15 @@
                     setLoadingModules(true);
                     try {
                         // Load all modules (including unpublished for admin)
-                        const loadedModules = await ModuleLoader.loadModules({ published: undefined });
-                        setModules(loadedModules);
+                        const loadedModules = await ModuleLoader.loadModules({ 
+                            published: undefined,
+                            forceRefresh: true  // Add forceRefresh to ensure fresh data
+                        });
+                        setModules(loadedModules || []);
                     } catch (error) {
                         console.error('Error loading modules:', error);
                         showToast('Failed to load modules', 'error');
+                        setModules([]); // Set empty array on error
                     } finally {
                         setLoadingModules(false);
                     }
