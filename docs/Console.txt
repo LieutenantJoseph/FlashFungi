@@ -1,5 +1,0 @@
-[Error] Failed to load resource: the server responded with a status of 404 () (training-modules, line 0)
-[Error] Error loading modules:
-Error: Failed to load modules: 404
-(anonymous function) — ModuleLoader.js:39
-	(anonymous function) (ModuleLoader.js:52)
