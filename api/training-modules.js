@@ -99,10 +99,19 @@ async function handleCreateModule(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
     published 
   } = req.body;
 
-  // Validate required fields
-  if (!id || !title || !category || !difficulty_level) {
+  // Enhanced validation with specific error messages
+  const missingFields = [];
+  if (!id) missingFields.push('id');
+  if (!title) missingFields.push('title');
+  if (!category) missingFields.push('category');
+  if (!difficulty_level) missingFields.push('difficulty_level');
+  
+  if (missingFields.length > 0) {
+    console.error('Missing required fields:', missingFields);
+    console.error('Received body:', req.body);
     return res.status(400).json({ 
-      error: 'Missing required fields: id, title, category, difficulty_level' 
+      error: `Missing required fields: ${missingFields.join(', ')}`,
+      received: req.body // Include what was received for debugging
     });
   }
 
@@ -138,6 +147,8 @@ async function handleCreateModule(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
     updated_at: new Date().toISOString()
   };
 
+  console.log('Creating module with data:', moduleData);
+
   const response = await fetch(
     `${SUPABASE_URL}/rest/v1/training_modules`,
     {
@@ -154,6 +165,7 @@ async function handleCreateModule(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
 
   if (response.ok) {
     const newModule = await response.json();
+    console.log('Module created successfully:', newModule[0]?.id);
     res.status(201).json({ 
       success: true, 
       module: newModule[0],
@@ -162,7 +174,10 @@ async function handleCreateModule(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
   } else {
     const errorText = await response.text();
     console.error('Failed to create module:', errorText);
-    res.status(response.status).json({ error: 'Failed to create module' });
+    res.status(response.status).json({ 
+      error: 'Failed to create module', 
+      details: errorText 
+    });
   }
 }
 
@@ -260,104 +275,5 @@ async function handleDeleteModule(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY) 
     const errorText = await response.text();
     console.error('Failed to delete module:', errorText);
     res.status(response.status).json({ error: 'Failed to delete module' });
-  }
-}
-
-// Initialize default modules if database is empty
-export async function initializeDefaultModules(SUPABASE_URL, SUPABASE_SERVICE_KEY) {
-  // Check if any modules exist
-  const checkResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/training_modules`,
-    {
-      headers: {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`
-      }
-    }
-  );
-
-  if (checkResponse.ok) {
-    const existing = await checkResponse.json();
-    if (existing.length > 0) {
-      return; // Modules already exist
-    }
-  }
-
-  // Default foundation modules
-  const defaultModules = [
-    {
-      id: 'foundation_basics',
-      title: 'Mushroom Identification Basics',
-      category: 'foundation',
-      difficulty_level: 'beginner',
-      duration_minutes: 15,
-      content: {
-        introduction: {
-          type: 'lesson',
-          pages: [
-            {
-              title: 'Welcome to Mushroom Identification',
-              content: 'Learn the fundamental skills needed to identify mushrooms safely and accurately.',
-              image: ''
-            },
-            {
-              title: 'Key Parts of a Mushroom',
-              content: 'Understanding cap, gills, stem, and other essential features.',
-              image: ''
-            }
-          ]
-        },
-        quiz: {
-          type: 'quiz',
-          questions: [
-            {
-              question: 'What is the top part of a mushroom called?',
-              options: ['Cap', 'Stem', 'Gill', 'Spore'],
-              correct: 0
-            }
-          ]
-        }
-      },
-      published: true
-    },
-    {
-      id: 'foundation_safety',
-      title: 'Safety First: Deadly Species',
-      category: 'foundation',
-      difficulty_level: 'beginner',
-      duration_minutes: 20,
-      content: {
-        introduction: {
-          type: 'lesson',
-          pages: [
-            {
-              title: 'Never Eat Wild Mushrooms Without Expert Verification',
-              content: 'Learn to recognize the most dangerous mushrooms in Arizona.',
-              image: ''
-            }
-          ]
-        }
-      },
-      published: true
-    }
-  ];
-
-  // Insert default modules
-  for (const module of defaultModules) {
-    module.created_at = new Date().toISOString();
-    module.updated_at = new Date().toISOString();
-    
-    await fetch(
-      `${SUPABASE_URL}/rest/v1/training_modules`,
-      {
-        method: 'POST',
-        headers: {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(module)
-      }
-    );
   }
 }

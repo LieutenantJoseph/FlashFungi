@@ -1,10 +1,10 @@
 // app.js - Flash Fungi Main Application
-// Consolidated app initialization and logic with ModuleLoader integration
+// Consolidated app initialization and logic with ModuleLoader integration - FIXED VERSION
 
 (function() {
     'use strict';
     
-    console.log('🍄 Flash Fungi v3.2 - Consolidated App');
+    console.log('🍄 Flash Fungi v3.2 - Consolidated App with Module Loading Fixes');
     
     // ============================================
     // INITIALIZATION SECTION
@@ -24,7 +24,7 @@
     // ============================================
     
     window.AuthenticatedApp = function AuthenticatedApp() {
-        console.log('🔐 AuthenticatedApp rendering...');
+        console.log('🔍 AuthenticatedApp rendering...');
         
         // Get auth context
         const authContext = window.useAuth ? window.useAuth() : null;
@@ -124,9 +124,9 @@
             loadData();
         }, []);
         
-        // Load training modules from database
-        const loadTrainingModules = React.useCallback(async (category = null) => {
-            console.log('📚 Loading training modules from database...');
+        // Load training modules from database - FIXED VERSION WITH FORCE REFRESH
+        const loadTrainingModules = React.useCallback(async (category = null, forceRefresh = false) => {
+            console.log('📚 Loading training modules from database...', { category, forceRefresh });
             setModulesLoading(true);
             
             try {
@@ -134,7 +134,8 @@
                 if (window.ModuleLoader) {
                     const modules = await window.ModuleLoader.loadModules({ 
                         category: category,
-                        published: true 
+                        published: true,
+                        forceRefresh: forceRefresh // Add force refresh option
                     });
                     setTrainingModules(modules);
                     console.log('✅ Loaded', modules.length, 'modules from database');
@@ -240,6 +241,8 @@
             console.log('🎉 Module completed:', module.id);
             setCurrentView('training-modules');
             setCurrentModule(null);
+            // Refresh modules to get updated progress
+            loadTrainingModules(null, true);
         };
         
         const handleAuthRequired = () => {
@@ -361,6 +364,7 @@
                         );
 
                 case 'training-modules':
+                    // FIXED: Pass forceRefresh: true when manually refreshing
                     return window.TrainingModules ? React.createElement(window.TrainingModules, {
                         modules: trainingModules,
                         modulesLoading: modulesLoading,
@@ -368,7 +372,7 @@
                         user,
                         onBack: handleBackToHome,
                         onModuleSelect: handleModuleSelect,
-                        onRefresh: () => loadTrainingModules()
+                        onRefresh: () => loadTrainingModules(null, true) // Force refresh when manually refreshing
                     }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
                         React.createElement('h1', null, 'TrainingModules component not loaded'),
                         React.createElement('button', { onClick: handleBackToHome }, 'Back to Home')
@@ -484,6 +488,9 @@
             // Note if ModuleLoader is missing (optional but recommended)
             if (!window.ModuleLoader) {
                 console.warn('⚠️ ModuleLoader not found - training modules will use fallback data');
+                console.warn('To enable database module loading, ensure ModuleLoader.js is included before app.js');
+            } else {
+                console.log('✅ ModuleLoader found - training modules will load from database');
             }
             
             if (missing.length === 0) {
@@ -533,6 +540,7 @@
             }
             
             console.log('✅ Flash Fungi app mounted successfully!');
+            console.log('📚 Module Loading Status:', window.ModuleLoader ? 'Database-enabled' : 'Static fallback');
             
         } catch (error) {
             console.error('❌ Error mounting app:', error);
@@ -555,6 +563,11 @@
         initializeFlashFungi();
     }
     
-    console.log('✅ Flash Fungi v3.2 - Consolidated app.js with ModuleLoader integration');
+    console.log('✅ Flash Fungi v3.2 - Module Loading Fixes Applied');
+    console.log('📝 Key changes:');
+    console.log('  - loadTrainingModules now supports forceRefresh parameter');
+    console.log('  - Manual refresh passes forceRefresh: true');
+    console.log('  - Module completion triggers refresh');
+    console.log('  - Better logging for debugging');
     
 })();
