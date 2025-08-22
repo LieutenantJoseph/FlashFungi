@@ -22,7 +22,6 @@
             if (!forceRefresh && this.cache.has(cacheKey)) {
                 const cached = this.cache.get(cacheKey);
                 if (Date.now() - cached.timestamp < this.cacheTimeout) {
-                    console.log('📦 Using cached modules');
                     return cached.data;
                 }
             }
@@ -34,7 +33,6 @@
                 // Only append published if it's explicitly true or false, not undefined
                 if (published !== undefined) params.append('published', published.toString());
                 
-                console.log('🔄 Fetching fresh modules from database...', { category, published });
                 const response = await fetch(`/api/training-modules?${params}`);
                 
                 if (!response.ok) {
@@ -49,377 +47,239 @@
                     timestamp: Date.now()
                 });
                 
-                console.log(`✅ Loaded ${modules.length} modules from database`);
                 return modules;
             } catch (error) {
                 console.error('Error loading modules:', error);
-                // Return empty array instead of throwing to prevent UI breakage
+                
+                // Return cached data if available, even if expired
+                if (this.cache.has(cacheKey)) {
+                    return this.cache.get(cacheKey).data;
+                }
+                
+                // Return empty array as fallback
                 return [];
             }
         },
         
         // Load a specific module by ID
-        async loadModule(id) {
+        async loadModule(moduleId, forceRefresh = false) {
+            const cacheKey = `module_${moduleId}`;
+            
+            // Check cache
+            if (!forceRefresh && this.cache.has(cacheKey)) {
+                const cached = this.cache.get(cacheKey);
+                if (Date.now() - cached.timestamp < this.cacheTimeout) {
+                    return cached.data;
+                }
+            }
+            
             try {
-                const response = await fetch(`/api/training-modules?id=${id}`);
+                const response = await fetch(`/api/training-modules?id=${moduleId}`);
                 
                 if (!response.ok) {
                     throw new Error('Failed to load module');
                 }
                 
                 const modules = await response.json();
-                return modules[0] || null;
+                const module = modules[0] || null;
+                
+                // Update cache
+                if (module) {
+                    this.cache.set(cacheKey, {
+                        data: module,
+                        timestamp: Date.now()
+                    });
+                }
+                
+                return module;
             } catch (error) {
                 console.error('Error loading module:', error);
-                throw error;
-            }
-        },
-        
-        // Save a module (create or update)
-        async saveModule(module) {
-            try {
-                const isUpdate = !!module.id;
-                const endpoint = isUpdate 
-                    ? `/api/training-modules?id=${module.id}`
-                    : '/api/training-modules';
                 
-                const response = await fetch(endpoint, {
-                    method: isUpdate ? 'PATCH' : 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(module)
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to save module');
+                // Return cached data if available
+                if (this.cache.has(cacheKey)) {
+                    return this.cache.get(cacheKey).data;
                 }
                 
-                const result = await response.json();
-                
-                // Clear cache to force refresh
-                this.cache.clear();
-                
-                return result.module || result;
-            } catch (error) {
-                console.error('Error saving module:', error);
-                throw error;
+                return null;
             }
         },
         
-        // Delete a module
-        async deleteModule(id) {
-            try {
-                const response = await fetch(`/api/training-modules?id=${id}`, {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to delete module');
-                }
-                
-                // Clear cache to force refresh
-                this.cache.clear();
-                
-                return true;
-            } catch (error) {
-                console.error('Error deleting module:', error);
-                throw error;
-            }
-        },
-        
-        // Clear cache manually
+        // Clear cache
         clearCache() {
             this.cache.clear();
-            console.log('📦 Module cache cleared');
         },
         
-        // Get categories
-        getCategories() {
-            return [
-                { value: 'foundation', label: 'Foundation', color: 'blue' },
-                { value: 'genus', label: 'Genus-Specific', color: 'green' },
-                { value: 'advanced', label: 'Advanced', color: 'purple' },
-                { value: 'regional', label: 'Regional', color: 'orange' }
-            ];
-        },
-        
-        // Get difficulty levels
-        getDifficultyLevels() {
-            return [
-                { value: 'beginner', label: 'Beginner', color: 'green' },
-                { value: 'intermediate', label: 'Intermediate', color: 'yellow' },
-                { value: 'advanced', label: 'Advanced', color: 'red' }
-            ];
-        },
-        
-        // Format module for display
-        formatModule(module) {
-            return {
-                ...module,
-                categoryLabel: this.getCategories().find(c => c.value === module.category)?.label || module.category,
-                difficultyLabel: this.getDifficultyLevels().find(d => d.value === module.difficulty_level)?.label || module.difficulty_level,
-                sectionCount: Object.keys(module.content || {}).length,
-                isComplete: module.content && Object.keys(module.content).length > 0
-            };
-        },
-        
-        // Initialize default modules in database
+        // Initialize default modules if needed (admin only)
         async initializeDefaults() {
-            console.log('🔧 Initializing default training modules...');
-            
-            // Generate unique timestamp-based IDs
-            const timestamp = Date.now();
-            
-            const defaultModules = [
-                {
-                    id: `foundation_basics_${timestamp}`,
-                    title: 'Mushroom Identification Basics',
-                    category: 'foundation',
-                    difficulty_level: 'beginner',
-                    duration_minutes: 15,
-                    published: true,
-                    content: {
-                        introduction: {
-                            type: 'text',
-                            content: 'Welcome to the fundamentals of mushroom identification. This module covers essential concepts for safely identifying fungi in the field.'
-                        },
-                        anatomy: {
-                            type: 'interactive',
-                            content: 'Learn about caps, stems, gills, and spores through interactive diagrams. Understanding mushroom anatomy is crucial for accurate identification.'
-                        },
-                        safety: {
-                            type: 'text',
-                            content: 'Critical safety information for field identification. Never eat any mushroom unless you are 100% certain of its identification.'
-                        },
-                        tools: {
-                            type: 'list',
-                            content: 'Essential tools for mushroom identification: field guide, knife, paper bags, camera, and notebook for observations.'
-                        }
-                    },
-                    prerequisites: [],
-                    unlocks: [],
-                    knowledge_checks: [
-                        {
-                            question: 'What is the reproductive structure of a mushroom called?',
-                            options: ['Mycelium', 'Fruiting body', 'Rhizomorph', 'Hypha'],
-                            correct: 1
-                        },
-                        {
-                            question: 'Which part of the mushroom produces spores?',
-                            options: ['Cap', 'Stem', 'Gills/Pores', 'Volva'],
-                            correct: 2
-                        }
-                    ]
-                },
-                {
-                    id: `foundation_safety_${timestamp + 1}`,
-                    title: 'Safety First: Deadly Species',
-                    category: 'foundation',
-                    difficulty_level: 'beginner',
-                    duration_minutes: 20,
-                    published: true,
-                    content: {
-                        introduction: {
-                            type: 'text',
-                            content: 'Learn to identify and avoid deadly mushroom species found in Arizona. This knowledge could save your life.'
-                        },
-                        deadly_species: {
-                            type: 'gallery',
-                            content: 'Visual guide to Amanita phalloides (Death Cap), Amanita ocreata (Destroying Angel), and other dangerous species.'
-                        },
-                        lookalikes: {
-                            type: 'comparison',
-                            content: 'Compare deadly species with their edible lookalikes. Learn the critical differences that separate food from poison.'
-                        },
-                        symptoms: {
-                            type: 'text',
-                            content: 'Recognize symptoms of mushroom poisoning and understand when to seek immediate medical attention.'
-                        }
-                    },
-                    prerequisites: [],
-                    unlocks: [],
-                    knowledge_checks: [
-                        {
-                            question: 'Which feature is most associated with deadly Amanita species?',
-                            options: ['Blue bruising', 'White spore print and volva', 'Milky latex', 'Orange color'],
-                            correct: 1
-                        },
-                        {
-                            question: 'What should you do if you suspect mushroom poisoning?',
-                            options: ['Wait and see', 'Drink milk', 'Seek immediate medical attention', 'Induce vomiting'],
-                            correct: 2
-                        }
-                    ]
-                },
-                {
-                    id: `foundation_spore_${timestamp + 2}`,
-                    title: 'Spore Printing Techniques',
-                    category: 'foundation',
-                    difficulty_level: 'intermediate',
-                    duration_minutes: 25,
-                    published: true,
-                    content: {
-                        materials: {
-                            type: 'list',
-                            content: 'Materials needed for spore printing: white and black paper, glass or bowl, water, and 2-24 hours of patience.'
-                        },
-                        technique: {
-                            type: 'video',
-                            content: 'Step-by-step demonstration of spore printing methods for accurate mushroom identification.'
-                        },
-                        interpretation: {
-                            type: 'interactive',
-                            content: 'Learn to interpret spore color and patterns. Match spore prints to common genera.'
-                        },
-                        troubleshooting: {
-                            type: 'text',
-                            content: 'Common problems and solutions when making spore prints in different humidity conditions.'
-                        }
-                    },
-                    prerequisites: [],
-                    unlocks: [],
-                    knowledge_checks: [
-                        {
-                            question: 'How long should you typically wait for a spore print?',
-                            options: ['30 minutes', '2-4 hours', '24 hours', '1 week'],
-                            correct: 1
-                        },
-                        {
-                            question: 'Why use both white and black paper for spore prints?',
-                            options: ['For decoration', 'To see light and dark spores', 'Black paper works faster', 'White paper is more accurate'],
-                            correct: 1
-                        }
-                    ]
-                },
-                {
-                    id: `genus_agaricus_${timestamp + 3}`,
-                    title: 'Genus Agaricus Deep Dive',
-                    category: 'genus',
-                    difficulty_level: 'intermediate',
-                    duration_minutes: 30,
-                    published: true,
-                    content: {
-                        overview: {
-                            type: 'text',
-                            content: 'Comprehensive study of the Agaricus genus, including both edible champions and toxic species to avoid.'
-                        },
-                        identification: {
-                            type: 'interactive',
-                            content: 'Key features: free gills that start pink and turn chocolate brown, ring on stem, no volva at base.'
-                        },
-                        species_gallery: {
-                            type: 'gallery',
-                            content: 'Common Agaricus species: A. campestris (Meadow Mushroom), A. bisporus (Button Mushroom), A. xanthodermus (Yellow Stainer - toxic!).'
-                        },
-                        habitat: {
-                            type: 'text',
-                            content: 'Find Agaricus in grassy areas, gardens, and along paths. Peak season in Arizona: monsoon season and fall.'
-                        },
-                        cooking: {
-                            type: 'text',
-                            content: 'Safe preparation methods for edible Agaricus species. Always cook thoroughly and start with small amounts.'
-                        }
-                    },
-                    prerequisites: [],
-                    unlocks: [],
-                    knowledge_checks: [
-                        {
-                            question: 'What spore color is characteristic of Agaricus?',
-                            options: ['White', 'Black', 'Chocolate brown', 'Rusty brown'],
-                            correct: 2
-                        },
-                        {
-                            question: 'Which Agaricus species should be avoided due to toxicity?',
-                            options: ['A. campestris', 'A. bisporus', 'A. xanthodermus', 'A. augustus'],
-                            correct: 2
-                        }
-                    ]
-                },
-                {
-                    id: `regional_arizona_${timestamp + 4}`,
-                    title: 'Arizona Desert Fungi',
-                    category: 'regional',
-                    difficulty_level: 'advanced',
-                    duration_minutes: 35,
-                    published: true,
-                    content: {
-                        introduction: {
-                            type: 'text',
-                            content: 'Discover unique fungal species adapted to the Sonoran Desert ecosystem. These hardy fungi have evolved fascinating survival strategies.'
-                        },
-                        desert_species: {
-                            type: 'gallery',
-                            content: 'Podaxis pistillaris (Desert Shaggy Mane), Battarrea phalloides (Desert Stalked Puffball), Tulostoma (Stalked Puffballs).'
-                        },
-                        seasonal_patterns: {
-                            type: 'chart',
-                            content: 'Monsoon season (July-September) brings the main fruiting period. Winter rains may produce a second, smaller flush.'
-                        },
-                        habitat_zones: {
-                            type: 'interactive',
-                            content: 'Explore fungal diversity from desert floor to sky islands. Elevation changes create distinct fungal communities.'
-                        },
-                        conservation: {
-                            type: 'text',
-                            content: 'Conservation considerations for rare desert fungi. Practice sustainable foraging and photography-first approach.'
-                        }
-                    },
-                    prerequisites: [],
-                    unlocks: [],
-                    knowledge_checks: [
-                        {
-                            question: 'When do most Arizona desert fungi fruit?',
-                            options: ['Spring', 'Monsoon season', 'Winter', 'Year-round'],
-                            correct: 1
-                        },
-                        {
-                            question: 'Which fungus is known as the Desert Shaggy Mane?',
-                            options: ['Battarrea phalloides', 'Podaxis pistillaris', 'Tulostoma brumale', 'Agaricus deserticola'],
-                            correct: 1
-                        }
-                    ]
-                }
-            ];
-            
             try {
-                let successCount = 0;
-                let errorCount = 0;
+                // Check if any modules exist
+                const existing = await this.loadModules({ published: undefined });
                 
+                if (existing.length > 0) {
+                    return { success: true, message: 'Modules already exist' };
+                }
+                
+                // Create default foundation modules
+                const defaultModules = [
+                    {
+                        id: 'foundation_basics',
+                        title: 'Mushroom Identification Basics',
+                        category: 'foundation',
+                        difficulty_level: 'beginner',
+                        duration_minutes: 15,
+                        content: {
+                            introduction: {
+                                type: 'lesson',
+                                pages: [
+                                    {
+                                        title: 'Welcome to Mushroom Identification',
+                                        content: 'In this module, you will learn the fundamental skills needed to identify mushrooms safely and accurately. We\'ll cover the basic anatomy of mushrooms and introduce key identification features.',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'Key Parts of a Mushroom',
+                                        content: 'Understanding mushroom anatomy is essential. The main parts include:\n• Cap (pileus) - The top umbrella-like structure\n• Gills or pores - Spore-bearing surface under the cap\n• Stem (stipe) - Supports the cap\n• Ring (annulus) - Remnant of partial veil on stem\n• Volva - Cup at base in some species',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'Important Features to Observe',
+                                        content: 'When identifying mushrooms, always note:\n• Size and shape of cap\n• Color and texture\n• Gill attachment and spacing\n• Presence of ring or volva\n• Habitat and substrate\n• Spore print color',
+                                        image: ''
+                                    }
+                                ]
+                            },
+                            quiz: {
+                                type: 'quiz',
+                                questions: [
+                                    {
+                                        question: 'What is the top part of a mushroom called?',
+                                        options: ['Cap', 'Stem', 'Gill', 'Spore'],
+                                        correct: 0,
+                                        explanation: 'The cap (also called pileus) is the umbrella-like top structure of the mushroom.'
+                                    },
+                                    {
+                                        question: 'Which part produces and releases spores?',
+                                        options: ['Stem', 'Cap surface', 'Gills or pores', 'Ring'],
+                                        correct: 2,
+                                        explanation: 'Gills (or pores in some species) are the spore-bearing structures underneath the cap.'
+                                    }
+                                ]
+                            }
+                        },
+                        published: true
+                    },
+                    {
+                        id: 'foundation_safety',
+                        title: 'Safety First: Deadly Species',
+                        category: 'foundation',
+                        difficulty_level: 'beginner',
+                        duration_minutes: 20,
+                        content: {
+                            introduction: {
+                                type: 'lesson',
+                                pages: [
+                                    {
+                                        title: 'Never Eat Wild Mushrooms Without Expert Verification',
+                                        content: 'This is the golden rule of mushroom foraging. Many edible species have toxic look-alikes that can cause serious illness or death. Even experienced foragers can make mistakes.',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'Deadly Species in Arizona',
+                                        content: 'Several potentially deadly mushrooms occur in Arizona:\n• Amanita phalloides (Death Cap)\n• Amanita ocreata (Destroying Angel)\n• Galerina marginata (Deadly Galerina)\n• Some Lepiota species\n\nThese contain amatoxins that cause liver and kidney failure.',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'Warning Signs',
+                                        content: 'Be especially cautious of:\n• White gills on mushrooms with a ring and/or volva\n• Small brown mushrooms growing on wood\n• Any mushroom you cannot identify with 100% certainty\n• Mushrooms that have been partially eaten by animals (they can eat things toxic to humans)',
+                                        image: ''
+                                    }
+                                ]
+                            },
+                            quiz: {
+                                type: 'quiz',
+                                questions: [
+                                    {
+                                        question: 'What should you do before eating any wild mushroom?',
+                                        options: [
+                                            'Smell it first',
+                                            'Get expert verification',
+                                            'Cook it thoroughly',
+                                            'Test a small amount'
+                                        ],
+                                        correct: 1,
+                                        explanation: 'Always get expert verification before consuming any wild mushroom. No other test is reliable.'
+                                    },
+                                    {
+                                        question: 'Which features together suggest a potentially deadly Amanita?',
+                                        options: [
+                                            'Brown cap and no ring',
+                                            'Growing on wood',
+                                            'White gills, ring, and volva',
+                                            'Blue bruising'
+                                        ],
+                                        correct: 2,
+                                        explanation: 'White gills, a ring on the stem, and a volva (cup) at the base are classic features of deadly Amanitas.'
+                                    }
+                                ]
+                            }
+                        },
+                        published: true
+                    },
+                    {
+                        id: 'foundation_spore_prints',
+                        title: 'Spore Print Basics',
+                        category: 'foundation',
+                        difficulty_level: 'beginner',
+                        duration_minutes: 15,
+                        content: {
+                            introduction: {
+                                type: 'lesson',
+                                pages: [
+                                    {
+                                        title: 'What is a Spore Print?',
+                                        content: 'A spore print is a deposit of spores released from a mushroom cap. The color of the spore print is a crucial identification feature that helps distinguish between similar-looking species.',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'How to Make a Spore Print',
+                                        content: 'Steps:\n1. Remove the stem from a fresh mushroom\n2. Place cap gill-side down on white and black paper\n3. Cover with a bowl or glass\n4. Leave for 2-24 hours\n5. Carefully lift the cap to reveal the print\n\nUse both white and black paper to see light-colored spores.',
+                                        image: ''
+                                    },
+                                    {
+                                        title: 'Common Spore Print Colors',
+                                        content: 'Spore prints can be:\n• White to cream (many species)\n• Pink (Pluteus, Entoloma)\n• Brown (Agaricus, Psilocybe)\n• Purple-brown to black (Psathyrella, Coprinus)\n• Rusty brown (Gymnopilus, Cortinarius)\n• Green (Chlorophyllum molybdites)',
+                                        image: ''
+                                    }
+                                ]
+                            }
+                        },
+                        published: true
+                    }
+                ];
+                
+                // Create each module
                 for (const module of defaultModules) {
-                    try {
-                        const saved = await this.saveModule(module);
-                        if (saved) {
-                            successCount++;
-                            console.log(`✅ Created default module: ${module.title}`);
-                        }
-                    } catch (err) {
-                        errorCount++;
-                        console.error(`❌ Failed to create module ${module.title}:`, err);
+                    const response = await fetch('/api/training-modules', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(module)
+                    });
+                    
+                    if (!response.ok) {
+                        console.error('Failed to create module:', module.id);
                     }
                 }
                 
-                // Clear cache to ensure fresh data
-                this.cache.clear();
+                // Clear cache after initialization
+                this.clearCache();
                 
-                console.log(`📊 Default modules initialization complete: ${successCount} created, ${errorCount} failed`);
-                
-                return {
-                    success: successCount > 0,
-                    created: successCount,
-                    failed: errorCount
-                };
-                
+                return { success: true, message: 'Default modules created successfully' };
             } catch (error) {
-                console.error('❌ Failed to initialize default modules:', error);
-                return {
-                    success: false,
-                    error: error.message
-                };
+                console.error('Error initializing default modules:', error);
+                return { success: false, error: error.message };
             }
         }
     };
-    
-    console.log('✅ ModuleLoader utility loaded successfully');
 })();

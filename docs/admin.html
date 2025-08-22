@@ -99,7 +99,7 @@
                 );
             }
 
-            // Module Content Editor Component - FIXED VERSION
+            // Module Content Editor Component
             function ModuleEditor({ module, onClose, onSave }) {
                 const [content, setContent] = useState(module.content || {});
                 const [moduleData, setModuleData] = useState({
@@ -195,17 +195,11 @@
                     }));
                 };
                 
-                // FIXED handleSave function with proper validation and error handling
                 const handleSave = async () => {
                     setSaving(true);
                     setError(null);
                     
                     try {
-                        // Validate required fields
-                        if (!moduleData.title || !moduleData.category || !moduleData.difficulty_level) {
-                            throw new Error('Please fill in all required fields: Title, Category, and Difficulty Level');
-                        }
-                        
                         const endpoint = module.id 
                             ? `/api/training-modules?id=${module.id}`
                             : '/api/training-modules';
@@ -215,19 +209,10 @@
                         const body = module.id 
                             ? { ...moduleData, content }
                             : { 
-                                // Ensure all required fields are included for new modules
                                 id: `${moduleData.category}_${Date.now()}`,
-                                title: moduleData.title,
-                                category: moduleData.category,
-                                difficulty_level: moduleData.difficulty_level,
-                                duration_minutes: moduleData.duration_minutes || 20,
-                                published: moduleData.published || false,
-                                content: content || {},
-                                prerequisites: moduleData.prerequisites || [],
-                                unlocks: moduleData.unlocks || []
+                                ...moduleData,
+                                content
                             };
-                        
-                        console.log('Saving module with data:', body); // Debug logging
                         
                         const response = await fetch(endpoint, {
                             method: method,
@@ -240,18 +225,9 @@
                         const result = await response.json();
                         
                         if (response.ok) {
-                            console.log('Module saved successfully:', result);
-                            // Handle both response formats
-                            if (result.module) {
-                                onSave(result.module);
-                            } else if (Array.isArray(result) && result.length > 0) {
-                                onSave(result[0]);
-                            } else {
-                                onSave(result);
-                            }
+                            onSave(result.module);
                             onClose();
                         } else {
-                            console.error('API Error:', result); // Better error logging
                             throw new Error(result.error || 'Failed to save module');
                         }
                     } catch (error) {
@@ -293,23 +269,21 @@
                         h('div', { className: 'p-6 bg-gray-50 border-b flex-shrink-0' },
                             h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4' },
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Title *'),
+                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Title'),
                                     h('input', {
                                         type: 'text',
                                         value: moduleData.title,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, title: e.target.value })),
                                         className: 'w-full px-3 py-2 border rounded-lg text-sm',
-                                        placeholder: 'Module title...',
-                                        required: true
+                                        placeholder: 'Module title...'
                                     })
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Category *'),
+                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Category'),
                                     h('select', {
                                         value: moduleData.category,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, category: e.target.value })),
-                                        className: 'w-full px-3 py-2 border rounded-lg text-sm',
-                                        required: true
+                                        className: 'w-full px-3 py-2 border rounded-lg text-sm'
                                     },
                                         h('option', { value: 'foundation' }, 'Foundation'),
                                         h('option', { value: 'genus' }, 'Genus-Specific'),
@@ -318,12 +292,11 @@
                                     )
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Difficulty *'),
+                                    h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, 'Difficulty'),
                                     h('select', {
                                         value: moduleData.difficulty_level,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, difficulty_level: e.target.value })),
-                                        className: 'w-full px-3 py-2 border rounded-lg text-sm',
-                                        required: true
+                                        className: 'w-full px-3 py-2 border rounded-lg text-sm'
                                     },
                                         h('option', { value: 'beginner' }, 'Beginner'),
                                         h('option', { value: 'intermediate' }, 'Intermediate'),
@@ -494,7 +467,7 @@
                             }, 'Cancel'),
                             h('button', {
                                 onClick: handleSave,
-                                disabled: saving || !moduleData.title || !moduleData.category || !moduleData.difficulty_level,
+                                disabled: saving || !moduleData.title,
                                 className: `px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed ${
                                     saving ? 'cursor-wait' : ''
                                 }`
@@ -1185,40 +1158,22 @@
                     }
                 };
 
-                // Load training modules - FIXED VERSION
-                const loadTrainingModules = async (forceRefresh = false) => {
+                // Load training modules
+                const loadTrainingModules = async () => {
                     setLoadingModules(true);
                     try {
-                        // Check if ModuleLoader is available
-                        if (window.ModuleLoader) {
-                            // Load all modules (including unpublished for admin)
-                            const loadedModules = await window.ModuleLoader.loadModules({ 
-                                published: undefined,
-                                forceRefresh: forceRefresh 
-                            });
-                            setModules(loadedModules);
-                            console.log('✅ Loaded', loadedModules.length, 'modules from database');
-                            
-                            // Check if we need to initialize defaults
-                            if (loadedModules.length === 0) {
-                                const result = await window.ModuleLoader.initializeDefaults();
-                                if (result.success) {
-                                    // Reload modules after initialization
-                                    const newModules = await window.ModuleLoader.loadModules({ 
-                                        published: undefined,
-                                        forceRefresh: true 
-                                    });
-                                    setModules(newModules);
-                                    showToast('Default modules initialized', 'success');
-                                }
-                            }
-                        } else {
-                            // Fallback to direct API call if ModuleLoader not available
-                            console.warn('ModuleLoader not available, using direct API');
-                            const response = await fetch('/api/training-modules');
-                            if (response.ok) {
-                                const data = await response.json();
-                                setModules(data);
+                        // Load all modules (including unpublished for admin)
+                        const loadedModules = await ModuleLoader.loadModules({ published: undefined });
+                        setModules(loadedModules);
+                        
+                        // Check if we need to initialize defaults
+                        if (loadedModules.length === 0) {
+                            const result = await ModuleLoader.initializeDefaults();
+                            if (result.success) {
+                                // Reload modules after initialization
+                                const newModules = await ModuleLoader.loadModules({ published: undefined });
+                                setModules(newModules);
+                                showToast('Default modules initialized', 'success');
                             }
                         }
                     } catch (error) {
@@ -1508,7 +1463,7 @@
                             )
                         ),
 
-                        // Training Modules Management View (FIXED)
+                        // Training Modules Management View (UPDATED)
                         currentView === 'training-modules' && h('div', { className: 'space-y-6 fade-in' },
                             h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
                                 h('div', { className: 'flex justify-between items-center mb-6' },
@@ -1523,7 +1478,7 @@
                                     ),
                                     h('div', { className: 'flex gap-2' },
                                         h('button', {
-                                            onClick: () => loadTrainingModules(true), // Force refresh
+                                            onClick: () => loadTrainingModules(),
                                             className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
                                         }, 'Refresh'),
                                         h('button', {
@@ -1551,8 +1506,8 @@
                                                 onClick: () => {
                                                     if (category === 'All') {
                                                         loadTrainingModules();
-                                                    } else if (window.ModuleLoader) {
-                                                        window.ModuleLoader.loadModules({ 
+                                                    } else {
+                                                        ModuleLoader.loadModules({ 
                                                             category: category.toLowerCase(), 
                                                             published: undefined 
                                                         }).then(setModules);
@@ -1580,11 +1535,9 @@
                                         h('p', { className: 'text-gray-600 mb-4' }, 'No modules found'),
                                         h('button', {
                                             onClick: async () => {
-                                                if (window.ModuleLoader) {
-                                                    const result = await window.ModuleLoader.initializeDefaults();
-                                                    if (result.success) {
-                                                        loadTrainingModules(true);
-                                                    }
+                                                const result = await ModuleLoader.initializeDefaults();
+                                                if (result.success) {
+                                                    loadTrainingModules();
                                                 }
                                             },
                                             className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
@@ -1636,7 +1589,7 @@
                                                                 });
                                                                 if (response.ok) {
                                                                     showToast('Module deleted', 'success');
-                                                                    loadTrainingModules(true);
+                                                                    loadTrainingModules();
                                                                 }
                                                             } catch (error) {
                                                                 showToast('Failed to delete module', 'error');
@@ -1659,7 +1612,7 @@
                                                                     module.published ? 'Module unpublished' : 'Module published',
                                                                     'success'
                                                                 );
-                                                                loadTrainingModules(true);
+                                                                loadTrainingModules();
                                                             }
                                                         } catch (error) {
                                                             showToast('Failed to update module', 'error');
@@ -1836,7 +1789,7 @@
                                                             ),
                                                             hasGuide && h('span', { 
                                                                 className: 'text-sm bg-green-100 text-green-800 px-2 py-1 rounded'
-                                                            }, '✓ Has Guide')
+                                                            }, '✔ Has Guide')
                                                         )
                                                     ),
                                                     h('button', {
@@ -1954,7 +1907,7 @@
                         onSave: (updatedModule) => {
                             showToast('Module saved successfully!', 'success');
                             setSelectedModule(null);
-                            loadTrainingModules(true); // Force refresh after save
+                            loadTrainingModules();
                         }
                     }),
 
