@@ -12,10 +12,11 @@
         
         // Load all modules or by category
         async loadModules(options = {}) {
-            const { category, published = true, forceRefresh = false } = options;
+            const { category, published, forceRefresh = false } = options;
             
-            // Build cache key
-            const cacheKey = `modules_${category || 'all'}_${published}`;
+            // Build cache key - handle undefined published state
+            const pubKey = published === undefined ? 'all' : published;
+            const cacheKey = `modules_${category || 'all'}_${pubKey}`;
             
             // Check cache
             if (!forceRefresh && this.cache.has(cacheKey)) {
@@ -30,13 +31,14 @@
                 // Build query parameters
                 const params = new URLSearchParams();
                 if (category) params.append('category', category);
-                if (published !== undefined) params.append('published', published);
+                // Only append published if it's explicitly true or false, not undefined
+                if (published !== undefined) params.append('published', published.toString());
                 
-                console.log('🔄 Fetching fresh modules from database...');
+                console.log('🔄 Fetching fresh modules from database...', { category, published });
                 const response = await fetch(`/api/training-modules?${params}`);
                 
                 if (!response.ok) {
-                    throw new Error('Failed to load modules');
+                    throw new Error(`Failed to load modules: ${response.status}`);
                 }
                 
                 const modules = await response.json();
@@ -51,7 +53,8 @@
                 return modules;
             } catch (error) {
                 console.error('Error loading modules:', error);
-                throw error;
+                // Return empty array instead of throwing to prevent UI breakage
+                return [];
             }
         },
         
@@ -166,9 +169,12 @@
         async initializeDefaults() {
             console.log('🔧 Initializing default training modules...');
             
+            // Generate unique timestamp-based IDs
+            const timestamp = Date.now();
+            
             const defaultModules = [
                 {
-                    id: 'foundation_basics',
+                    id: `foundation_basics_${timestamp}`,
                     title: 'Mushroom Identification Basics',
                     category: 'foundation',
                     difficulty_level: 'beginner',
@@ -193,7 +199,7 @@
                         }
                     },
                     prerequisites: [],
-                    unlocks: ['genus_agaricus', 'foundation_spore_printing'],
+                    unlocks: [],
                     knowledge_checks: [
                         {
                             question: 'What is the reproductive structure of a mushroom called?',
@@ -208,7 +214,7 @@
                     ]
                 },
                 {
-                    id: 'foundation_safety',
+                    id: `foundation_safety_${timestamp + 1}`,
                     title: 'Safety First: Deadly Species',
                     category: 'foundation',
                     difficulty_level: 'beginner',
@@ -233,7 +239,7 @@
                         }
                     },
                     prerequisites: [],
-                    unlocks: ['genus_amanita', 'edible_species'],
+                    unlocks: [],
                     knowledge_checks: [
                         {
                             question: 'Which feature is most associated with deadly Amanita species?',
@@ -248,7 +254,7 @@
                     ]
                 },
                 {
-                    id: 'foundation_spore_printing',
+                    id: `foundation_spore_${timestamp + 2}`,
                     title: 'Spore Printing Techniques',
                     category: 'foundation',
                     difficulty_level: 'intermediate',
@@ -272,8 +278,8 @@
                             content: 'Common problems and solutions when making spore prints in different humidity conditions.'
                         }
                     },
-                    prerequisites: ['foundation_basics'],
-                    unlocks: ['advanced_microscopy', 'genus_coprinus'],
+                    prerequisites: [],
+                    unlocks: [],
                     knowledge_checks: [
                         {
                             question: 'How long should you typically wait for a spore print?',
@@ -288,7 +294,7 @@
                     ]
                 },
                 {
-                    id: 'genus_agaricus',
+                    id: `genus_agaricus_${timestamp + 3}`,
                     title: 'Genus Agaricus Deep Dive',
                     category: 'genus',
                     difficulty_level: 'intermediate',
@@ -316,8 +322,8 @@
                             content: 'Safe preparation methods for edible Agaricus species. Always cook thoroughly and start with small amounts.'
                         }
                     },
-                    prerequisites: ['foundation_basics'],
-                    unlocks: ['genus_coprinus', 'edible_species'],
+                    prerequisites: [],
+                    unlocks: [],
                     knowledge_checks: [
                         {
                             question: 'What spore color is characteristic of Agaricus?',
@@ -332,7 +338,7 @@
                     ]
                 },
                 {
-                    id: 'regional_arizona_desert',
+                    id: `regional_arizona_${timestamp + 4}`,
                     title: 'Arizona Desert Fungi',
                     category: 'regional',
                     difficulty_level: 'advanced',
@@ -360,8 +366,8 @@
                             content: 'Conservation considerations for rare desert fungi. Practice sustainable foraging and photography-first approach.'
                         }
                     },
-                    prerequisites: ['foundation_basics', 'foundation_safety'],
-                    unlocks: ['advanced_ecology'],
+                    prerequisites: [],
+                    unlocks: [],
                     knowledge_checks: [
                         {
                             question: 'When do most Arizona desert fungi fruit?',
