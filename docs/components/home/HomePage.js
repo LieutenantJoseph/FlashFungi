@@ -164,7 +164,7 @@
                         }, 'Get Started')
                     ),
 
-                // Training Modules Section (restored original)
+                // Training Modules Section
                 React.createElement('div', { style: { marginBottom: '2rem' } },
                     React.createElement('h2', { style: { fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem' } }, 
                         '📚 Training Modules'
@@ -173,82 +173,40 @@
                         'Structured learning paths for systematic mastery'
                     ),
                     
-                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' } },
-                        // Foundation Modules (restored original)
-                        React.createElement('div', {
-                            style: {
-                                backgroundColor: 'white',
-                                borderRadius: '0.75rem',
-                                padding: '1.5rem',
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                cursor: 'pointer',
-                                border: '2px solid transparent',
-                                transition: 'all 0.2s'
-                            },
-                            onClick: () => user ? onTrainingModuleSelect('foundation') : onAuthRequired(),
-                            onMouseEnter: (e) => e.currentTarget.style.borderColor = '#8b5cf6',
-                            onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
+                    // Single button for all modules
+                    React.createElement('div', {
+                        style: {
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                            cursor: 'pointer',
+                            border: '2px solid transparent',
+                            transition: 'all 0.2s'
                         },
-                            React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎓'),
-                            React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
-                                'Foundation Modules'
-                            ),
-                            React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Essential skills: diagnostic features, spore prints, safety'
-                            ),
-                            user ? (
-                                React.createElement('div', null,
-                                    React.createElement('div', { style: { fontSize: '0.75rem', color: '#8b5cf6', marginBottom: '0.5rem' } }, 
-                                        `${completedModules}/${totalModules} modules completed`
-                                    ),
-                                    React.createElement('div', {
-                                        style: {
-                                            width: '100%',
-                                            height: '4px',
-                                            backgroundColor: '#e5e7eb',
-                                            borderRadius: '2px',
-                                            overflow: 'hidden'
-                                        }
-                                    },
-                                        React.createElement('div', {
-                                            style: {
-                                                width: `${progressPercentage}%`,
-                                                height: '100%',
-                                                backgroundColor: '#8b5cf6',
-                                                borderRadius: '2px',
-                                                transition: 'width 0.3s'
-                                            }
-                                        })
-                                    )
-                                )
-                            ) :
-                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#f59e0b' } }, 
-                                '🔒 Sign in to access'
-                            )
+                        onClick: () => user ? onTrainingModuleSelect() : onAuthRequired(),
+                        onMouseEnter: (e) => e.currentTarget.style.borderColor = '#8b5cf6',
+                        onMouseLeave: (e) => e.currentTarget.style.borderColor = 'transparent'
+                    },
+                        React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🎓'),
+                        React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
+                            'All Training Modules'
                         ),
-
-                        // Coming Soon Card (restored original)
-                        React.createElement('div', {
+                        React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
+                            'Access foundation, genus-specific, advanced, and regional modules'
+                        ),
+                        React.createElement('button', {
                             style: {
-                                backgroundColor: 'white',
-                                borderRadius: '0.75rem',
-                                padding: '1.5rem',
-                                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                                border: '2px dashed #e5e7eb',
-                                opacity: 0.7
+                                width: '100%',
+                                padding: '0.75rem',
+                                backgroundColor: user ? '#8b5cf6' : '#e5e7eb',
+                                color: user ? 'white' : '#6b7280',
+                                borderRadius: '0.5rem',
+                                border: 'none',
+                                fontWeight: '600',
+                                cursor: 'pointer'
                             }
-                        },
-                            React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, '🚀'),
-                            React.createElement('h3', { style: { fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem' } }, 
-                                'Advanced Modules'
-                            ),
-                            React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' } }, 
-                                'Genus-specific and advanced techniques'
-                            ),
-                            React.createElement('div', { style: { fontSize: '0.75rem', color: '#6b7280' } }, 
-                                'Unlocked after foundation completion'
-                            )
-                        )
+                        }, user ? 'Browse All Modules' : 'Sign In to Access')
                     )
                 ),
 
