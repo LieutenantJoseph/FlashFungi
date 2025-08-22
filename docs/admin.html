@@ -1452,87 +1452,110 @@
                             )
                         ),
 
-                        // Training Modules Management View (FIXED)
+                        // Training Modules Management View (FIXED with client-side filtering)
                         currentView === 'training-modules' && h('div', { className: 'space-y-6 fade-in' },
-                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
-                                h('div', { className: 'flex justify-between items-center mb-6' },
-                                    h('div', null,
-                                        h('div', { className: 'flex items-center gap-3 mb-2' },
-                                            h('h2', { className: 'text-2xl font-bold' }, 'Training Modules Management'),
-                                            h(Phase3Badge)
+                            (() => {
+                                // Add local state for category filter
+                                const [categoryFilter, setCategoryFilter] = useState('All');
+                                const [allModules, setAllModules] = useState([]);
+                                
+                                // Load all modules on mount
+                                useEffect(() => {
+                                    if (currentView === 'training-modules' && allModules.length === 0) {
+                                        loadAllModules();
+                                    }
+                                }, [currentView]);
+                                
+                                const loadAllModules = async () => {
+                                    setLoadingModules(true);
+                                    try {
+                                        const loadedModules = await ModuleLoader.loadModules({ published: undefined });
+                                        setAllModules(loadedModules);
+                                        setModules(loadedModules);
+                                    } catch (error) {
+                                        console.error('Error loading modules:', error);
+                                        showToast('Failed to load modules', 'error');
+                                    } finally {
+                                        setLoadingModules(false);
+                                    }
+                                };
+                                
+                                // Filter modules based on selected category
+                                const filteredModules = categoryFilter === 'All' 
+                                    ? modules 
+                                    : modules.filter(m => m.category === categoryFilter.toLowerCase());
+                                
+                                return h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                                    h('div', { className: 'flex justify-between items-center mb-6' },
+                                        h('div', null,
+                                            h('div', { className: 'flex items-center gap-3 mb-2' },
+                                                h('h2', { className: 'text-2xl font-bold' }, 'Training Modules Management'),
+                                                h(Phase3Badge)
+                                            ),
+                                            h('p', { className: 'text-gray-600' }, 
+                                                'Create and manage educational content modules'
+                                            )
                                         ),
-                                        h('p', { className: 'text-gray-600' }, 
-                                            'Create and manage educational content modules'
+                                        h('div', { className: 'flex gap-2' },
+                                            h('button', {
+                                                onClick: () => loadAllModules(),
+                                                className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
+                                            }, 'Refresh'),
+                                            h('button', {
+                                                onClick: () => {
+                                                    setSelectedModule({
+                                                        title: '',
+                                                        category: 'foundation',
+                                                        difficulty_level: 'beginner',
+                                                        duration_minutes: 20,
+                                                        content: {},
+                                                        published: false
+                                                    });
+                                                },
+                                                className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
+                                            }, '+ Create Module')
                                         )
                                     ),
-                                    h('div', { className: 'flex gap-2' },
-                                        h('button', {
-                                            onClick: () => loadTrainingModules(),
-                                            className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
-                                        }, 'Refresh'),
-                                        h('button', {
-                                            onClick: () => {
-                                                setSelectedModule({
-                                                    title: '',
-                                                    category: 'foundation',
-                                                    difficulty_level: 'beginner',
-                                                    duration_minutes: 20,
-                                                    content: {},
-                                                    published: false
-                                                });
-                                            },
-                                            className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
-                                        }, '+ Create Module')
-                                    )
-                                ),
-                                
-                                // Module categories tabs - FIXED
-                                h('div', { className: 'border-b mb-6' },
-                                    h('div', { className: 'flex gap-4' },
-                                        ['All', 'Foundation', 'Genus', 'Advanced', 'Regional'].map(category =>
-                                            h('button', {
-                                                key: category,
-                                                onClick: async () => {
-                                                    setLoadingModules(true);
-                                                    try {
-                                                        const loadedModules = category === 'All' 
-                                                            ? await ModuleLoader.loadModules({ published: undefined })
-                                                            : await ModuleLoader.loadModules({ 
-                                                                category: category.toLowerCase(), 
-                                                                published: undefined 
-                                                            });
-                                                        setModules(loadedModules);
-                                                    } catch (error) {
-                                                        showToast('Failed to load modules', 'error');
-                                                    } finally {
-                                                        setLoadingModules(false);
-                                                    }
-                                                },
-                                                className: 'px-4 py-2 border-b-2 hover:border-blue-500 transition-colors',
-                                                style: { borderColor: 'transparent' }
-                                            }, category)
-                                        )
-                                    )
-                                ),
-                                
-                                // Loading state
-                                loadingModules ? 
-                                    h('div', { className: 'text-center py-12' },
-                                        h('div', { className: 'inline-flex items-center gap-2' },
-                                            h('div', { className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600' }),
-                                            h('span', { className: 'text-gray-600' }, 'Loading modules...')
-                                        )
-                                    ) :
-                                
-                                // Modules grid
-                                modules.length === 0 ?
-                                    h('div', { className: 'text-center py-12 bg-gray-50 rounded-lg' },
-                                        h('p', { className: 'text-gray-600 mb-4' }, 'No modules found'),
-                                        h('p', { className: 'text-sm text-gray-500' }, 'Click "Create Module" to add your first training module')
-                                    ) :
                                     
-                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
-                                    modules.map(module =>
+                                    // Module categories tabs - Now with client-side filtering
+                                    h('div', { className: 'border-b mb-6' },
+                                        h('div', { className: 'flex gap-4' },
+                                            ['All', 'Foundation', 'Genus', 'Advanced', 'Regional'].map(category =>
+                                                h('button', {
+                                                    key: category,
+                                                    onClick: () => setCategoryFilter(category),
+                                                    className: `px-4 py-2 border-b-2 transition-colors ${
+                                                        categoryFilter === category 
+                                                            ? 'border-blue-500 text-blue-600' 
+                                                            : 'border-transparent hover:border-gray-300'
+                                                    }`
+                                                }, category)
+                                            )
+                                        )
+                                    ),
+                                    
+                                    // Loading state
+                                    loadingModules ? 
+                                        h('div', { className: 'text-center py-12' },
+                                            h('div', { className: 'inline-flex items-center gap-2' },
+                                                h('div', { className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600' }),
+                                                h('span', { className: 'text-gray-600' }, 'Loading modules...')
+                                            )
+                                        ) :
+                                    
+                                    // Modules grid - showing filtered modules
+                                    filteredModules.length === 0 ?
+                                        h('div', { className: 'text-center py-12 bg-gray-50 rounded-lg' },
+                                            h('p', { className: 'text-gray-600 mb-4' }, 
+                                                categoryFilter === 'All' 
+                                                    ? 'No modules found' 
+                                                    : `No ${categoryFilter.toLowerCase()} modules found`
+                                            ),
+                                            h('p', { className: 'text-sm text-gray-500' }, 'Click "Create Module" to add a new training module')
+                                        ) :
+                                        
+                                    h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
+                                        filteredModules.map(module =>
                                         h('div', {
                                             key: module.id,
                                             className: 'border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer',
@@ -1606,44 +1629,7 @@
                                                         }
                                                     },
                                                     className: 'text-xs px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200'
-                                                }, module.published ? 'Unpublish' : 'Publish')
-                                            )
-                                        )
-                                    )
-                                )
-                            ),
-                            
-                            // Module statistics
-                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4' }, 'Module Statistics'),
-                                h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4' },
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-blue-600' }, 
-                                            modules.length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Total Modules')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-green-600' }, 
-                                            modules.filter(m => m.published).length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Published')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-yellow-600' }, 
-                                            modules.filter(m => !m.published).length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Drafts')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-purple-600' }, 
-                                            modules.reduce((sum, m) => sum + (m.duration_minutes || 0), 0)
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Total Minutes')
-                                    )
-                                )
-                            )
-                        ),
+        ),
 
                         // Achievements System View (Placeholder)
                         currentView === 'achievements' && h('div', { className: 'space-y-6 fade-in' },
