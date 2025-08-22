@@ -465,8 +465,7 @@
                 'SharedFlashcard', 'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
                 
                 // Training components
-                'TrainingModules', 'ModulePlayer',
-                // ModuleLoader is optional but recommended
+                'ModuleLoader', 'ModulePlayer',
                 
                 // Profile
                 'ProfilePage'
