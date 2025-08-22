@@ -168,6 +168,7 @@
             
             const defaultModules = [
                 {
+                    id: 'foundation_basics',
                     title: 'Mushroom Identification Basics',
                     category: 'foundation',
                     difficulty_level: 'beginner',
@@ -192,7 +193,7 @@
                         }
                     },
                     prerequisites: [],
-                    unlocks: ['genus_agaricus', 'spore_printing'],
+                    unlocks: ['genus_agaricus', 'foundation_spore_printing'],
                     knowledge_checks: [
                         {
                             question: 'What is the reproductive structure of a mushroom called?',
@@ -207,6 +208,7 @@
                     ]
                 },
                 {
+                    id: 'foundation_safety',
                     title: 'Safety First: Deadly Species',
                     category: 'foundation',
                     difficulty_level: 'beginner',
@@ -246,6 +248,7 @@
                     ]
                 },
                 {
+                    id: 'foundation_spore_printing',
                     title: 'Spore Printing Techniques',
                     category: 'foundation',
                     difficulty_level: 'intermediate',
@@ -285,6 +288,7 @@
                     ]
                 },
                 {
+                    id: 'genus_agaricus',
                     title: 'Genus Agaricus Deep Dive',
                     category: 'genus',
                     difficulty_level: 'intermediate',
@@ -328,6 +332,7 @@
                     ]
                 },
                 {
+                    id: 'regional_arizona_desert',
                     title: 'Arizona Desert Fungi',
                     category: 'regional',
                     difficulty_level: 'advanced',
