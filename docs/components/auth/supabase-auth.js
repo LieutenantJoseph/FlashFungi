@@ -1,10 +1,10 @@
-// components/auth/supabase-auth.js - Fixed Authentication with Defensive Programming
-// Waits for Supabase to be ready and handles errors gracefully
+// components/auth/supabase-auth.js - Fixed to expose session with access token
+// Waits for Supabase to be ready and provides full session data
 
 (function() {
     'use strict';
 
-    console.log('🔐 Loading Supabase Auth System v3.1...');
+    console.log('🔐 Loading Supabase Auth System v3.2...');
 
     // Function to check if Supabase is ready
     function isSupabaseReady() {
@@ -50,9 +50,10 @@
         // Create auth context
         const AuthContext = React.createContext();
 
-        // Auth Provider Component with error handling
+        // Auth Provider Component with session support
         function AuthProvider({ children }) {
             const [user, setUser] = React.useState(null);
+            const [session, setSession] = React.useState(null); // Store full session
             const [loading, setLoading] = React.useState(true);
             const [error, setError] = React.useState(null);
             
@@ -69,14 +70,16 @@
                         }
 
                         const { data: { session }, error } = await window.supabase.auth.getSession();
-                        console.log('🔐 Initial session:', session ? 'found' : 'none', error ? error.message : '');
+                        console.log('🔐 Initial session:', session ? 'found' : 'none', 
+                                   'token exists:', !!session?.access_token);
                         
                         if (error) {
                             console.error('Session error:', error);
                             setError(error.message);
-                        } else if (session?.user) {
+                        } else if (session) {
+                            setSession(session); // Store full session
                             setUser(session.user);
-                            console.log('🔐 User set from session:', session.user.email);
+                            console.log('🔐 User and session set from initial load');
                         }
                     } catch (err) {
                         console.error('🔐 Error getting session:', err);
@@ -89,18 +92,22 @@
 
                 getSession();
 
-                // Listen for auth changes with error handling
+                // Listen for auth changes with session support
                 let subscription = null;
                 
                 try {
                     if (isSupabaseReady()) {
                         const { data: { subscription: authSubscription } } = window.supabase.auth.onAuthStateChange(
-                            async (event, session) => {
-                                console.log('🔐 Auth state change:', event, session ? 'has session' : 'no session');
+                            async (event, newSession) => {
+                                console.log('🔐 Auth state change:', event, 
+                                          'session:', newSession ? 'has session' : 'no session',
+                                          'token:', !!newSession?.access_token);
                                 
-                                if (session?.user) {
-                                    setUser(session.user);
-                                    console.log('🔐 User logged in:', session.user.email);
+                                setSession(newSession); // Update session
+                                
+                                if (newSession?.user) {
+                                    setUser(newSession.user);
+                                    console.log('🔐 User logged in:', newSession.user.email);
                                 } else {
                                     setUser(null);
                                     console.log('🔐 User logged out');
@@ -124,7 +131,7 @@
                 };
             }, []);
 
-            // Sign up function with error handling
+            // Sign up function with session handling
             const signUp = async (email, password, username) => {
                 console.log('🔐 Attempting signup for:', email);
                 
@@ -167,6 +174,12 @@
 
                     console.log('🔐 Signup successful:', data);
 
+                    // Update session if returned
+                    if (data.session) {
+                        setSession(data.session);
+                        setUser(data.user);
+                    }
+
                     // Create user profile
                     if (data.user) {
                         try {
@@ -198,7 +211,7 @@
                 }
             };
 
-            // Sign in function with error handling
+            // Sign in function with session handling
             const signIn = async (email, password) => {
                 console.log('🔐 Attempting signin for:', email);
                 
@@ -217,7 +230,14 @@
                         throw error;
                     }
 
-                    console.log('🔐 Signin successful');
+                    console.log('🔐 Signin successful, session:', !!data.session);
+                    
+                    // Update session immediately
+                    if (data.session) {
+                        setSession(data.session);
+                        setUser(data.user);
+                    }
+                    
                     return { data, error: null };
                 } catch (err) {
                     console.error('🔐 Signin failed:', err);
@@ -225,7 +245,7 @@
                 }
             };
 
-            // Sign out function with error handling
+            // Sign out function with session clearing
             const signOut = async () => {
                 console.log('🔐 Signing out...');
                 
@@ -233,6 +253,7 @@
                     if (!isSupabaseReady()) {
                         // If Supabase isn't available, just clear local state
                         setUser(null);
+                        setSession(null);
                         return { error: null };
                     }
 
@@ -241,6 +262,11 @@
                         console.error('Signout error:', error);
                         throw error;
                     }
+                    
+                    // Clear session immediately
+                    setSession(null);
+                    setUser(null);
+                    
                     console.log('🔐 Signout successful');
                     return { error: null };
                 } catch (err) {
@@ -249,8 +275,10 @@
                 }
             };
 
+            // Provide all auth data including session
             const value = {
                 user,
+                session, // Now includes the full session with access_token
                 loading,
                 error,
                 signUp,
@@ -275,7 +303,7 @@
         window.useAuth = useAuth;
         window.AuthContext = AuthContext;
 
-        console.log('✅ Supabase Auth system loaded successfully');
+        console.log('✅ Supabase Auth system loaded successfully with session support');
 
     }).catch(error => {
         console.error('❌ Failed to initialize auth system:', error);
@@ -287,11 +315,13 @@
         
         function FallbackAuthProvider({ children }) {
             const [user, setUser] = React.useState(null);
+            const [session, setSession] = React.useState(null);
             const [loading, setLoading] = React.useState(false);
             const [error, setError] = React.useState('Authentication service unavailable');
 
             const fallbackAuth = {
                 user,
+                session, // Include empty session in fallback
                 loading,
                 error,
                 signUp: () => Promise.resolve({ 
