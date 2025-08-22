@@ -130,39 +130,36 @@
             setModulesLoading(true);
             
             try {
-                // Use ModuleLoader if available, otherwise fallback
-                if (window.ModuleLoader) {
-                    const modules = await window.ModuleLoader.loadModules({ 
-                        category: category,
-                        published: true 
-                    });
-                    setTrainingModules(modules);
-                    console.log('✅ Loaded', modules.length, 'modules from database');
-                } else {
-                    console.warn('⚠️ ModuleLoader not available, using static modules');
-                    // Fallback to static modules if ModuleLoader isn't loaded
-                    setTrainingModules([
-                        {
-                            id: 'foundation_basics',
-                            title: 'Mushroom Identification Basics',
-                            category: 'foundation',
-                            difficulty_level: 'beginner',
-                            duration_minutes: 15,
-                            published: true
-                        },
-                        {
-                            id: 'foundation_safety',
-                            title: 'Safety First: Deadly Species',
-                            category: 'foundation',
-                            difficulty_level: 'beginner',
-                            duration_minutes: 20,
-                            published: true
-                        }
-                    ]);
+                // Always use ModuleLoader to load from database
+                if (!window.ModuleLoader) {
+                    throw new Error('ModuleLoader is not available');
                 }
+                
+                const modules = await window.ModuleLoader.loadModules({ 
+                    category: category,
+                    published: true 
+                });
+                
+                setTrainingModules(modules);
+                console.log('✅ Loaded', modules.length, 'modules from database');
+                
+                // If no modules found, provide helpful feedback
+                if (modules.length === 0) {
+                    console.log('ℹ️ No published modules found in database');
+                }
+                
             } catch (err) {
                 console.error('❌ Error loading training modules:', err);
+                
+                // Set empty array on error - no static fallback
                 setTrainingModules([]);
+                
+                // Log specific error for debugging
+                if (err.message === 'ModuleLoader is not available') {
+                    console.error('⚠️ ModuleLoader component not loaded. Please check that ModuleLoader.js is included before app.js');
+                } else {
+                    console.error('⚠️ Failed to fetch modules from database:', err.message);
+                }
             } finally {
                 setModulesLoading(false);
             }
@@ -220,16 +217,13 @@
         const handleModuleSelect = async (module) => {
             console.log('📖 Module selected:', module.id);
             
-            // Load full module content if using ModuleLoader
-            if (window.ModuleLoader) {
-                try {
-                    const fullModule = await window.ModuleLoader.loadModule(module.id);
-                    setCurrentModule(fullModule || module);
-                } catch (err) {
-                    console.error('Error loading module content:', err);
-                    setCurrentModule(module);
-                }
-            } else {
+            // Always use ModuleLoader to load full module content
+            try {
+                const fullModule = await window.ModuleLoader.loadModule(module.id);
+                setCurrentModule(fullModule || module);
+            } catch (err) {
+                console.error('Error loading module content:', err);
+                // Fall back to the basic module data if full load fails
                 setCurrentModule(module);
             }
             
@@ -464,7 +458,7 @@
                 // Study components
                 'SharedFlashcard', 'QuickStudy', 'FocusedStudy', 'MarathonMode', 'InteractiveSpeciesGuide',
                 
-                // Training components
+                // Training components - ModuleLoader is now REQUIRED
                 'ModuleLoader', 'ModulePlayer',
                 
                 // Profile
@@ -480,10 +474,7 @@
             const missingUtils = requiredUtils.filter(util => !window[util]);
             const missing = [...missingComponents, ...missingUtils];
             
-            // Note if ModuleLoader is missing (optional but recommended)
-            if (!window.ModuleLoader) {
-                console.warn('⚠️ ModuleLoader not found - training modules will use fallback data');
-            }
+            // Remove the optional warning for ModuleLoader - it's now required
             
             if (missing.length === 0) {
                 console.log('✅ All required components and utils loaded, mounting app...');
