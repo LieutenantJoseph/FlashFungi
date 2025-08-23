@@ -11,6 +11,13 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
+    <!-- Critical global utility - MUST be immediately after React loads -->
+    <script>
+        // Essential React shorthand used by all components
+        window.h = React.createElement;
+        console.log('✅ React shorthand (window.h) defined');
+    </script>
+    
     <!-- Modern Font Stack -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -453,7 +460,6 @@
     
     <!-- Load auth system -->
     <script src="/components/auth/AuthModal.js"></script>
-    <script src="/components/auth/AuthProvider.js"></script>
     <script src="/components/auth/supabase-auth.js"></script>
     <script src="/components/auth/useUserProfile.js"></script>
     
