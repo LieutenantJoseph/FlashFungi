@@ -45,7 +45,7 @@ async function handleSpecimenUpdate(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY
 
   console.log(`Updating specimen ${specimenId}${status ? ` to ${status}` : ''}`);
 
-  // Prepare update data - NO updated_at field!
+  // Prepare update data - NO field!
   const updateData = {};
   
   if (status) {
@@ -63,7 +63,7 @@ async function handleSpecimenUpdate(req, res, SUPABASE_URL, SUPABASE_SERVICE_KEY
     updateData.selected_photos = selectedPhotoIds;
   }
 
-  // Update specimen - WITHOUT updated_at
+  // Update specimen
   const specimenResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens?id=eq.${specimenId}`, {
     method: 'PATCH',
     headers: {
