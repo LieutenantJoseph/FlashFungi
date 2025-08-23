@@ -1159,19 +1159,52 @@
                     }
                 };
 
-                // Load training modules - SIMPLIFIED VERSION
                 const loadTrainingModules = async () => {
                     setLoadingModules(true);
                     try {
-                        // Load all modules (including unpublished for admin)
-                        const loadedModules = await ModuleLoader.loadModules({ 
-                            published: undefined,
-                            forceRefresh: true  // Add forceRefresh to ensure fresh data
+                        console.log('📚 Loading training modules from database...');
+                        
+                        // Method 1: If using the API endpoint (recommended)
+                        const response = await fetch('/api/training-modules', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
                         });
-                        setModules(loadedModules || []);
+                        
+                        if (response.ok) {
+                            const modules = await response.json();
+                            setModules(modules || []);
+                            console.log(`✅ Loaded ${modules.length} modules`);
+                        } else {
+                            // Fallback to direct Supabase query
+                            console.log('API failed, trying direct Supabase query...');
+                            
+                            // Method 2: Direct Supabase query (fixed)
+                            const supabaseResponse = await fetch(
+                                `${SUPABASE_URL}/rest/v1/training_modules?order=created_at.desc`,
+                                {
+                                    headers: {
+                                        'apikey': SUPABASE_ANON_KEY,
+                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                        'Accept': 'application/json'
+                                    }
+                                }
+                            );
+                            
+                            if (supabaseResponse.ok) {
+                                const data = await supabaseResponse.json();
+                                setModules(data || []);
+                                console.log(`✅ Loaded ${data.length} modules via Supabase`);
+                            } else {
+                                const errorText = await supabaseResponse.text();
+                                console.error('Supabase query failed:', errorText);
+                                throw new Error('Failed to load modules from database');
+                            }
+                        }
                     } catch (error) {
-                        console.error('Error loading modules:', error);
-                        showToast('Failed to load modules', 'error');
+                        console.error('❌ Error loading modules:', error);
+                        showToast('Failed to load training modules', 'error');
                         setModules([]); // Set empty array on error
                     } finally {
                         setLoadingModules(false);
