@@ -1458,95 +1458,70 @@
                         ),
 
                         // Training Modules Management View (FIXED)
-                        currentView === 'training-modules' && h('div', { className: 'space-y-6 fade-in' },
-                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
-                                h('div', { className: 'flex justify-between items-center mb-6' },
-                                    h('div', null,
-                                        h('div', { className: 'flex items-center gap-3 mb-2' },
-                                            h('h2', { className: 'text-2xl font-bold' }, 'Training Modules Management'),
-                                            h(Phase3Badge)
-                                        ),
-                                        h('p', { className: 'text-gray-600' }, 
-                                            'Create and manage educational content modules'
-                                        )
-                                    ),
-                                    h('div', { className: 'flex gap-2' },
+                        currentView === 'training-modules' && h('div', null,
+                            h('div', { className: 'mb-6' },
+                                h('h2', { className: 'text-2xl font-bold mb-4' }, '🎓 Training Modules Management'),
+                                
+                                // Category Filter Buttons
+                                h('div', { className: 'flex gap-2 mb-6 flex-wrap' },
+                                    ['All', 'foundation', 'genus', 'advanced', 'regional'].map(cat =>
                                         h('button', {
-                                            onClick: () => loadTrainingModules(),
-                                            className: 'px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors'
-                                        }, 'Refresh'),
-                                        h('button', {
-                                            onClick: () => {
-                                                setSelectedModule({
-                                                    title: '',
-                                                    category: 'foundation',
-                                                    difficulty_level: 'beginner',
-                                                    duration_minutes: 20,
-                                                    content: {},
-                                                    published: false
-                                                });
-                                            },
-                                            className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors'
-                                        }, '+ Create Module')
+                                            key: cat,
+                                            onClick: () => setFilterCategory(cat),
+                                            className: `px-4 py-2 rounded-lg font-medium transition-all ${
+                                                filterCategory === cat 
+                                                    ? 'bg-purple-600 text-white' 
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                            }`
+                                        }, cat.charAt(0).toUpperCase() + cat.slice(1))
                                     )
                                 ),
                                 
-                                // Module categories tabs - FIXED
-                                h('div', { className: 'border-b mb-6' },
-                                    h('div', { className: 'flex gap-4' },
-                                        ['All', 'Foundation', 'Genus', 'Advanced', 'Regional'].map(category =>
-                                            h('button', {
-                                                key: category,
-                                                onClick: async () => {
-                                                    setLoadingModules(true);
-                                                    try {
-                                                        const loadedModules = category === 'All' 
-                                                            ? await ModuleLoader.loadModules({ published: undefined })
-                                                            : await ModuleLoader.loadModules({ 
-                                                                category: category.toLowerCase(), 
-                                                                published: undefined 
-                                                            });
-                                                        setModules(loadedModules);
-                                                    } catch (error) {
-                                                        showToast('Failed to load modules', 'error');
-                                                    } finally {
-                                                        setLoadingModules(false);
-                                                    }
-                                                },
-                                                className: 'px-4 py-2 border-b-2 hover:border-blue-500 transition-colors',
-                                                style: { borderColor: 'transparent' }
-                                            }, category)
-                                        )
-                                    )
-                                ),
-                                
-                                // Loading state
-                                loadingModules ? 
-                                    h('div', { className: 'text-center py-12' },
-                                        h('div', { className: 'inline-flex items-center gap-2' },
-                                            h('div', { className: 'animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600' }),
-                                            h('span', { className: 'text-gray-600' }, 'Loading modules...')
-                                        )
-                                    ) :
-                                
-                                // Modules grid
-                                modules.length === 0 ?
-                                    h('div', { className: 'text-center py-12 bg-gray-50 rounded-lg' },
-                                        h('p', { className: 'text-gray-600 mb-4' }, 'No modules found'),
-                                        h('p', { className: 'text-sm text-gray-500' }, 'Click "Create Module" to add your first training module')
-                                    ) :
-                                    
-                                h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
-                                    modules.map(module =>
+                                // Create New Module Button
+                                h('button', {
+                                    onClick: () => {
+                                        const newModule = {
+                                            id: `module_${Date.now()}`,
+                                            title: 'New Module',
+                                            category: 'foundation',
+                                            difficulty_level: 'beginner',
+                                            duration_minutes: 20,
+                                            content: {},
+                                            published: false,
+                                            isNew: true
+                                        };
+                                        setSelectedModule(newModule);
+                                    },
+                                    className: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 mb-4'
+                                }, '+ Create New Module')
+                            ),
+                            
+                            // Loading State
+                            loadingModules && h('div', { className: 'text-center py-8' },
+                                h('div', { className: 'text-gray-600' }, 'Loading modules...')
+                            ),
+                            
+                            // Modules Grid - FIXED FILTERING LOGIC
+                            !loadingModules && h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
+                                modules
+                                    .filter(module => {
+                                        // FIX: Handle "All" category properly
+                                        if (filterCategory === 'All') {
+                                            return true; // Show all modules when "All" is selected
+                                        }
+                                        return module.category === filterCategory;
+                                    })
+                                    .map(module =>
                                         h('div', {
                                             key: module.id,
-                                            className: 'border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer',
+                                            className: 'bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow cursor-pointer',
                                             onClick: () => setSelectedModule(module)
                                         },
+                                            // Module card content (unchanged)
                                             h('div', { className: 'flex justify-between items-start mb-2' },
-                                                h('h3', { className: 'font-semibold text-lg' }, module.title),
+                                                h('h3', { className: 'font-bold text-lg' }, module.title),
                                                 h('span', {
-                                                    className: `px-2 py-1 text-xs rounded-full ${
+                                                    className: `text-xs px-2 py-1 rounded ${
                                                         module.published 
                                                             ? 'bg-green-100 text-green-700'
                                                             : 'bg-gray-100 text-gray-700'
@@ -1563,6 +1538,7 @@
                                                     } sections`
                                                 )
                                             ),
+                                            // Action buttons
                                             h('div', { className: 'mt-3 flex gap-2' },
                                                 h('button', {
                                                     onClick: (e) => {
@@ -1615,39 +1591,17 @@
                                             )
                                         )
                                     )
-                                )
                             ),
                             
-                            // Module statistics
-                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4' }, 'Module Statistics'),
-                                h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4' },
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-blue-600' }, 
-                                            modules.length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Total Modules')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-green-600' }, 
-                                            modules.filter(m => m.published).length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Published')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-yellow-600' }, 
-                                            modules.filter(m => !m.published).length
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Drafts')
-                                    ),
-                                    h('div', { className: 'text-center' },
-                                        h('div', { className: 'text-2xl font-bold text-purple-600' }, 
-                                            modules.reduce((sum, m) => sum + (m.duration_minutes || 0), 0)
-                                        ),
-                                        h('div', { className: 'text-sm text-gray-600' }, 'Total Minutes')
+                            // Show message if no modules found
+                            !loadingModules && modules.filter(m => filterCategory === 'All' || m.category === filterCategory).length === 0 && 
+                                h('div', { className: 'text-center py-8 bg-white rounded-lg' },
+                                    h('p', { className: 'text-gray-600' }, 
+                                        filterCategory === 'All' 
+                                            ? 'No training modules found. Create your first module!'
+                                            : `No ${filterCategory} modules found.`
                                     )
                                 )
-                            )
                         ),
 
                         // Achievements System View (Placeholder)
