@@ -1105,7 +1105,7 @@
                 const [toast, setToast] = useState(null);
                 const [searchTerm, setSearchTerm] = useState('');
                 const [filterCategory, setFilterCategory] = useState('All');
-                const [filterStatus, setFilterStatus] = useState('All');
+                const [filterStatus, setFilterStatus] = useState('all');
 
                 useEffect(() => {
                     loadData();
@@ -1332,16 +1332,21 @@
                     
                     if (searchTerm) {
                         filtered = filtered.filter(s => 
-                            s.species_name.toLowerCase().includes(searchTerm.toLowerCase())
+                            s.species_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            s.genus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            s.family?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            s.common_name?.toLowerCase().includes(searchTerm.toLowerCase())
                         );
                     }
                     
+                    // Now this will work correctly with lowercase 'all'
                     if (filterStatus !== 'all') {
                         filtered = filtered.filter(s => s.status === filterStatus);
                     }
                     
                     return filtered;
                 }, [specimens, searchTerm, filterStatus]);
+
 
                 if (loading) {
                     return h('div', { className: 'min-h-screen bg-gray-50 flex items-center justify-center' },
@@ -1681,41 +1686,77 @@
                             )
                         ),
 
-                        // Review Queue (Existing functionality preserved)
+                        // Review Queue (0.4.13 enhancement)
                         currentView === 'review' && h('div', { className: 'space-y-6 fade-in' },
                             h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
                                 h('h2', { className: 'text-2xl font-bold mb-6' }, 'Review Queue'),
-                                stats.pending === 0 ?
-                                    h('div', { className: 'text-center py-12' },
-                                        h('div', { className: 'text-6xl mb-4' }, '🎉'),
-                                        h('h3', { className: 'text-2xl font-bold mb-2' }, 'All Caught Up!'),
-                                        h('p', { className: 'text-gray-600' }, 'No specimens pending review.')
-                                    ) :
-                                    h('div', { className: 'grid gap-4' },
-                                        filteredSpecimens
-                                            .filter(s => s.status === 'pending')
-                                            .map(specimen =>
-                                                h('div', {
-                                                    key: specimen.id,
-                                                    className: 'border rounded-lg p-4 hover:shadow-md transition-shadow'
-                                                },
-                                                    h('div', { className: 'flex justify-between items-start' },
-                                                        h('div', { className: 'flex-1' },
-                                                            h('h3', { className: 'text-lg font-semibold' }, specimen.species_name),
-                                                            h('p', { className: 'text-gray-600' }, specimen.common_name || 'No common name'),
-                                                            h('div', { className: 'flex items-center gap-4 mt-2 text-sm text-gray-500' },
-                                                                h('span', null, `📍 ${specimen.location}`),
-                                                                specimen.dna_sequenced && h('span', { className: 'text-purple-600 font-medium' }, '🧬 DNA')
-                                                            )
+                                
+                                // Add filter controls at the top
+                                h('div', { className: 'flex gap-4 mb-6' },
+                                    h('input', {
+                                        type: 'text',
+                                        placeholder: 'Search specimens...',
+                                        value: searchTerm,
+                                        onChange: (e) => setSearchTerm(e.target.value),
+                                        className: 'flex-1 px-4 py-2 border rounded-lg'
+                                    }),
+                                    h('select', {
+                                        value: filterStatus,
+                                        onChange: (e) => setFilterStatus(e.target.value),
+                                        className: 'px-4 py-2 border rounded-lg'
+                                    },
+                                        h('option', { value: 'all' }, 'All Status'),
+                                        h('option', { value: 'pending' }, 'Pending Only'),
+                                        h('option', { value: 'approved' }, 'Approved Only')
+                                    )
+                                ),
+                                
+                                // Get pending specimens
+                                (() => {
+                                    const pendingSpecimens = filteredSpecimens.filter(s => s.status === 'pending');
+                                    
+                                    if (pendingSpecimens.length === 0) {
+                                        return h('div', { className: 'text-center py-12' },
+                                            h('div', { className: 'text-6xl mb-4' }, '🎉'),
+                                            h('h3', { className: 'text-2xl font-bold mb-2' }, 'All Caught Up!'),
+                                            h('p', { className: 'text-gray-600' }, 
+                                                searchTerm ? 'No pending specimens match your search.' : 'No specimens pending review.'
+                                            )
+                                        );
+                                    }
+                                    
+                                    return h('div', { className: 'grid gap-4' },
+                                        pendingSpecimens.map(specimen =>
+                                            h('div', {
+                                                key: specimen.id,
+                                                className: 'border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer',
+                                                onClick: () => setSelectedSpecimen(specimen)
+                                            },
+                                                h('div', { className: 'flex justify-between items-start' },
+                                                    h('div', { className: 'flex-1' },
+                                                        h('h3', { className: 'text-lg font-semibold' }, 
+                                                            specimen.species_name || 'Unknown Species'
                                                         ),
-                                                        h('button', {
-                                                            onClick: () => setSelectedSpecimen(specimen),
-                                                            className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
-                                                        }, 'Review')
-                                                    )
+                                                        specimen.common_name && 
+                                                            h('p', { className: 'text-gray-600' }, specimen.common_name),
+                                                        h('div', { className: 'flex items-center gap-4 mt-2 text-sm text-gray-500' },
+                                                            h('span', null, `📍 ${specimen.location || 'No location'}`),
+                                                            specimen.dna_sequenced && 
+                                                                h('span', { className: 'text-purple-600 font-medium' }, '🧬 DNA')
+                                                        )
+                                                    ),
+                                                    h('button', {
+                                                        onClick: (e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedSpecimen(specimen);
+                                                        },
+                                                        className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+                                                    }, 'Review')
                                                 )
                                             )
-                                    )
+                                        )
+                                    );
+                                })()
                             )
                         ),
 
@@ -1797,7 +1838,7 @@
                                             onChange: (e) => setFilterStatus(e.target.value),
                                             className: 'px-3 py-2 border rounded-lg'
                                         },
-                                            h('option', { value: 'all' }, 'All Status'),
+                                            h('option', { value: 'all' }, 'All Status'),  // lowercase 'all'
                                             h('option', { value: 'pending' }, 'Pending'),
                                             h('option', { value: 'approved' }, 'Approved')
                                         ),
