@@ -1,5 +1,5 @@
-// SharedFlashcard.js - Shared flashcard component used by all study modes
-// Matches original app.js design with proper stats and UI
+// SharedFlashcard.js - Updated with lightweight session tracking
+// Replaces individual flashcard saves with aggregated session data
 
 (function() {
     'use strict';
@@ -15,7 +15,7 @@
             speciesHints = {},
             referencePhotos = {},
             user,
-            saveProgress
+            saveProgress  // Keep this prop but won't use it for flashcards
         } = props;
         
         // State
@@ -32,6 +32,22 @@
         const [streak, setStreak] = React.useState(0);
         const [longestStreak, setLongestStreak] = React.useState(0);
         const [sessionStartTime] = React.useState(Date.now());
+
+        // Initialize session tracking when component mounts
+        React.useEffect(() => {
+            if (user && window.SessionTracker) {
+                console.log('📊 Starting study session:', mode);
+                window.SessionTracker.startSession(user.id, mode, filters);
+            }
+            
+            // Cleanup: End session when component unmounts
+            return () => {
+                if (window.SessionTracker && window.SessionTracker.currentSession) {
+                    console.log('📊 Ending study session');
+                    window.SessionTracker.endSession();
+                }
+            };
+        }, [user, mode, filters]);
 
         // Get study specimens based on mode
         const studySpecimens = React.useMemo(() => {
@@ -217,7 +233,7 @@
             };
         };
 
-        // Handle answer submission
+        // Handle answer submission - UPDATED WITH SESSION TRACKING
         const handleSubmitAnswer = () => {
             if (!userAnswer.trim()) return;
             
@@ -234,16 +250,20 @@
                 setLongestStreak(prev => Math.max(prev, streak + 1));
                 setShowResult(true);
                 
-                // Save progress
-                if (saveProgress) {
-                    saveProgress({
+                // LIGHTWEIGHT SESSION TRACKING - Replace individual save
+                if (window.SessionTracker) {
+                    window.SessionTracker.trackFlashcard({
                         specimenId: currentSpecimen.id,
-                        progressType: 'flashcard',
+                        genus: currentSpecimen.genus,
+                        family: currentSpecimen.family,
                         score: validation.finalScore,
                         hintsUsed: currentHintLevel + hintsRevealedManually,
-                        completed: true
+                        isCorrect: true
                     });
                 }
+                
+                // REMOVED: Individual flashcard database save
+                // The old saveProgress call has been removed
             } else {
                 setLastAttemptScore(validation);
                 if (currentHintLevel < 4) {
@@ -257,6 +277,18 @@
                     }));
                     setStreak(0); // Reset streak on wrong answer
                     setShowGuide(true);
+                    
+                    // Track incorrect answer in session
+                    if (window.SessionTracker) {
+                        window.SessionTracker.trackFlashcard({
+                            specimenId: currentSpecimen.id,
+                            genus: currentSpecimen.genus,
+                            family: currentSpecimen.family,
+                            score: validation.finalScore,
+                            hintsUsed: currentHintLevel + hintsRevealedManually,
+                            isCorrect: false
+                        });
+                    }
                 }
             }
         };
@@ -272,7 +304,7 @@
             }
         };
 
-        // Handle "I Don't Know"
+        // Handle "I Don't Know" - UPDATED WITH SESSION TRACKING
         const handleIDontKnow = () => {
             setScore(prev => ({ 
                 correct: prev.correct, 
@@ -281,6 +313,18 @@
             }));
             setStreak(0); // Reset streak
             setShowGuide(true);
+            
+            // Track as incorrect with 0 score
+            if (window.SessionTracker && currentSpecimen) {
+                window.SessionTracker.trackFlashcard({
+                    specimenId: currentSpecimen.id,
+                    genus: currentSpecimen.genus,
+                    family: currentSpecimen.family,
+                    score: 0,
+                    hintsUsed: currentHintLevel + hintsRevealedManually,
+                    isCorrect: false
+                });
+            }
         };
 
         // Move to next question
@@ -295,21 +339,34 @@
                 setLastAttemptScore(null);
                 setSelectedPhoto(null);
             } else {
-                // Study complete
-                const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
-                const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-                const sessionTime = Math.round((Date.now() - sessionStartTime) / 60000);
-                
-                alert(
-                    `🍄 Study Complete!\n\n` +
-                    `✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n` +
-                    `📊 Average Score: ${avgScore}%\n` +
-                    `🔥 Longest Streak: ${longestStreak}\n` +
-                    `⏱️ Time: ${sessionTime} minutes\n\n` +
-                    `${avgScore >= 80 ? '🏆 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
-                );
-                onBack();
+                // Study complete - end session
+                handleStudyComplete();
             }
+        };
+
+        // Handle study completion - NEW FUNCTION
+        const handleStudyComplete = async () => {
+            const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
+            const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+            const sessionTime = Math.round((Date.now() - sessionStartTime) / 60000);
+            
+            // End session and save final stats
+            if (window.SessionTracker) {
+                const sessionSummary = await window.SessionTracker.endSession();
+                console.log('📊 Study session complete:', sessionSummary);
+            }
+            
+            // Show completion dialog
+            alert(
+                `🍄 Study Complete!\n\n` +
+                `✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n` +
+                `📊 Average Score: ${avgScore}%\n` +
+                `🔥 Longest Streak: ${longestStreak}\n` +
+                `⏱️ Time: ${sessionTime} minutes\n\n` +
+                `${avgScore >= 80 ? '🏆 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
+            );
+            
+            onBack();
         };
 
         if (!currentSpecimen) {
@@ -486,7 +543,7 @@
                 )
             ),
 
-            // Main Content
+            // Main Content - Rest of UI remains exactly the same
             React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
                 React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
                     // Left: Photos
@@ -873,6 +930,6 @@
         );
     };
     
-    console.log('✅ SharedFlashcard component loaded successfully');
+    console.log('✅ SharedFlashcard component loaded successfully (with session tracking v2.0)');
     
 })();
