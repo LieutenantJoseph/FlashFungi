@@ -934,18 +934,13 @@
                 const [selectedPhotos, setSelectedPhotos] = useState(specimen.selected_photos || []);
                 const [expandedPhoto, setExpandedPhoto] = useState(null);
                 
-                // Generate photo URLs
-                const photoUrls = (specimen.selected_photos || []).map(photoId => {
-                    const photoIdStr = photoId.toString().padStart(10, '0');
-                    const folder1 = photoIdStr.substring(0, 4);
-                    const folder2 = photoIdStr.substring(4, 8);
-                    return {
-                        id: photoId,
-                        thumb: `https://inaturalist-open-data.s3.amazonaws.com/photos/${folder1}/${folder2}/${photoId}/square.jpg`,
-                        medium: `https://inaturalist-open-data.s3.amazonaws.com/photos/${folder1}/${folder2}/${photoId}/medium.jpg`,
-                        large: `https://inaturalist-open-data.s3.amazonaws.com/photos/${folder1}/${folder2}/${photoId}/large.jpg`
-                    };
-                });
+                // REVERTED TO ORIGINAL SIMPLE METHOD - this was working before!
+                const photoUrls = (specimen.selected_photos || []).map(photoId => ({
+                    id: photoId,
+                    thumb: `https://inaturalist-open-data.s3.amazonaws.com/photos/${photoId}/square.jpg`,
+                    medium: `https://inaturalist-open-data.s3.amazonaws.com/photos/${photoId}/medium.jpg`,
+                    large: `https://inaturalist-open-data.s3.amazonaws.com/photos/${photoId}/large.jpg`
+                }));
                 
                 return h('div', { 
                     className: 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50'
@@ -974,33 +969,39 @@
                             // Photos Section with Selection and Expansion
                             h('div', { className: 'mb-6' },
                                 h('h3', { className: 'font-semibold mb-3' }, 'Photos (Click to expand, check to select for field guide)'),
-                                h('div', { className: 'grid grid-cols-4 gap-3' },
-                                    photoUrls.map(photo =>
-                                        h('div', { 
-                                            key: photo.id,
-                                            className: 'relative group'
-                                        },
-                                            h('img', {
-                                                src: photo.thumb,
-                                                alt: `Photo ${photo.id}`,
-                                                className: 'w-full aspect-square object-cover rounded cursor-pointer hover:opacity-90',
-                                                onClick: () => setExpandedPhoto(photo)
-                                            }),
-                                            h('input', {
-                                                type: 'checkbox',
-                                                checked: selectedPhotos.includes(photo.id),
-                                                onChange: (e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedPhotos([...selectedPhotos, photo.id]);
-                                                    } else {
-                                                        setSelectedPhotos(selectedPhotos.filter(id => id !== photo.id));
+                                photoUrls.length > 0 ? 
+                                    h('div', { className: 'grid grid-cols-4 gap-3' },
+                                        photoUrls.map(photo =>
+                                            h('div', { 
+                                                key: photo.id,
+                                                className: 'relative group'
+                                            },
+                                                h('img', {
+                                                    src: photo.thumb,
+                                                    alt: `Photo ${photo.id}`,
+                                                    className: 'w-full aspect-square object-cover rounded cursor-pointer hover:opacity-90',
+                                                    onClick: () => setExpandedPhoto(photo),
+                                                    onError: (e) => {
+                                                        // Fallback if the photo doesn't load
+                                                        e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjUwIiB5PSI1MCIgc3R5bGU9ImZpbGw6I2FhYTtmb250LXdlaWdodDpib2xkO2ZvbnQtc2l6ZToxMnB4O2ZvbnQtZmFtaWx5OkFyaWFsLEhlbHZldGljYSxzYW5zLXNlcmlmO2RvbWluYW50LWJhc2VsaW5lOmNlbnRyYWwiPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
                                                     }
-                                                },
-                                                className: 'absolute top-2 right-2 w-5 h-5 cursor-pointer'
-                                            })
+                                                }),
+                                                h('input', {
+                                                    type: 'checkbox',
+                                                    checked: selectedPhotos.includes(photo.id),
+                                                    onChange: (e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedPhotos([...selectedPhotos, photo.id]);
+                                                        } else {
+                                                            setSelectedPhotos(selectedPhotos.filter(id => id !== photo.id));
+                                                        }
+                                                    },
+                                                    className: 'absolute top-2 right-2 w-5 h-5 cursor-pointer'
+                                                })
+                                            )
                                         )
-                                    )
-                                )
+                                    ) :
+                                    h('p', { className: 'text-gray-500 text-center py-8' }, 'No photos available for this specimen')
                             ),
                             
                             // Details Section
@@ -1046,7 +1047,12 @@
                                         h('button', {
                                             key: 'approve',
                                             onClick: () => onApprove(notes, selectedPhotos),
-                                            className: 'px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700'
+                                            disabled: selectedPhotos.length === 0,
+                                            className: `px-6 py-2 rounded-lg ${
+                                                selectedPhotos.length === 0 
+                                                    ? 'bg-gray-400 cursor-not-allowed' 
+                                                    : 'bg-green-600 hover:bg-green-700'
+                                            } text-white`
                                         }, '✅ Approve')
                                     ],
                                     h('button', {
@@ -1066,7 +1072,13 @@
                                 src: expandedPhoto.large,
                                 alt: 'Expanded photo',
                                 className: 'max-w-[90vw] max-h-[90vh] object-contain',
-                                onClick: (e) => e.stopPropagation()
+                                onClick: (e) => e.stopPropagation(),
+                                onError: (e) => {
+                                    // Try medium size if large fails
+                                    if (e.target.src !== expandedPhoto.medium) {
+                                        e.target.src = expandedPhoto.medium;
+                                    }
+                                }
                             }),
                             h('button', {
                                 onClick: () => setExpandedPhoto(null),
@@ -1265,8 +1277,6 @@
                     
                     for (const specimen of speciesSpecimens) {
                         if (specimen.selected_photos && specimen.selected_photos.length > 0) {
-                            // This would need to be enhanced to fetch actual photo URLs
-                            // For now, creating placeholder photo objects
                             specimen.selected_photos.forEach(photoId => {
                                 photos.push({
                                     type: 'inaturalist',
@@ -1277,7 +1287,6 @@
                             });
                         }
                     }
-                    
                     return photos;
                 };
 
