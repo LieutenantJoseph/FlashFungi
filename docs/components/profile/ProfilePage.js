@@ -1,42 +1,29 @@
-// profile-page.js - User's own profile management page
+// ProfilePage.js - Updated to use user_stats table
+// Displays comprehensive statistics from the new session tracking system
+
 (function() {
     'use strict';
     
-    const { useState, useEffect, useCallback } = React;
-    
-    window.ProfilePage = function ProfilePage({ user, userProgress, onBack }) {
-        const [activeTab, setActiveTab] = useState('overview');
-        const [stats, setStats] = useState(null);
-        const [loading, setLoading] = useState(true);
-        const [editMode, setEditMode] = useState(false);
-        const [profileData, setProfileData] = useState({
-            display_name: '',
-            username: '',
-            bio: '',
-            avatar_url: '',
-            privacy_settings: {
-                show_stats: true,
-                show_achievements: true,
-                allow_messages: false
+    window.ProfilePage = function ProfilePage({ user, onBack }) {
+        const [stats, setStats] = React.useState(null);
+        const [sessionStats, setSessionStats] = React.useState(null);
+        const [achievements, setAchievements] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
+        const [activeTab, setActiveTab] = React.useState('overview');
+        
+        React.useEffect(() => {
+            if (user) {
+                loadUserData();
             }
-        });
-        const [saving, setSaving] = useState(false);
-        const [achievements, setAchievements] = useState([]);
-        const [recentActivity, setRecentActivity] = useState([]);
-        
-        const { updateProfile, signOut } = window.useAuth();
-        
-        useEffect(() => {
-            loadUserData();
         }, [user]);
         
         const loadUserData = async () => {
-            if (!user?.id) return;
-            
             try {
-                // Load full profile
-                const profileResponse = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_profiles?id=eq.${user.id}`,
+                setLoading(true);
+                
+                // Fetch user_stats data
+                const statsResponse = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/user_stats?user_id=eq.${user.id}`,
                     {
                         headers: {
                             'apikey': window.SUPABASE_ANON_KEY,
@@ -45,39 +32,56 @@
                     }
                 );
                 
-                if (profileResponse.ok) {
-                    const [profile] = await profileResponse.json();
-                    setProfileData({
-                        display_name: profile.display_name || profile.username || '',
-                        username: profile.username || '',
-                        bio: profile.bio || '',
-                        avatar_url: profile.avatar_url || '',
-                        privacy_settings: profile.privacy_settings || {
-                            show_stats: true,
-                            show_achievements: true,
-                            allow_messages: false
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    if (statsData.length > 0) {
+                        setStats(statsData[0]);
+                    } else {
+                        // Initialize empty stats if user has none
+                        setStats({
+                            total_attempted: 0,
+                            total_correct: 0,
+                            current_streak: 0,
+                            max_streak: 0,
+                            consecutive_days: 0,
+                            modules_completed: 0,
+                            total_study_time: 0
+                        });
+                    }
+                }
+                
+                // Fetch session statistics
+                const sessionsResponse = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/study_sessions?user_id=eq.${user.id}&completed=eq.true&select=id,questions_attempted,questions_correct,session_score,created_at&order=created_at.desc`,
+                    {
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
                         }
+                    }
+                );
+                
+                if (sessionsResponse.ok) {
+                    const sessions = await sessionsResponse.json();
+                    
+                    // Calculate session-based stats
+                    const totalSessions = sessions.length;
+                    const bestScore = sessions.length > 0 
+                        ? Math.max(...sessions.map(s => s.session_score || 0))
+                        : 0;
+                    const avgQuestionsPerSession = totalSessions > 0
+                        ? Math.round(sessions.reduce((sum, s) => sum + (s.questions_attempted || 0), 0) / totalSessions)
+                        : 0;
+                    
+                    setSessionStats({
+                        totalSessions,
+                        bestSessionScore: bestScore,
+                        avgQuestionsPerSession,
+                        recentSessions: sessions.slice(0, 5) // Keep last 5 for display
                     });
                 }
                 
-                // Load progress stats
-                const progressResponse = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_progress?user_id=eq.${user.id}`,
-                    {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    }
-                );
-                
-                if (progressResponse.ok) {
-                    const progress = await progressResponse.json();
-                    calculateStats(progress);
-                    setRecentActivity(progress.slice(0, 10));
-                }
-                
-                // Load achievements
+                // Fetch achievements
                 const achievementsResponse = await fetch(
                     `${window.SUPABASE_URL}/rest/v1/user_achievements?user_id=eq.${user.id}`,
                     {
@@ -100,538 +104,238 @@
             }
         };
         
-        const calculateStats = (progress) => {
-            const flashcards = progress.filter(p => p.progress_type === 'flashcard');
-            const modules = progress.filter(p => p.module_id);
-            const total = flashcards.length;
-            const correct = flashcards.filter(p => p.score > 50).length;
-            
-            setStats({
-                totalQuestions: total,
-                correctAnswers: correct,
-                accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
-                modulesCompleted: modules.filter(p => p.completed).length,
-                totalModules: 5,
-                studyStreak: calculateStreak(progress),
-                totalStudyTime: Math.round(progress.length * 1.5)
-            });
-        };
+        // Calculate accuracy percentage
+        const accuracy = stats && stats.total_attempted > 0 
+            ? Math.round((stats.total_correct / stats.total_attempted) * 100)
+            : 0;
         
-        const calculateStreak = (progress) => {
-            if (!progress.length) return 0;
-            const dates = progress.map(p => new Date(p.created_at).toDateString());
-            const uniqueDates = [...new Set(dates)];
-            return uniqueDates.length;
-        };
-        
-        const handleSaveProfile = async () => {
-            setSaving(true);
-            try {
-                const response = await fetch(
-                    `${window.SUPABASE_URL}/rest/v1/user_profiles?id=eq.${user.id}`,
-                    {
-                        method: 'PATCH',
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            display_name: profileData.display_name,
-                            bio: profileData.bio,
-                            privacy_settings: profileData.privacy_settings,
-                            updated_at: new Date().toISOString()
-                        })
-                    }
-                );
-                
-                if (response.ok) {
-                    setEditMode(false);
-                    await loadUserData();
-                }
-            } catch (error) {
-                console.error('Error saving profile:', error);
-            } finally {
-                setSaving(false);
-            }
-        };
-        
-        const handleViewPublicProfile = () => {
-            window.open(`/profile/${profileData.username}`, '_blank');
+        // Format study time
+        const formatStudyTime = (minutes) => {
+            if (!minutes) return '0m';
+            if (minutes < 60) return `${minutes}m`;
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
         };
         
         if (loading) {
-            return h('div', { 
+            return React.createElement('div', { 
                 style: { 
-                    minHeight: '100vh', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center' 
+                    minHeight: '100vh',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#f9fafb'
                 } 
             },
-                h('div', { style: { textAlign: 'center' } },
-                    h('div', { style: { fontSize: '1.5rem', marginBottom: '0.5rem' } }, '🍄'),
-                    h('p', null, 'Loading profile...')
+                React.createElement('div', { style: { textAlign: 'center' } },
+                    React.createElement('div', { 
+                        style: { 
+                            fontSize: '2rem',
+                            marginBottom: '1rem',
+                            animation: 'spin 1s linear infinite'
+                        } 
+                    }, '⏳'),
+                    React.createElement('p', null, 'Loading profile...')
                 )
             );
         }
         
-        return h('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
+        // Main stats grid configuration
+        const mainStats = [
+            {
+                label: 'Total Questions',
+                value: stats?.total_attempted || 0,
+                icon: '📝',
+                color: '#3b82f6'
+            },
+            {
+                label: 'Accuracy',
+                value: `${accuracy}%`,
+                icon: '🎯',
+                color: accuracy >= 80 ? '#10b981' : accuracy >= 60 ? '#f59e0b' : '#ef4444'
+            },
+            {
+                label: 'Current Streak',
+                value: stats?.current_streak || 0,
+                icon: '🔥',
+                color: '#f59e0b'
+            },
+            {
+                label: 'Best Streak',
+                value: stats?.max_streak || 0,
+                icon: '🏆',
+                color: '#f59e0b'
+            },
+            {
+                label: 'Study Streak',
+                value: `${stats?.consecutive_days || 0} days`,
+                icon: '📅',
+                color: '#8b5cf6'
+            },
+            {
+                label: 'Modules Completed',
+                value: stats?.modules_completed || 0,
+                icon: '🎓',
+                color: '#10b981'
+            },
+            {
+                label: 'Total Sessions',
+                value: sessionStats?.totalSessions || 0,
+                icon: '📊',
+                color: '#3b82f6'
+            },
+            {
+                label: 'Best Session',
+                value: `${sessionStats?.bestSessionScore || 0}%`,
+                icon: '⭐',
+                color: '#f59e0b'
+            },
+            {
+                label: 'Avg. Questions/Session',
+                value: sessionStats?.avgQuestionsPerSession || 0,
+                icon: '📈',
+                color: '#6b7280'
+            }
+        ];
+        
+        return React.createElement('div', { 
+            style: { 
+                minHeight: '100vh',
+                backgroundColor: '#f9fafb'
+            } 
+        },
             // Header
-            h('div', { 
+            React.createElement('div', { 
                 style: { 
-                    backgroundColor: 'white', 
+                    backgroundColor: 'white',
                     borderBottom: '1px solid #e5e7eb',
-                    padding: '1rem'
+                    padding: '1.5rem'
                 } 
             },
-                h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
-                    h('div', { 
+                React.createElement('div', { 
+                    style: { 
+                        maxWidth: '72rem',
+                        margin: '0 auto'
+                    } 
+                },
+                    React.createElement('div', { 
                         style: { 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center' 
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
                         } 
                     },
-                        h('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
-                            h('button', { 
+                        React.createElement('div', null,
+                            React.createElement('button', {
                                 onClick: onBack,
-                                style: { 
-                                    background: 'none', 
-                                    border: 'none', 
-                                    cursor: 'pointer' 
-                                } 
-                            }, '← Back'),
-                            h('h1', { 
-                                style: { 
-                                    fontSize: '1.5rem', 
-                                    fontWeight: 'bold' 
-                                } 
-                            }, 'My Profile')
-                        ),
-                        h('div', { style: { display: 'flex', gap: '0.5rem' } },
-                            h('button', {
-                                disabled: true,
                                 style: {
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#9ca3af',
-                                    color: 'white',
-                                    borderRadius: '0.375rem',
+                                    marginBottom: '0.5rem',
+                                    padding: '0.25rem 0.5rem',
+                                    background: 'none',
                                     border: 'none',
-                                    cursor: 'not-allowed',
-                                    fontSize: '0.875rem',
-                                    opacity: 0.6
-                                }
-                            }, 'Public Profile (Coming Soon)'),
-                            h('button', {
-                                onClick: signOut,
-                                style: {
-                                    padding: '0.5rem 1rem',
-                                    backgroundColor: '#ef4444',
-                                    color: 'white',
-                                    borderRadius: '0.375rem',
-                                    border: 'none',
+                                    color: '#6b7280',
                                     cursor: 'pointer',
                                     fontSize: '0.875rem'
                                 }
-                            }, 'Sign Out')
+                            }, '← Back'),
+                            React.createElement('h1', { 
+                                style: { 
+                                    fontSize: '2rem',
+                                    fontWeight: 'bold',
+                                    marginBottom: '0.25rem'
+                                } 
+                            }, 'Your Profile'),
+                            React.createElement('p', { 
+                                style: { 
+                                    color: '#6b7280'
+                                } 
+                            }, user.email)
+                        ),
+                        React.createElement('div', { 
+                            style: { 
+                                textAlign: 'right'
+                            } 
+                        },
+                            React.createElement('p', { 
+                                style: { 
+                                    fontSize: '0.875rem',
+                                    color: '#6b7280'
+                                } 
+                            }, 'Study Time'),
+                            React.createElement('p', { 
+                                style: { 
+                                    fontSize: '1.5rem',
+                                    fontWeight: 'bold'
+                                } 
+                            }, formatStudyTime(stats?.total_study_time))
                         )
                     )
                 )
             ),
             
-            // Tabs
-            h('div', { 
+            // Main content
+            React.createElement('div', { 
                 style: { 
-                    backgroundColor: 'white',
-                    borderBottom: '1px solid #e5e7eb'
+                    maxWidth: '72rem',
+                    margin: '0 auto',
+                    padding: '2rem'
                 } 
             },
-                h('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
-                    h('div', { style: { display: 'flex', gap: '2rem' } },
-                        ['overview', 'stats', 'achievements', 'settings'].map(tab =>
-                            h('button', {
-                                key: tab,
-                                onClick: () => setActiveTab(tab),
-                                style: {
-                                    padding: '1rem 0',
-                                    background: 'none',
-                                    border: 'none',
-                                    borderBottom: activeTab === tab ? '2px solid #3b82f6' : 'none',
-                                    color: activeTab === tab ? '#3b82f6' : '#6b7280',
-                                    fontWeight: activeTab === tab ? '600' : '400',
-                                    textTransform: 'capitalize',
-                                    cursor: 'pointer'
-                                }
-                            }, tab)
-                        )
-                    )
-                )
-            ),
-            
-            // Content
-            h('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '2rem' } },
-                // Overview Tab
-                activeTab === 'overview' && h('div', { 
+                // Stats Grid
+                React.createElement('div', { 
                     style: { 
-                        display: 'grid', 
-                        gridTemplateColumns: '300px 1fr', 
-                        gap: '2rem' 
+                        marginBottom: '2rem'
                     } 
                 },
-                    // Profile Card
-                    h('div', { 
+                    React.createElement('h2', { 
                         style: { 
-                            backgroundColor: 'white',
-                            borderRadius: '0.75rem',
-                            padding: '1.5rem',
-                            height: 'fit-content'
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold',
+                            marginBottom: '1rem'
                         } 
-                    },
-                        h('div', { style: { textAlign: 'center' } },
-                            h('div', {
-                                style: {
-                                    width: '100px',
-                                    height: '100px',
-                                    borderRadius: '50%',
-                                    backgroundColor: '#10b981',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '3rem',
-                                    color: 'white',
-                                    margin: '0 auto 1rem'
-                                }
-                            }, profileData.username[0]?.toUpperCase() || '?'),
-                            
-                            editMode ? 
-                                h('div', null,
-                                    h('input', {
-                                        type: 'text',
-                                        value: profileData.display_name,
-                                        onChange: (e) => setProfileData(prev => ({
-                                            ...prev,
-                                            display_name: e.target.value
-                                        })),
-                                        style: {
-                                            width: '100%',
-                                            padding: '0.5rem',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '0.375rem',
-                                            marginBottom: '0.5rem',
-                                            textAlign: 'center'
-                                        }
-                                    }),
-                                    h('textarea', {
-                                        value: profileData.bio,
-                                        onChange: (e) => setProfileData(prev => ({
-                                            ...prev,
-                                            bio: e.target.value
-                                        })),
-                                        placeholder: 'Bio...',
-                                        style: {
-                                            width: '100%',
-                                            padding: '0.5rem',
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '0.375rem',
-                                            marginBottom: '1rem',
-                                            minHeight: '100px',
-                                            resize: 'vertical'
-                                        }
-                                    }),
-                                    h('div', { style: { display: 'flex', gap: '0.5rem' } },
-                                        h('button', {
-                                            onClick: handleSaveProfile,
-                                            disabled: saving,
-                                            style: {
-                                                flex: 1,
-                                                padding: '0.5rem',
-                                                backgroundColor: '#10b981',
-                                                color: 'white',
-                                                borderRadius: '0.375rem',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }
-                                        }, saving ? 'Saving...' : 'Save'),
-                                        h('button', {
-                                            onClick: () => setEditMode(false),
-                                            style: {
-                                                flex: 1,
-                                                padding: '0.5rem',
-                                                backgroundColor: '#6b7280',
-                                                color: 'white',
-                                                borderRadius: '0.375rem',
-                                                border: 'none',
-                                                cursor: 'pointer'
-                                            }
-                                        }, 'Cancel')
-                                    )
-                                ) :
-                                h('div', null,
-                                    h('h2', { 
-                                        style: { 
-                                            fontSize: '1.25rem', 
-                                            fontWeight: '600',
-                                            marginBottom: '0.25rem'
-                                        } 
-                                    }, profileData.display_name || profileData.username),
-                                    h('p', { 
-                                        style: { 
-                                            color: '#6b7280',
-                                            fontSize: '0.875rem',
-                                            marginBottom: '1rem'
-                                        } 
-                                    }, `@${profileData.username}`),
-                                    profileData.bio && h('p', { 
-                                        style: { 
-                                            fontSize: '0.875rem',
-                                            color: '#374151',
-                                            marginBottom: '1rem',
-                                            lineHeight: '1.5'
-                                        } 
-                                    }, profileData.bio),
-                                    h('button', {
-                                        onClick: () => setEditMode(true),
-                                        style: {
-                                            width: '100%',
-                                            padding: '0.5rem',
-                                            backgroundColor: '#3b82f6',
-                                            color: 'white',
-                                            borderRadius: '0.375rem',
-                                            border: 'none',
-                                            cursor: 'pointer'
-                                        }
-                                    }, 'Edit Profile')
-                                )
-                        )
-                    ),
+                    }, '📊 Your Statistics'),
                     
-                    // Quick Stats
-                    stats && h('div', null,
-                        h('div', { 
-                            style: { 
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                                gap: '1rem',
-                                marginBottom: '2rem'
-                            } 
-                        },
-                            [
-                                { label: 'Questions', value: stats.totalQuestions, color: '#3b82f6' },
-                                { label: 'Accuracy', value: `${stats.accuracy}%`, color: '#10b981' },
-                                { label: 'Modules', value: `${stats.modulesCompleted}/${stats.totalModules}`, color: '#8b5cf6' },
-                                { label: 'Streak', value: `${stats.studyStreak} days`, color: '#f59e0b' }
-                            ].map((stat, idx) =>
-                                h('div', {
-                                    key: idx,
-                                    style: {
-                                        backgroundColor: 'white',
-                                        borderRadius: '0.5rem',
-                                        padding: '1rem',
-                                        textAlign: 'center',
-                                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                                    }
-                                },
-                                    h('div', { 
-                                        style: { 
-                                            fontSize: '1.5rem',
-                                            fontWeight: 'bold',
-                                            color: stat.color
-                                        } 
-                                    }, stat.value),
-                                    h('div', { 
-                                        style: { 
-                                            fontSize: '0.75rem',
-                                            color: '#6b7280'
-                                        } 
-                                    }, stat.label)
-                                )
-                            )
-                        ),
-                        
-                        // Recent Activity
-                        h('div', { 
-                            style: { 
-                                backgroundColor: 'white',
-                                borderRadius: '0.75rem',
-                                padding: '1.5rem'
-                            } 
-                        },
-                            h('h3', { 
-                                style: { 
-                                    fontSize: '1.125rem',
-                                    fontWeight: '600',
-                                    marginBottom: '1rem'
-                                } 
-                            }, 'Recent Activity'),
-                            recentActivity.length > 0 ?
-                                recentActivity.slice(0, 5).map((activity, idx) =>
-                                    h('div', {
-                                        key: idx,
-                                        style: {
-                                            padding: '0.75rem 0',
-                                            borderBottom: idx < 4 ? '1px solid #e5e7eb' : 'none'
-                                        }
-                                    },
-                                        h('div', { 
-                                            style: { 
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            } 
-                                        },
-                                            h('span', null, 
-                                                activity.progress_type === 'flashcard' ? '📝 Flashcard' :
-                                                activity.module_id ? '📚 Module' :
-                                                '🍄 Study'
-                                            ),
-                                            h('span', { 
-                                                style: { 
-                                                    fontSize: '0.875rem',
-                                                    color: '#6b7280'
-                                                } 
-                                            }, new Date(activity.created_at).toLocaleDateString())
-                                        )
-                                    )
-                                ) :
-                                h('p', { style: { color: '#6b7280' } }, 'No activity yet')
-                        )
-                    )
-                ),
-                
-                // Settings Tab
-                activeTab === 'settings' && h('div', { 
-                    style: { 
-                        backgroundColor: 'white',
-                        borderRadius: '0.75rem',
-                        padding: '2rem',
-                        maxWidth: '600px'
-                    } 
-                },
-                    h('h2', { 
-                        style: { 
-                            fontSize: '1.25rem',
-                            fontWeight: '600',
-                            marginBottom: '1.5rem'
-                        } 
-                    }, 'Privacy Settings'),
-                    
-                    h('div', { style: { marginBottom: '1.5rem' } },
-                        h('label', { 
-                            style: { 
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                cursor: 'pointer'
-                            } 
-                        },
-                            h('input', {
-                                type: 'checkbox',
-                                checked: profileData.privacy_settings.show_stats,
-                                onChange: (e) => setProfileData(prev => ({
-                                    ...prev,
-                                    privacy_settings: {
-                                        ...prev.privacy_settings,
-                                        show_stats: e.target.checked
-                                    }
-                                }))
-                            }),
-                            h('div', null,
-                                h('div', { style: { fontWeight: '500' } }, 'Show Statistics'),
-                                h('div', { 
-                                    style: { 
-                                        fontSize: '0.875rem',
-                                        color: '#6b7280'
-                                    } 
-                                }, 'Display your learning stats on your public profile')
-                            )
-                        )
-                    ),
-                    
-                    h('div', { style: { marginBottom: '1.5rem' } },
-                        h('label', { 
-                            style: { 
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.75rem',
-                                cursor: 'pointer'
-                            } 
-                        },
-                            h('input', {
-                                type: 'checkbox',
-                                checked: profileData.privacy_settings.show_achievements,
-                                onChange: (e) => setProfileData(prev => ({
-                                    ...prev,
-                                    privacy_settings: {
-                                        ...prev.privacy_settings,
-                                        show_achievements: e.target.checked
-                                    }
-                                }))
-                            }),
-                            h('div', null,
-                                h('div', { style: { fontWeight: '500' } }, 'Show Achievements'),
-                                h('div', { 
-                                    style: { 
-                                        fontSize: '0.875rem',
-                                        color: '#6b7280'
-                                    } 
-                                }, 'Display earned achievements on your public profile')
-                            )
-                        )
-                    ),
-                    
-                    h('button', {
-                        onClick: handleSaveProfile,
-                        disabled: saving,
-                        style: {
-                            padding: '0.75rem 1.5rem',
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            borderRadius: '0.375rem',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontWeight: '500'
-                        }
-                    }, saving ? 'Saving...' : 'Save Settings')
-                ),
-                
-                // Stats Tab
-                activeTab === 'stats' && stats && h('div', null,
-                    // Detailed stats grid
-                    h('div', { 
+                    React.createElement('div', { 
                         style: { 
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                             gap: '1rem'
                         } 
                     },
-                        [
-                            { label: 'Total Questions', value: stats.totalQuestions, icon: '📝' },
-                            { label: 'Correct Answers', value: stats.correctAnswers, icon: '✅' },
-                            { label: 'Accuracy Rate', value: `${stats.accuracy}%`, icon: '🎯' },
-                            { label: 'Modules Complete', value: `${stats.modulesCompleted}/${stats.totalModules}`, icon: '📚' },
-                            { label: 'Study Streak', value: `${stats.studyStreak} days`, icon: '🔥' },
-                            { label: 'Study Time', value: `${stats.totalStudyTime} min`, icon: '⏱️' }
-                        ].map((stat, idx) =>
-                            h('div', {
+                        mainStats.map((stat, idx) => 
+                            React.createElement('div', {
                                 key: idx,
                                 style: {
                                     backgroundColor: 'white',
                                     borderRadius: '0.75rem',
                                     padding: '1.5rem',
-                                    textAlign: 'center',
-                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                                    borderLeft: `4px solid ${stat.color}`
                                 }
                             },
-                                h('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, stat.icon),
-                                h('div', { 
+                                React.createElement('div', { 
                                     style: { 
-                                        fontSize: '2rem',
-                                        fontWeight: 'bold',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
                                         marginBottom: '0.5rem'
                                     } 
-                                }, stat.value),
-                                h('div', { 
+                                },
+                                    React.createElement('span', { 
+                                        style: { 
+                                            fontSize: '1.5rem'
+                                        } 
+                                    }, stat.icon),
+                                    React.createElement('span', { 
+                                        style: { 
+                                            fontSize: '1.875rem',
+                                            fontWeight: 'bold',
+                                            color: stat.color
+                                        } 
+                                    }, stat.value)
+                                ),
+                                React.createElement('p', { 
                                     style: { 
                                         fontSize: '0.875rem',
                                         color: '#6b7280'
@@ -642,60 +346,151 @@
                     )
                 ),
                 
-                // Achievements Tab
-                activeTab === 'achievements' && h('div', null,
-                    achievements.length > 0 ?
-                        h('div', { 
-                            style: { 
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-                                gap: '1rem'
-                            } 
-                        },
-                            achievements.map((achievement, idx) =>
-                                h('div', {
-                                    key: idx,
-                                    style: {
-                                        backgroundColor: 'white',
-                                        borderRadius: '0.75rem',
-                                        padding: '1.5rem',
-                                        textAlign: 'center',
-                                        border: '2px solid #10b981',
-                                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                                    }
-                                },
-                                    h('div', { style: { fontSize: '3rem', marginBottom: '0.5rem' } }, 
-                                        window.achievementIcons?.[achievement.achievement_id] || '🏆'
-                                    ),
-                                    h('div', { 
+                // Achievements Section
+                React.createElement('div', { 
+                    style: { 
+                        marginBottom: '2rem'
+                    } 
+                },
+                    React.createElement('h2', { 
+                        style: { 
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold',
+                            marginBottom: '1rem'
+                        } 
+                    }, '🏆 Achievements'),
+                    
+                    React.createElement('div', { 
+                        style: { 
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                        } 
+                    },
+                        achievements.length > 0 ?
+                            React.createElement('div', { 
+                                style: { 
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                                    gap: '1rem'
+                                } 
+                            },
+                                achievements.filter(a => a.earned_at).slice(0, 12).map(achievement =>
+                                    React.createElement('div', {
+                                        key: achievement.id,
+                                        style: {
+                                            textAlign: 'center',
+                                            padding: '1rem',
+                                            backgroundColor: '#f9fafb',
+                                            borderRadius: '0.5rem',
+                                            border: '2px solid #e5e7eb'
+                                        }
+                                    },
+                                        React.createElement('div', { 
+                                            style: { 
+                                                fontSize: '2rem',
+                                                marginBottom: '0.5rem'
+                                            } 
+                                        }, achievement.icon || '🏅'),
+                                        React.createElement('p', { 
+                                            style: { 
+                                                fontSize: '0.75rem',
+                                                fontWeight: '600'
+                                            } 
+                                        }, achievement.name),
+                                        React.createElement('p', { 
+                                            style: { 
+                                                fontSize: '0.625rem',
+                                                color: '#6b7280',
+                                                marginTop: '0.25rem'
+                                            } 
+                                        }, new Date(achievement.earned_at).toLocaleDateString())
+                                    )
+                                )
+                            ) :
+                            React.createElement('p', { 
+                                style: { 
+                                    textAlign: 'center',
+                                    color: '#6b7280',
+                                    padding: '2rem'
+                                } 
+                            }, 'Start studying to earn achievements!')
+                    )
+                ),
+                
+                // Recent Sessions
+                sessionStats && sessionStats.recentSessions && sessionStats.recentSessions.length > 0 &&
+                React.createElement('div', null,
+                    React.createElement('h2', { 
+                        style: { 
+                            fontSize: '1.5rem',
+                            fontWeight: 'bold',
+                            marginBottom: '1rem'
+                        } 
+                    }, '📅 Recent Sessions'),
+                    
+                    React.createElement('div', { 
+                        style: { 
+                            backgroundColor: 'white',
+                            borderRadius: '0.75rem',
+                            padding: '1.5rem',
+                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                        } 
+                    },
+                        sessionStats.recentSessions.map((session, idx) => {
+                            const sessionAccuracy = session.questions_attempted > 0
+                                ? Math.round((session.questions_correct / session.questions_attempted) * 100)
+                                : 0;
+                            
+                            return React.createElement('div', {
+                                key: session.id,
+                                style: {
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '0.75rem',
+                                    borderBottom: idx < sessionStats.recentSessions.length - 1 ? '1px solid #e5e7eb' : 'none'
+                                }
+                            },
+                                React.createElement('div', null,
+                                    React.createElement('p', { 
+                                        style: { 
+                                            fontWeight: '500'
+                                        } 
+                                    }, new Date(session.created_at).toLocaleDateString()),
+                                    React.createElement('p', { 
                                         style: { 
                                             fontSize: '0.875rem',
-                                            fontWeight: '600'
+                                            color: '#6b7280'
                                         } 
-                                    }, achievement.name || 'Achievement'),
-                                    h('div', { 
+                                    }, `${session.questions_attempted} questions`)
+                                ),
+                                React.createElement('div', { 
+                                    style: { 
+                                        textAlign: 'right'
+                                    } 
+                                },
+                                    React.createElement('p', { 
                                         style: { 
-                                            fontSize: '0.75rem',
-                                            color: '#6b7280',
-                                            marginTop: '0.5rem'
+                                            fontWeight: '500',
+                                            color: sessionAccuracy >= 80 ? '#10b981' : sessionAccuracy >= 60 ? '#f59e0b' : '#ef4444'
                                         } 
-                                    }, new Date(achievement.earned_at).toLocaleDateString())
+                                    }, `${sessionAccuracy}%`),
+                                    React.createElement('p', { 
+                                        style: { 
+                                            fontSize: '0.875rem',
+                                            color: '#6b7280'
+                                        } 
+                                    }, `Score: ${session.session_score || 0}`)
                                 )
-                            )
-                        ) :
-                        h('div', { 
-                            style: { 
-                                textAlign: 'center',
-                                padding: '4rem',
-                                backgroundColor: 'white',
-                                borderRadius: '0.75rem'
-                            } 
-                        },
-                            h('div', { style: { fontSize: '3rem', marginBottom: '1rem' } }, '🏆'),
-                            h('p', { style: { color: '#6b7280' } }, 'No achievements earned yet. Keep studying!')
-                        )
+                            );
+                        })
+                    )
                 )
             )
         );
     };
+    
+    console.log('✅ ProfilePage component loaded (with user_stats integration)');
 })();
