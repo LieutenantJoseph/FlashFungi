@@ -399,20 +399,22 @@
                     return handleBackToHome();
 
                 default:
-                    return window.HomePage ? 
+                    return window.HomePage ?
                         React.createElement(window.HomePage, {
-                            specimens,
-                            user,
-                            userProgress,
+                            specimens: specimenData,
+                            user: user,
+                            userProgress: userProgress,
+                            modules: modules, // NOW PASSING MODULES TO HOMEPAGE
                             speciesWithHints: Object.keys(speciesHints).length,
                             onStudyModeSelect: handleStudyModeSelect,
                             onTrainingModuleSelect: handleTrainingModuleSelect,
                             onAuthRequired: handleAuthRequired,
                             onProfileClick: handleProfileClick,
                             onSignOut: handleSignOut
-                        }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                            React.createElement('h1', null, 'Components not loaded'),
-                            React.createElement('button', { onClick: () => window.location.reload() }, 'Reload')
+                        }) :
+                        React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
+                            React.createElement('h1', null, 'HomePage component not loaded'),
+                            React.createElement('p', null, 'Please check the console for errors.')
                         );
             }
         }
