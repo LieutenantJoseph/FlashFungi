@@ -74,8 +74,8 @@
                         style: { 
                             maxWidth: '1400px',
                             margin: '0 auto',
-                            display: 'grid',
-                            gridTemplateColumns: window.innerWidth > 768 ? 'auto 1fr auto' : '1fr auto',
+                            display: 'flex',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
                             gap: '1.5rem'
                         } 
@@ -93,14 +93,14 @@
                         },
                             React.createElement('div', { 
                                 style: { 
-                                    fontSize: '2rem',
+                                    fontSize: '2.5rem',
                                     filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
                                 } 
                             }, '🍄'),
                             React.createElement('div', null,
                                 React.createElement('h1', { 
                                     style: { 
-                                        fontSize: '1.25rem',
+                                        fontSize: '1.5rem',
                                         fontWeight: '700',
                                         background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
                                         WebkitBackgroundClip: 'text',
@@ -111,75 +111,17 @@
                                 }, 'Flash Fungi'),
                                 React.createElement('p', { 
                                     style: { 
-                                        fontSize: '0.625rem',
+                                        fontSize: '0.75rem',
                                         color: design.colors?.textMuted || '#A8A89C',
                                         marginTop: '0.125rem',
                                         letterSpacing: '0.05em',
-                                        textTransform: 'uppercase',
-                                        display: window.innerWidth > 480 ? 'block' : 'none'
+                                        textTransform: 'uppercase'
                                     } 
                                 }, 'Master Mushrooms in Minutes a Day')
                             )
                         ),
                         
-                        // Live Stats Bar (hide on mobile)
-                        window.innerWidth > 768 && React.createElement('div', { 
-                            style: { 
-                                display: 'flex',
-                                gap: '1rem',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                opacity: isLoaded ? 1 : 0,
-                                transform: isLoaded ? 'translateY(0)' : 'translateY(-10px)',
-                                transition: 'all 0.5s ease-out 0.2s'
-                            } 
-                        },
-                            [
-                                { value: approvedCount, label: 'Specimens', icon: '🔬' },
-                                { value: dnaCount, label: 'DNA', icon: '🧬' },
-                                { value: speciesWithHints, label: 'Species', icon: '📚' },
-                                { value: `${progressPercentage}%`, label: 'Progress', icon: '📈' }
-                            ].map((stat, index) => 
-                                React.createElement('div', { 
-                                    key: index,
-                                    style: { 
-                                        textAlign: 'center',
-                                        padding: '0.375rem 0.75rem',
-                                        background: design.colors?.bgCard || '#2A2826',
-                                        borderRadius: design.radius?.sm || '0.5rem',
-                                        border: '1px solid rgba(139,69,19,0.15)',
-                                        minWidth: '80px',
-                                        transition: 'all 0.3s ease',
-                                        cursor: 'pointer'
-                                    },
-                                    onMouseEnter: (e) => {
-                                        e.currentTarget.style.transform = 'scale(1.05)';
-                                        e.currentTarget.style.borderColor = design.colors?.primary || '#8B4513';
-                                    },
-                                    onMouseLeave: (e) => {
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.borderColor = 'rgba(139,69,19,0.15)';
-                                    }
-                                },
-                                    React.createElement('div', { style: { fontSize: '1rem', marginBottom: '0.125rem' } }, stat.icon),
-                                    React.createElement('div', { 
-                                        style: { 
-                                            fontSize: '1rem',
-                                            fontWeight: '600',
-                                            color: design.colors?.textPrimary || '#F5F5DC'
-                                        } 
-                                    }, stat.value),
-                                    React.createElement('div', { 
-                                        style: { 
-                                            fontSize: '0.5rem',
-                                            color: design.colors?.textMuted || '#A8A89C',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em'
-                                        } 
-                                    }, stat.label)
-                                )
-                            )
-                        ),
+                        // Remove the stats bar completely since info is in footer
                         
                         // User Menu
                         React.createElement('div', { 
@@ -681,7 +623,7 @@
                         },
                             [
                                 { icon: '🍄', value: approvedCount, label: 'Specimens', color: '#3B82F6' },
-                                { icon: '🔬', value: dnaCount, label: 'DNA Verified', color: '#10B981' },
+                                { icon: '🧬', value: dnaCount, label: 'DNA Verified', color: '#10B981' },
                                 { icon: '💡', value: speciesWithHints, label: 'With Hints', color: '#F59E0B' },
                                 { icon: '📍', value: 'Arizona', label: 'Geographic Focus', color: '#EF4444' }
                             ].map((stat, index) => 
@@ -738,9 +680,9 @@
                         },
                             [
                                 { icon: '✅', label: 'Expert Verified' },
-                                { icon: '📸', label: 'High-Quality Photos' },
-                                { icon: '📍', label: 'Arizona Native' },
-                                { icon: '🎓', label: 'Educational Purpose' }
+                                { icon: '📸', label: 'High Quality Photos' },
+                                { icon: '🌵', label: 'Real Local Fungi' },
+                                { icon: '🔄', label: 'Dynamic Database' }
                             ].map((badge, index) => 
                                 React.createElement('div', { 
                                     key: index,
@@ -784,6 +726,6 @@
         );
     };
     
-    console.log('✅ HomePage component loaded with Living Mycology design v2');
+    console.log('✅ HomePage component loaded with Living Mycology design v3');
     
 })();
