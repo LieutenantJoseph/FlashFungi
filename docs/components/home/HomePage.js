@@ -66,7 +66,7 @@
                 React.createElement('header', { 
                     style: { 
                         background: `linear-gradient(180deg, ${design.colors?.bgSecondary || '#2D2D2A'} 0%, transparent 100%)`,
-                        padding: '1.5rem',
+                        padding: '1rem 1.5rem',
                         borderBottom: `1px solid rgba(139,69,19,0.2)`
                     } 
                 },
@@ -75,17 +75,17 @@
                             maxWidth: '1400px',
                             margin: '0 auto',
                             display: 'grid',
-                            gridTemplateColumns: 'auto 1fr auto',
+                            gridTemplateColumns: window.innerWidth > 768 ? 'auto 1fr auto' : '1fr auto',
                             alignItems: 'center',
-                            gap: '2rem'
+                            gap: '1.5rem'
                         } 
                     },
-                        // Logo & Title
+                        // Logo & Title (more compact)
                         React.createElement('div', { 
                             style: { 
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '1rem',
+                                gap: '0.75rem',
                                 transform: isLoaded ? 'translateX(0)' : 'translateX(-20px)',
                                 opacity: isLoaded ? 1 : 0,
                                 transition: 'all 0.5s ease-out'
@@ -93,16 +93,15 @@
                         },
                             React.createElement('div', { 
                                 style: { 
-                                    fontSize: '3rem',
-                                    filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-                                    animation: 'float 3s ease-in-out infinite'
+                                    fontSize: '2rem',
+                                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
                                 } 
                             }, '🍄'),
                             React.createElement('div', null,
                                 React.createElement('h1', { 
                                     style: { 
-                                        fontSize: '1.75rem',
-                                        fontWeight: '800',
+                                        fontSize: '1.25rem',
+                                        fontWeight: '700',
                                         background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
                                         WebkitBackgroundClip: 'text',
                                         WebkitTextFillColor: 'transparent',
@@ -112,21 +111,22 @@
                                 }, 'Flash Fungi'),
                                 React.createElement('p', { 
                                     style: { 
-                                        fontSize: '0.75rem',
+                                        fontSize: '0.625rem',
                                         color: design.colors?.textMuted || '#A8A89C',
                                         marginTop: '0.125rem',
                                         letterSpacing: '0.05em',
-                                        textTransform: 'uppercase'
+                                        textTransform: 'uppercase',
+                                        display: window.innerWidth > 480 ? 'block' : 'none'
                                     } 
-                                }, 'Master Mycology')
+                                }, 'Master Mushrooms in Minutes a Day')
                             )
                         ),
                         
-                        // Live Stats Bar
-                        React.createElement('div', { 
+                        // Live Stats Bar (hide on mobile)
+                        window.innerWidth > 768 && React.createElement('div', { 
                             style: { 
                                 display: 'flex',
-                                gap: '1.5rem',
+                                gap: '1rem',
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 opacity: isLoaded ? 1 : 0,
@@ -136,7 +136,7 @@
                         },
                             [
                                 { value: approvedCount, label: 'Specimens', icon: '🔬' },
-                                { value: dnaCount, label: 'DNA Verified', icon: '🧬' },
+                                { value: dnaCount, label: 'DNA', icon: '🧬' },
                                 { value: speciesWithHints, label: 'Species', icon: '📚' },
                                 { value: `${progressPercentage}%`, label: 'Progress', icon: '📈' }
                             ].map((stat, index) => 
@@ -144,39 +144,34 @@
                                     key: index,
                                     style: { 
                                         textAlign: 'center',
-                                        padding: '0.5rem 1rem',
+                                        padding: '0.375rem 0.75rem',
                                         background: design.colors?.bgCard || '#2A2826',
-                                        borderRadius: design.radius?.md || '0.75rem',
-                                        border: '1px solid rgba(139,69,19,0.2)',
-                                        minWidth: '100px',
+                                        borderRadius: design.radius?.sm || '0.5rem',
+                                        border: '1px solid rgba(139,69,19,0.15)',
+                                        minWidth: '80px',
                                         transition: 'all 0.3s ease',
                                         cursor: 'pointer'
                                     },
                                     onMouseEnter: (e) => {
                                         e.currentTarget.style.transform = 'scale(1.05)';
                                         e.currentTarget.style.borderColor = design.colors?.primary || '#8B4513';
-                                        e.currentTarget.style.boxShadow = design.shadows?.glow || '0 0 20px rgba(210,105,30,0.3)';
                                     },
                                     onMouseLeave: (e) => {
                                         e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.borderColor = 'rgba(139,69,19,0.2)';
-                                        e.currentTarget.style.boxShadow = 'none';
+                                        e.currentTarget.style.borderColor = 'rgba(139,69,19,0.15)';
                                     }
                                 },
-                                    React.createElement('div', { style: { fontSize: '1.25rem', marginBottom: '0.25rem' } }, stat.icon),
+                                    React.createElement('div', { style: { fontSize: '1rem', marginBottom: '0.125rem' } }, stat.icon),
                                     React.createElement('div', { 
                                         style: { 
-                                            fontSize: '1.25rem',
-                                            fontWeight: '700',
-                                            background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
-                                            WebkitBackgroundClip: 'text',
-                                            WebkitTextFillColor: 'transparent',
-                                            backgroundClip: 'text'
+                                            fontSize: '1rem',
+                                            fontWeight: '600',
+                                            color: design.colors?.textPrimary || '#F5F5DC'
                                         } 
                                     }, stat.value),
                                     React.createElement('div', { 
                                         style: { 
-                                            fontSize: '0.625rem',
+                                            fontSize: '0.5rem',
                                             color: design.colors?.textMuted || '#A8A89C',
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.05em'
@@ -375,22 +370,22 @@
                         )
                     ),
                     
-                    // Action Cards Grid
+                    // Action Cards Grid - Updated layout for Training Modules prominence
                     React.createElement('div', { 
                         style: { 
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                            gap: '1.5rem',
-                            marginBottom: '2rem'
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                            gap: '1.25rem',
+                            marginBottom: '3rem'
                         } 
                     },
-                        // Study Modes
+                        // Study Modes - First Row (3 cards)
                         [
                             {
                                 title: 'Quick Study',
                                 icon: '⚡',
                                 description: 'Rapid-fire identification practice',
-                                stats: 'Learn 10 species in 5 minutes',
+                                stats: 'Study 10 species in 5 minutes',
                                 gradient: design.gradients?.earth,
                                 action: () => onStudyModeSelect('quick'),
                                 delay: '0.5s'
@@ -399,7 +394,7 @@
                                 title: 'Focused Study',
                                 icon: '🎯',
                                 description: 'Target specific families & genera',
-                                stats: 'Deep dive into taxonomy',
+                                stats: 'Deep dive into diagnostics',
                                 gradient: design.gradients?.forest,
                                 action: () => onStudyModeSelect('focused'),
                                 delay: '0.6s'
@@ -412,15 +407,6 @@
                                 gradient: design.gradients?.accent,
                                 action: () => onStudyModeSelect('marathon'),
                                 delay: '0.7s'
-                            },
-                            {
-                                title: 'Training Modules',
-                                icon: '📚',
-                                description: 'Structured learning paths',
-                                stats: `${completedModules}/${totalModules} modules complete`,
-                                gradient: design.gradients?.spore,
-                                action: () => onTrainingModuleSelect('foundation-1'),
-                                delay: '0.8s'
                             }
                         ].map((mode, index) => 
                             React.createElement('div', {
@@ -528,80 +514,259 @@
                         )
                     ),
                     
-                    // Featured Section
+                    // Training Modules - Prominent Section
+                    React.createElement('div', { 
+                        style: { 
+                            marginBottom: '3rem',
+                            opacity: isLoaded ? 1 : 0,
+                            transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
+                            transition: 'all 0.5s ease-out 0.8s'
+                        } 
+                    },
+                        React.createElement('div', {
+                            onClick: () => onTrainingModuleSelect('foundation-1'),
+                            style: {
+                                background: `linear-gradient(135deg, ${design.colors?.bgCard || '#2A2826'} 0%, ${design.colors?.bgTertiary || '#3A3A37'} 100%)`,
+                                padding: '2rem',
+                                borderRadius: design.radius?.xl || '1.5rem',
+                                border: '2px solid rgba(139,69,19,0.3)',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                boxShadow: design.shadows?.lg || '0 8px 32px rgba(0,0,0,0.5)',
+                                transition: 'all 0.3s ease'
+                            },
+                            onMouseEnter: (e) => {
+                                e.currentTarget.style.transform = 'translateY(-4px) scale(1.01)';
+                                e.currentTarget.style.boxShadow = '0 12px 40px rgba(210,105,30,0.4)';
+                                e.currentTarget.style.borderColor = design.colors?.primary || '#8B4513';
+                            },
+                            onMouseLeave: (e) => {
+                                e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                                e.currentTarget.style.boxShadow = design.shadows?.lg || '0 8px 32px rgba(0,0,0,0.5)';
+                                e.currentTarget.style.borderColor = 'rgba(139,69,19,0.3)';
+                            }
+                        },
+                            // Background pattern
+                            React.createElement('div', {
+                                style: {
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    background: `
+                                        radial-gradient(circle at 20% 50%, rgba(244,228,193,0.05) 0%, transparent 40%),
+                                        radial-gradient(circle at 80% 20%, rgba(210,105,30,0.05) 0%, transparent 40%)
+                                    `,
+                                    pointerEvents: 'none'
+                                }
+                            }),
+                            
+                            React.createElement('div', { 
+                                style: { 
+                                    position: 'relative',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'auto 1fr auto',
+                                    alignItems: 'center',
+                                    gap: '2rem'
+                                } 
+                            },
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '4rem',
+                                        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+                                    } 
+                                }, '📚'),
+                                
+                                React.createElement('div', null,
+                                    React.createElement('h2', { 
+                                        style: { 
+                                            fontSize: '1.75rem',
+                                            fontWeight: '700',
+                                            marginBottom: '0.5rem',
+                                            background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
+                                            WebkitBackgroundClip: 'text',
+                                            WebkitTextFillColor: 'transparent',
+                                            backgroundClip: 'text'
+                                        } 
+                                    }, 'Training Modules'),
+                                    React.createElement('p', { 
+                                        style: { 
+                                            fontSize: '1rem',
+                                            color: design.colors?.textSecondary || '#D3D3C7',
+                                            marginBottom: '0.5rem'
+                                        } 
+                                    }, 'Structured learning paths from beginner to expert'),
+                                    React.createElement('div', { 
+                                        style: { 
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1.5rem'
+                                        } 
+                                    },
+                                        React.createElement('span', { 
+                                            style: { 
+                                                fontSize: '0.875rem',
+                                                color: design.colors?.textMuted || '#A8A89C',
+                                                fontWeight: '600'
+                                            } 
+                                        }, `${completedModules} of ${totalModules} foundation modules complete`),
+                                        React.createElement('div', { 
+                                            style: { 
+                                                flex: 1,
+                                                maxWidth: '200px',
+                                                height: '6px',
+                                                background: design.colors?.bgSecondary || '#2D2D2A',
+                                                borderRadius: design.radius?.sm || '0.5rem',
+                                                overflow: 'hidden'
+                                            } 
+                                        },
+                                            React.createElement('div', { 
+                                                style: { 
+                                                    width: `${progressPercentage}%`,
+                                                    height: '100%',
+                                                    background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
+                                                    transition: 'width 1s ease-out'
+                                                } 
+                                            })
+                                        )
+                                    )
+                                ),
+                                
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '2rem',
+                                        color: design.colors?.primary || '#8B4513',
+                                        transition: 'transform 0.3s ease'
+                                    } 
+                                }, '→')
+                            )
+                        )
+                    ),
+                    
+                    // Database Overview Section - Matching the provided layout
                     React.createElement('div', { 
                         style: { 
                             marginTop: '3rem',
+                            paddingTop: '2rem',
+                            borderTop: `1px solid rgba(139,69,19,0.2)`,
                             opacity: isLoaded ? 1 : 0,
                             transform: isLoaded ? 'translateY(0)' : 'translateY(20px)',
-                            transition: 'all 0.5s ease-out 0.9s'
+                            transition: 'all 0.5s ease-out 1s'
                         } 
                     },
                         React.createElement('h2', { 
                             style: { 
-                                fontSize: '1.5rem',
+                                fontSize: '1.25rem',
                                 fontWeight: '700',
-                                marginBottom: '1.5rem',
+                                marginBottom: '2rem',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '0.5rem'
                             } 
                         },
-                            React.createElement('span', { style: { fontSize: '1.75rem' } }, '✨'),
-                            'Featured Learning'
+                            React.createElement('span', { style: { fontSize: '1.5rem' } }, '📊'),
+                            'Dataset Overview'
                         ),
                         
+                        // Stats Grid
                         React.createElement('div', { 
                             style: { 
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                                gap: '1rem'
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                gap: '1.5rem',
+                                marginBottom: '2rem'
                             } 
                         },
                             [
-                                { title: 'Edible Species', icon: '🍴', count: '47 species' },
-                                { title: 'Toxic Varieties', icon: '☠️', count: '23 species' },
-                                { title: 'Medicinal Fungi', icon: '💊', count: '31 species' },
-                                { title: 'Rare Specimens', icon: '💎', count: '19 species' }
-                            ].map((category, index) => 
-                                React.createElement('div', {
+                                { icon: '🍄', value: approvedCount, label: 'Specimens', color: '#3B82F6' },
+                                { icon: '🔬', value: dnaCount, label: 'DNA Verified', color: '#10B981' },
+                                { icon: '💡', value: speciesWithHints, label: 'With Hints', color: '#F59E0B' },
+                                { icon: '📍', value: 'Arizona', label: 'Geographic Focus', color: '#EF4444' }
+                            ].map((stat, index) => 
+                                React.createElement('div', { 
                                     key: index,
-                                    style: {
+                                    style: { 
+                                        textAlign: 'center',
                                         padding: '1rem',
-                                        background: `linear-gradient(135deg, ${design.colors?.bgCard || '#2A2826'} 0%, transparent 100%)`,
+                                        background: design.colors?.bgCard || '#2A2826',
                                         borderRadius: design.radius?.md || '0.75rem',
-                                        border: '1px solid rgba(139,69,19,0.15)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '1rem',
-                                        cursor: 'pointer',
+                                        border: '1px solid rgba(139,69,19,0.2)',
                                         transition: 'all 0.3s ease'
                                     },
                                     onMouseEnter: (e) => {
-                                        e.currentTarget.style.background = `linear-gradient(135deg, ${design.colors?.bgTertiary || '#3A3A37'} 0%, ${design.colors?.bgCard || '#2A2826'} 100%)`;
+                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                        e.currentTarget.style.borderColor = stat.color;
+                                        e.currentTarget.style.boxShadow = `0 0 20px ${stat.color}30`;
+                                    },
+                                    onMouseLeave: (e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.borderColor = 'rgba(139,69,19,0.2)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }
+                                },
+                                    React.createElement('div', { style: { fontSize: '2rem', marginBottom: '0.5rem' } }, stat.icon),
+                                    React.createElement('div', { 
+                                        style: { 
+                                            fontSize: '1.75rem',
+                                            fontWeight: '700',
+                                            color: stat.color,
+                                            marginBottom: '0.25rem'
+                                        } 
+                                    }, stat.value),
+                                    React.createElement('div', { 
+                                        style: { 
+                                            fontSize: '0.75rem',
+                                            color: design.colors?.textMuted || '#A8A89C',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em'
+                                        } 
+                                    }, stat.label)
+                                )
+                            )
+                        ),
+                        
+                        // Feature Badges
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '1rem',
+                                justifyContent: 'center'
+                            } 
+                        },
+                            [
+                                { icon: '✅', label: 'Expert Verified' },
+                                { icon: '📸', label: 'High-Quality Photos' },
+                                { icon: '📍', label: 'Arizona Native' },
+                                { icon: '🎓', label: 'Educational Purpose' }
+                            ].map((badge, index) => 
+                                React.createElement('div', { 
+                                    key: index,
+                                    style: { 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem',
+                                        padding: '0.5rem 1rem',
+                                        background: design.colors?.bgSecondary || '#2D2D2A',
+                                        borderRadius: design.radius?.sm || '0.5rem',
+                                        border: '1px solid rgba(139,69,19,0.15)',
+                                        fontSize: '0.875rem',
+                                        color: design.colors?.textSecondary || '#D3D3C7',
+                                        transition: 'all 0.3s ease'
+                                    },
+                                    onMouseEnter: (e) => {
+                                        e.currentTarget.style.background = design.colors?.bgTertiary || '#3A3A37';
                                         e.currentTarget.style.borderColor = design.colors?.primary || '#8B4513';
                                     },
                                     onMouseLeave: (e) => {
-                                        e.currentTarget.style.background = `linear-gradient(135deg, ${design.colors?.bgCard || '#2A2826'} 0%, transparent 100%)`;
+                                        e.currentTarget.style.background = design.colors?.bgSecondary || '#2D2D2A';
                                         e.currentTarget.style.borderColor = 'rgba(139,69,19,0.15)';
                                     }
                                 },
-                                    React.createElement('span', { style: { fontSize: '2rem' } }, category.icon),
-                                    React.createElement('div', null,
-                                        React.createElement('div', { 
-                                            style: { 
-                                                fontSize: '0.875rem',
-                                                fontWeight: '600',
-                                                color: design.colors?.textPrimary || '#F5F5DC'
-                                            } 
-                                        }, category.title),
-                                        React.createElement('div', { 
-                                            style: { 
-                                                fontSize: '0.75rem',
-                                                color: design.colors?.textMuted || '#A8A89C'
-                                            } 
-                                        }, category.count)
-                                    )
+                                    React.createElement('span', null, badge.icon),
+                                    React.createElement('span', null, badge.label)
                                 )
                             )
                         )
@@ -609,13 +774,8 @@
                 )
             ),
             
-            // Floating animation styles
+            // Floating animation styles (only for elements that need it)
             React.createElement('style', null, `
-                @keyframes float {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-10px); }
-                }
-                
                 @keyframes shimmer {
                     0% { transform: translateX(-100%); }
                     100% { transform: translateX(100%); }
@@ -624,6 +784,6 @@
         );
     };
     
-    console.log('✅ HomePage component loaded with Living Mycology design');
+    console.log('✅ HomePage component loaded with Living Mycology design v2');
     
 })();
