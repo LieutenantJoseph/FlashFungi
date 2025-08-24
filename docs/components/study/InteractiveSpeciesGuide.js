@@ -1,13 +1,45 @@
-// InteractiveSpeciesGuide.js - Interactive Species Guide Component
-// Flash Fungi - Complete species identification guide with tabs
-
+// InteractiveSpeciesGuide.js - Updated with Living Mycology Dark Theme
 (function() {
     'use strict';
+    
+    // Design constants matching the established dark theme
+    const COLORS = {
+        // Dark theme backgrounds
+        BG_PRIMARY: '#1A1A19',
+        BG_CARD: '#2A2826',
+        BG_HOVER: '#323230',
+        BG_MODAL: '#212120',
+        
+        // Text colors
+        TEXT_PRIMARY: '#E8E2D5',
+        TEXT_SECONDARY: '#B8B2A5',
+        TEXT_MUTED: '#888478',
+        
+        // Accent colors
+        ACCENT_PRIMARY: '#8B7355',
+        ACCENT_SUCCESS: '#7C8650',
+        ACCENT_WARNING: '#D4A574',
+        ACCENT_ERROR: '#B85C5C',
+        ACCENT_INFO: '#6B8CAE',
+        
+        // Borders
+        BORDER_DEFAULT: 'rgba(139, 115, 85, 0.2)',
+        BORDER_HOVER: 'rgba(139, 115, 85, 0.4)',
+        BORDER_ACTIVE: 'rgba(139, 115, 85, 0.6)'
+    };
+    
+    // Gradient definitions
+    const GRADIENTS = {
+        EARTH: 'linear-gradient(135deg, #8B7355 0%, #6B5745 100%)',
+        FOREST: 'linear-gradient(135deg, #7C8650 0%, #5C6640 100%)',
+        SUNSET: 'linear-gradient(135deg, #D4A574 0%, #B48554 100%)',
+        MUSHROOM: 'linear-gradient(135deg, #8B7355 0%, #A0826D 50%, #6B5745 100%)'
+    };
     
     window.InteractiveSpeciesGuide = function InteractiveSpeciesGuide({ specimen, speciesHints, photos, referencePhotos, onClose, onTryAgain }) {
         const [activeTab, setActiveTab] = React.useState('overview');
         const [comparisonMode, setComparisonMode] = React.useState(false);
-        const [expandedPhoto, setExpandedPhoto] = React.useState(null); // Added for photo expansion
+        const [expandedPhoto, setExpandedPhoto] = React.useState(null);
         
         const hints = speciesHints?.hints || [];
         
@@ -29,33 +61,35 @@
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.5)',
+                backgroundColor: 'rgba(0,0,0,0.8)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 padding: '1rem',
-                zIndex: 100
+                zIndex: 100,
+                backdropFilter: 'blur(4px)'
             }
         },
             React.createElement('div', {
                 style: {
-                    backgroundColor: 'white',
+                    backgroundColor: COLORS.BG_MODAL,
                     borderRadius: '1rem',
                     maxWidth: '64rem',
                     width: '100%',
                     maxHeight: '90vh',
                     overflow: 'hidden',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                 }
             },
                 // Header
                 React.createElement('div', {
                     style: {
-                        background: 'linear-gradient(to right, #059669, #047857)',
+                        background: GRADIENTS.FOREST,
                         color: 'white',
                         padding: '1.5rem',
-                        borderBottom: '1px solid #e5e7eb'
+                        borderBottom: `1px solid ${COLORS.BORDER_DEFAULT}`
                     }
                 },
                     React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start' } },
@@ -69,12 +103,21 @@
                         React.createElement('button', {
                             onClick: onClose,
                             style: {
-                                background: 'none',
+                                background: 'rgba(255,255,255,0.2)',
                                 border: 'none',
                                 color: 'white',
                                 fontSize: '1.5rem',
-                                cursor: 'pointer'
-                            }
+                                cursor: 'pointer',
+                                width: '2rem',
+                                height: '2rem',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'background 0.2s'
+                            },
+                            onMouseEnter: (e) => e.target.style.background = 'rgba(255,255,255,0.3)',
+                            onMouseLeave: (e) => e.target.style.background = 'rgba(255,255,255,0.2)'
                         }, '×')
                     )
                 ),
@@ -82,8 +125,8 @@
                 // Tabs
                 React.createElement('div', {
                     style: {
-                        backgroundColor: '#f9fafb',
-                        borderBottom: '1px solid #e5e7eb',
+                        backgroundColor: COLORS.BG_CARD,
+                        borderBottom: `1px solid ${COLORS.BORDER_DEFAULT}`,
                         padding: '0 1.5rem'
                     }
                 },
@@ -98,9 +141,16 @@
                                     padding: '1rem 0',
                                     textTransform: 'capitalize',
                                     fontWeight: activeTab === tab ? '600' : '400',
-                                    color: activeTab === tab ? '#059669' : '#6b7280',
-                                    borderBottom: activeTab === tab ? '2px solid #059669' : 'none',
-                                    cursor: 'pointer'
+                                    color: activeTab === tab ? COLORS.ACCENT_SUCCESS : COLORS.TEXT_SECONDARY,
+                                    borderBottom: activeTab === tab ? `2px solid ${COLORS.ACCENT_SUCCESS}` : 'none',
+                                    cursor: 'pointer',
+                                    transition: 'color 0.2s'
+                                },
+                                onMouseEnter: (e) => {
+                                    if (activeTab !== tab) e.target.style.color = COLORS.TEXT_PRIMARY;
+                                },
+                                onMouseLeave: (e) => {
+                                    if (activeTab !== tab) e.target.style.color = COLORS.TEXT_SECONDARY;
                                 }
                             }, tab === 'comparison' ? '🔸 Photo Comparison' : tab)
                         )
@@ -112,245 +162,346 @@
                     style: {
                         flex: 1,
                         overflowY: 'auto',
-                        padding: '1.5rem'
+                        padding: '1.5rem',
+                        backgroundColor: COLORS.BG_CARD
                     }
                 },
                     // Overview Tab
                     activeTab === 'overview' && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
                         React.createElement('div', null,
-                            React.createElement('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, 'Classification'),
-                            React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' } },
-                                React.createElement('p', null, React.createElement('strong', null, 'Species: '), React.createElement('em', null, specimen.species_name)),
-                                React.createElement('p', null, React.createElement('strong', null, 'Genus: '), specimen.genus),
-                                React.createElement('p', null, React.createElement('strong', null, 'Family: '), specimen.family),
-                                specimen.common_name && React.createElement('p', null, React.createElement('strong', null, 'Common: '), specimen.common_name)
+                            React.createElement('h4', { 
+                                style: { 
+                                    fontWeight: '600', 
+                                    marginBottom: '0.5rem',
+                                    color: COLORS.TEXT_PRIMARY
+                                } 
+                            }, 'Classification'),
+                            React.createElement('div', { 
+                                style: { 
+                                    backgroundColor: COLORS.BG_PRIMARY, 
+                                    padding: '1rem', 
+                                    borderRadius: '0.5rem',
+                                    border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                } 
+                            },
+                                React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Species: '), 
+                                    React.createElement('em', null, specimen.species_name)
+                                ),
+                                React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Genus: '), 
+                                    specimen.genus
+                                ),
+                                React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Family: '), 
+                                    specimen.family
+                                ),
+                                specimen.common_name && React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Common: '), 
+                                    specimen.common_name
+                                )
                             ),
                             
-                            React.createElement('h4', { style: { fontWeight: '600', marginTop: '1rem', marginBottom: '0.5rem' } }, 'Location & Context'),
-                            React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' } },
-                                React.createElement('p', null, React.createElement('strong', null, 'Location: '), specimen.location),
-                                specimen.description && React.createElement('p', null, React.createElement('strong', null, 'Notes: '), specimen.description)
+                            React.createElement('h4', { 
+                                style: { 
+                                    fontWeight: '600', 
+                                    marginTop: '1rem', 
+                                    marginBottom: '0.5rem',
+                                    color: COLORS.TEXT_PRIMARY
+                                } 
+                            }, 'Location & Context'),
+                            React.createElement('div', { 
+                                style: { 
+                                    backgroundColor: COLORS.BG_PRIMARY, 
+                                    padding: '1rem', 
+                                    borderRadius: '0.5rem',
+                                    border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                } 
+                            },
+                                React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Location: '), 
+                                    specimen.location
+                                ),
+                                specimen.description && React.createElement('p', { style: { color: COLORS.TEXT_SECONDARY } }, 
+                                    React.createElement('strong', { style: { color: COLORS.TEXT_PRIMARY } }, 'Notes: '), 
+                                    specimen.description
+                                )
                             )
                         ),
                         
                         // Reference Photos
                         React.createElement('div', null,
-                            React.createElement('h4', { style: { fontWeight: '600', marginBottom: '0.5rem' } }, '📸 Reference Photos'),
+                            React.createElement('h4', { 
+                                style: { 
+                                    fontWeight: '600', 
+                                    marginBottom: '0.5rem',
+                                    color: COLORS.TEXT_PRIMARY
+                                } 
+                            }, '📸 Reference Photos'),
                             adminPhotos.length > 0 ?
-                                React.createElement('div', null,
-                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                        adminPhotos.slice(0, 4).map((photo, idx) =>
-                                            React.createElement('img', {
-                                                key: idx,
-                                                src: photo.medium_url || photo.url,
-                                                alt: `Reference ${idx + 1}`,
-                                                style: {
-                                                    width: '100%',
-                                                    height: '150px',
-                                                    objectFit: 'cover',
-                                                    borderRadius: '0.5rem',
-                                                    cursor: 'pointer'
-                                                },
-                                                onClick: () => setExpandedPhoto(photo) // Added click handler
-                                            })
-                                        )
-                                    ),
-                                    React.createElement('p', { 
-                                        style: { 
-                                            fontSize: '0.75rem', 
-                                            color: '#6b7280', 
-                                            marginTop: '0.5rem',
-                                            fontStyle: 'italic'
-                                        } 
-                                    }, 'Admin-curated reference images for accurate identification')
+                                React.createElement('div', {
+                                    style: {
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(2, 1fr)',
+                                        gap: '0.5rem'
+                                    }
+                                },
+                                    adminPhotos.slice(0, 4).map((photo, idx) =>
+                                        React.createElement('img', {
+                                            key: idx,
+                                            src: photo.medium_url || photo.url,
+                                            alt: `Reference ${idx + 1}`,
+                                            style: {
+                                                width: '100%',
+                                                height: '150px',
+                                                objectFit: 'cover',
+                                                borderRadius: '0.5rem',
+                                                cursor: 'pointer',
+                                                border: `2px solid ${COLORS.BORDER_DEFAULT}`,
+                                                transition: 'border-color 0.2s'
+                                            },
+                                            onClick: () => setExpandedPhoto(photo),
+                                            onMouseEnter: (e) => e.target.style.borderColor = COLORS.ACCENT_PRIMARY,
+                                            onMouseLeave: (e) => e.target.style.borderColor = COLORS.BORDER_DEFAULT
+                                        })
+                                    )
                                 ) :
-                                React.createElement('div', { style: { backgroundColor: '#f3f4f6', padding: '2rem', borderRadius: '0.5rem', textAlign: 'center' } },
-                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No reference photos available')
-                                )
+                                React.createElement('p', { 
+                                    style: { 
+                                        color: COLORS.TEXT_MUTED,
+                                        padding: '1rem',
+                                        backgroundColor: COLORS.BG_PRIMARY,
+                                        borderRadius: '0.5rem',
+                                        border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                    } 
+                                }, 'No reference photos available')
                         )
                     ),
                     
-                    // Photo Comparison Tab
+                    // Comparison Tab
                     activeTab === 'comparison' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 
-                            'Side-by-Side Comparison: Your Specimen vs. Reference'
-                        ),
-                        React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
-                            // Your Specimen Photos
-                            React.createElement('div', null,
-                                React.createElement('h5', { 
-                                    style: { 
-                                        fontWeight: '500', 
-                                        marginBottom: '0.5rem',
-                                        padding: '0.5rem',
-                                        backgroundColor: '#fef3c7',
-                                        borderRadius: '0.25rem'
-                                    } 
-                                }, '🔬 Your Specimen'),
-                                photos.length > 0 ?
-                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                        photos.slice(0, 4).map((photo, idx) =>
-                                            React.createElement('img', {
-                                                key: idx,
-                                                src: photo.medium_url || photo.url,
-                                                alt: `Specimen ${idx + 1}`,
-                                                style: {
-                                                    width: '100%',
-                                                    height: '120px',
-                                                    objectFit: 'cover',
-                                                    borderRadius: '0.25rem',
-                                                    border: '2px solid #fbbf24',
-                                                    cursor: 'pointer'
-                                                },
-                                                onClick: () => setExpandedPhoto(photo) // Added click handler
-                                            })
-                                        )
-                                    ) :
-                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No specimen photos')
-                            ),
-                            
-                            // Reference Photos
-                            React.createElement('div', null,
-                                React.createElement('h5', { 
-                                    style: { 
-                                        fontWeight: '500', 
-                                        marginBottom: '0.5rem',
-                                        padding: '0.5rem',
-                                        backgroundColor: '#dcfce7',
-                                        borderRadius: '0.25rem'
-                                    } 
-                                }, '✅ Reference Photos'),
-                                adminPhotos.length > 0 ?
-                                    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' } },
-                                        adminPhotos.slice(0, 4).map((photo, idx) =>
-                                            React.createElement('img', {
-                                                key: idx,
-                                                src: photo.medium_url || photo.url,
-                                                alt: `Reference ${idx + 1}`,
-                                                style: {
-                                                    width: '100%',
-                                                    height: '120px',
-                                                    objectFit: 'cover',
-                                                    borderRadius: '0.25rem',
-                                                    border: '2px solid #22c55e',
-                                                    cursor: 'pointer'
-                                                },
-                                                onClick: () => setExpandedPhoto(photo) // Added click handler
-                                            })
-                                        )
-                                    ) :
-                                    React.createElement('p', { style: { color: '#6b7280' } }, 'No reference photos')
-                            )
-                        ),
-                        React.createElement('div', {
-                            style: {
-                                marginTop: '1rem',
-                                padding: '1rem',
-                                backgroundColor: '#f0f9ff',
-                                borderRadius: '0.5rem',
-                                fontSize: '0.875rem'
-                            }
-                        },
-                            React.createElement('p', { style: { marginBottom: '0.5rem' } },
-                                React.createElement('strong', null, '💡 Comparison Tip: '),
-                                'Look for key differences in cap shape, gill attachment, stem features, and overall coloration.'
-                            ),
-                            hints.filter(h => h.type === 'comparative').length > 0 &&
-                                React.createElement('p', { style: { color: '#0369a1' } },
-                                    hints.find(h => h.type === 'comparative')?.text
+                        React.createElement('h4', { 
+                            style: { 
+                                fontWeight: '600', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, 'Visual Comparison'),
+                        adminPhotos.length >= 2 ?
+                            React.createElement('div', {
+                                style: {
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                                    gap: '1rem'
+                                }
+                            },
+                                adminPhotos.map((photo, idx) =>
+                                    React.createElement('div', {
+                                        key: idx,
+                                        style: {
+                                            backgroundColor: COLORS.BG_PRIMARY,
+                                            borderRadius: '0.5rem',
+                                            padding: '0.5rem',
+                                            border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                        }
+                                    },
+                                        React.createElement('img', {
+                                            src: photo.medium_url || photo.url,
+                                            alt: `Comparison ${idx + 1}`,
+                                            style: {
+                                                width: '100%',
+                                                height: '200px',
+                                                objectFit: 'cover',
+                                                borderRadius: '0.25rem',
+                                                cursor: 'pointer'
+                                            },
+                                            onClick: () => setExpandedPhoto(photo)
+                                        }),
+                                        photo.attribution && React.createElement('p', { 
+                                            style: { 
+                                                fontSize: '0.75rem', 
+                                                color: COLORS.TEXT_MUTED, 
+                                                marginTop: '0.5rem' 
+                                            } 
+                                        }, `© ${photo.attribution}`)
+                                    )
                                 )
-                        )
+                            ) :
+                            React.createElement('p', { 
+                                style: { 
+                                    color: COLORS.TEXT_MUTED,
+                                    padding: '1rem',
+                                    backgroundColor: COLORS.BG_PRIMARY,
+                                    borderRadius: '0.5rem',
+                                    border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                } 
+                            }, 'Multiple photos needed for comparison view')
                     ),
                     
                     // Features Tab
                     activeTab === 'features' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Diagnostic Features'),
+                        React.createElement('h4', { 
+                            style: { 
+                                fontWeight: '600', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, 'Identifying Features'),
                         hints.filter(h => h.type === 'morphological').length > 0 ?
                             hints.filter(h => h.type === 'morphological').map((hint, idx) =>
                                 React.createElement('div', {
                                     key: idx,
                                     style: {
-                                        backgroundColor: '#f0fdf4',
-                                        border: '1px solid #86efac',
+                                        backgroundColor: COLORS.ACCENT_SUCCESS + '20',
+                                        border: `1px solid ${COLORS.ACCENT_SUCCESS}`,
                                         borderRadius: '0.5rem',
                                         padding: '1rem',
                                         marginBottom: '1rem'
                                     }
                                 },
-                                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
+                                    React.createElement('div', { 
+                                        style: { 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.5rem', 
+                                            marginBottom: '0.5rem' 
+                                        } 
+                                    },
                                         React.createElement('span', null, '🔬'),
-                                        React.createElement('strong', { style: { color: '#059669' } }, 'Physical Characteristics')
+                                        React.createElement('strong', { 
+                                            style: { 
+                                                color: COLORS.ACCENT_SUCCESS 
+                                            } 
+                                        }, 'Physical Characteristics')
                                     ),
-                                    React.createElement('p', { style: { color: '#374151' } }, hint.text)
+                                    React.createElement('p', { 
+                                        style: { 
+                                            color: COLORS.TEXT_PRIMARY 
+                                        } 
+                                    }, hint.text)
                                 )
                             ) :
-                            React.createElement('p', { style: { color: '#6b7280' } }, 
-                                'Detailed morphological features will be added as more data becomes available.'
-                            )
+                            React.createElement('p', { 
+                                style: { 
+                                    color: COLORS.TEXT_MUTED,
+                                    padding: '1rem',
+                                    backgroundColor: COLORS.BG_PRIMARY,
+                                    borderRadius: '0.5rem',
+                                    border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                } 
+                            }, 'Detailed morphological features will be added as more data becomes available.')
                     ),
                     
                     // Ecology Tab
                     activeTab === 'ecology' && React.createElement('div', null,
-                        React.createElement('h4', { style: { fontWeight: '600', marginBottom: '1rem' } }, 'Ecological Information'),
+                        React.createElement('h4', { 
+                            style: { 
+                                fontWeight: '600', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, 'Ecological Information'),
                         hints.filter(h => h.type === 'ecological').length > 0 ?
                             hints.filter(h => h.type === 'ecological').map((hint, idx) =>
                                 React.createElement('div', {
                                     key: idx,
                                     style: {
-                                        backgroundColor: '#f0fdf4',
-                                        border: '1px solid #86efac',
+                                        backgroundColor: COLORS.ACCENT_INFO + '20',
+                                        border: `1px solid ${COLORS.ACCENT_INFO}`,
                                         borderRadius: '0.5rem',
                                         padding: '1rem',
                                         marginBottom: '1rem'
                                     }
                                 },
-                                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' } },
-                                        React.createElement('span', null, '🌲'),
-                                        React.createElement('strong', { style: { color: '#059669' } }, 'Habitat & Ecology')
+                                    React.createElement('div', { 
+                                        style: { 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '0.5rem', 
+                                            marginBottom: '0.5rem' 
+                                        } 
+                                    },
+                                        React.createElement('span', null, '🌿'),
+                                        React.createElement('strong', { 
+                                            style: { 
+                                                color: COLORS.ACCENT_INFO 
+                                            } 
+                                        }, 'Habitat & Ecology')
                                     ),
-                                    React.createElement('p', { style: { color: '#374151' } }, hint.text)
+                                    React.createElement('p', { 
+                                        style: { 
+                                            color: COLORS.TEXT_PRIMARY 
+                                        } 
+                                    }, hint.text)
                                 )
                             ) :
-                            React.createElement('div', null,
-                                React.createElement('p', { style: { color: '#6b7280' } }, 
-                                    'Ecological data will be added as the database grows.'
-                                ),
-                                React.createElement('div', { style: { marginTop: '1rem' } },
-                                    React.createElement('p', null, React.createElement('strong', null, 'Found in: '), specimen.location),
-                                    specimen.description && React.createElement('p', { style: { marginTop: '0.5rem' } }, 
-                                        React.createElement('strong', null, 'Field Notes: '), specimen.description
-                                    )
-                                )
-                            )
+                            React.createElement('p', { 
+                                style: { 
+                                    color: COLORS.TEXT_MUTED,
+                                    padding: '1rem',
+                                    backgroundColor: COLORS.BG_PRIMARY,
+                                    borderRadius: '0.5rem',
+                                    border: `1px solid ${COLORS.BORDER_DEFAULT}`
+                                } 
+                            }, 'Ecological information will be added as more field data becomes available.')
                     )
                 ),
                 
-                // Footer - Changed to single button
+                // Footer with Actions
                 React.createElement('div', {
                     style: {
-                        padding: '1.5rem',
-                        borderTop: '1px solid #e5e7eb',
-                        backgroundColor: '#f9fafb',
+                        padding: '1rem 1.5rem',
+                        backgroundColor: COLORS.BG_CARD,
+                        borderTop: `1px solid ${COLORS.BORDER_DEFAULT}`,
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
+                        justifyContent: 'flex-end',
+                        gap: '1rem'
                     }
                 },
-                    React.createElement('p', { style: { color: '#6b7280', fontSize: '0.875rem' } },
-                        'Use this guide to learn the key identification features'
-                    ),
                     React.createElement('button', {
-                        onClick: onClose,
+                        onClick: onTryAgain,
                         style: {
-                            padding: '0.5rem 1.5rem',
-                            backgroundColor: '#10b981',
+                            padding: '0.75rem 1.5rem',
+                            background: GRADIENTS.FOREST,
                             color: 'white',
                             borderRadius: '0.5rem',
                             border: 'none',
                             cursor: 'pointer',
-                            fontWeight: '500'
+                            fontWeight: '500',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                        },
+                        onMouseEnter: (e) => {
+                            e.target.style.transform = 'translateY(-2px)';
+                            e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                        },
+                        onMouseLeave: (e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
                         }
-                    }, 'Got It!')
+                    }, 'Try Another'),
+                    React.createElement('button', {
+                        onClick: onClose,
+                        style: {
+                            padding: '0.75rem 1.5rem',
+                            background: GRADIENTS.EARTH,
+                            color: 'white',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: '500',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                        },
+                        onMouseEnter: (e) => {
+                            e.target.style.transform = 'translateY(-2px)';
+                            e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                        },
+                        onMouseLeave: (e) => {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                        }
+                    }, 'Close Guide')
                 ),
                 
                 // Photo Expansion Modal
@@ -361,7 +512,7 @@
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        backgroundColor: 'rgba(0,0,0,0.95)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -382,7 +533,8 @@
                             style: {
                                 maxWidth: '100%',
                                 maxHeight: '90vh',
-                                objectFit: 'contain'
+                                objectFit: 'contain',
+                                borderRadius: '0.5rem'
                             }
                         }),
                         React.createElement('button', {
@@ -404,8 +556,11 @@
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center'
-                            }
+                                justifyContent: 'center',
+                                transition: 'background 0.2s'
+                            },
+                            onMouseEnter: (e) => e.target.style.backgroundColor = 'rgba(255,255,255,1)',
+                            onMouseLeave: (e) => e.target.style.backgroundColor = 'rgba(255,255,255,0.9)'
                         }, '×')
                     )
                 )
@@ -413,6 +568,6 @@
         );
     };
     
-    console.log('✅ InteractiveSpeciesGuide component loaded successfully');
+    console.log('✅ InteractiveSpeciesGuide component loaded with dark theme');
     
 })();

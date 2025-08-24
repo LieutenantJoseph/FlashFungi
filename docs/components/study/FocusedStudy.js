@@ -1,5 +1,39 @@
+// FocusedStudy.js - Updated with Living Mycology Dark Theme
 (function() {
     'use strict';
+    
+    // Design constants matching the established dark theme
+    const COLORS = {
+        // Dark theme backgrounds
+        BG_PRIMARY: '#1A1A19',
+        BG_CARD: '#2A2826',
+        BG_HOVER: '#323230',
+        
+        // Text colors
+        TEXT_PRIMARY: '#E8E2D5',
+        TEXT_SECONDARY: '#B8B2A5',
+        TEXT_MUTED: '#888478',
+        
+        // Accent colors
+        ACCENT_PRIMARY: '#8B7355',
+        ACCENT_SUCCESS: '#7C8650',
+        ACCENT_WARNING: '#D4A574',
+        ACCENT_ERROR: '#B85C5C',
+        ACCENT_INFO: '#6B8CAE',
+        
+        // Borders
+        BORDER_DEFAULT: 'rgba(139, 115, 85, 0.2)',
+        BORDER_HOVER: 'rgba(139, 115, 85, 0.4)',
+        BORDER_ACTIVE: 'rgba(139, 115, 85, 0.6)'
+    };
+    
+    // Gradient definitions
+    const GRADIENTS = {
+        EARTH: 'linear-gradient(135deg, #8B7355 0%, #6B5745 100%)',
+        FOREST: 'linear-gradient(135deg, #7C8650 0%, #5C6640 100%)',
+        SUNSET: 'linear-gradient(135deg, #D4A574 0%, #B48554 100%)',
+        MUSHROOM: 'linear-gradient(135deg, #8B7355 0%, #A0826D 50%, #6B5745 100%)'
+    };
     
     window.FocusedStudy = function FocusedStudy(props) {
         const specimens = props.specimens || [];
@@ -76,12 +110,17 @@
             });
         }
         
-        return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: '#f9fafb' } },
+        return React.createElement('div', { 
+            style: { 
+                minHeight: '100vh', 
+                backgroundColor: COLORS.BG_PRIMARY 
+            } 
+        },
             // Header
             React.createElement('div', { 
                 style: { 
-                    backgroundColor: 'white', 
-                    borderBottom: '1px solid #e5e7eb', 
+                    backgroundColor: COLORS.BG_CARD, 
+                    borderBottom: `1px solid ${COLORS.BORDER_DEFAULT}`, 
                     padding: '1rem' 
                 } 
             },
@@ -100,20 +139,24 @@
                                 border: 'none', 
                                 cursor: 'pointer', 
                                 fontSize: '1rem',
-                                color: '#6b7280'
-                            } 
+                                color: COLORS.TEXT_SECONDARY,
+                                transition: 'color 0.2s'
+                            },
+                            onMouseEnter: (e) => e.target.style.color = COLORS.TEXT_PRIMARY,
+                            onMouseLeave: (e) => e.target.style.color = COLORS.TEXT_SECONDARY
                         }, '← Back'),
                         React.createElement('div', null,
                             React.createElement('h1', { 
                                 style: { 
                                     fontSize: '1.5rem', 
-                                    fontWeight: 'bold' 
+                                    fontWeight: 'bold',
+                                    color: COLORS.TEXT_PRIMARY
                                 } 
                             }, '🎯 Focused Study'),
                             React.createElement('p', { 
                                 style: { 
                                     fontSize: '0.875rem', 
-                                    color: '#6b7280' 
+                                    color: COLORS.TEXT_SECONDARY
                                 } 
                             }, 'Customize your study session with filters')
                         )
@@ -126,30 +169,25 @@
                 style: { 
                     maxWidth: '72rem', 
                     margin: '0 auto', 
-                    padding: '2rem' 
+                    padding: '2rem 1rem' 
                 } 
             },
                 React.createElement('div', { 
                     style: { 
-                        backgroundColor: 'white', 
-                        borderRadius: '0.75rem', 
+                        backgroundColor: COLORS.BG_CARD,
+                        borderRadius: '1rem',
                         padding: '2rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
                     } 
                 },
                     React.createElement('h2', { 
                         style: { 
                             fontSize: '1.25rem', 
                             fontWeight: 'bold', 
-                            marginBottom: '1rem' 
+                            marginBottom: '2rem',
+                            color: COLORS.TEXT_PRIMARY
                         } 
-                    }, 'Study Filters'),
-                    React.createElement('p', { 
-                        style: { 
-                            color: '#6b7280', 
-                            marginBottom: '2rem' 
-                        } 
-                    }, 'Select criteria to focus your study session. Mix and match filters to target specific areas.'),
+                    }, '🔧 Filter Options'),
                     
                     // Family Filter
                     React.createElement('div', { style: { marginBottom: '2rem' } },
@@ -157,31 +195,45 @@
                             style: { 
                                 fontSize: '1rem', 
                                 fontWeight: '600', 
-                                marginBottom: '0.75rem' 
+                                marginBottom: '0.75rem',
+                                color: COLORS.TEXT_PRIMARY
                             } 
-                        }, '🏛️ Family'),
+                        }, '🌿 Family'),
                         React.createElement('div', { 
                             style: { 
-                                display: 'grid', 
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                                display: 'flex', 
+                                flexWrap: 'wrap', 
                                 gap: '0.5rem' 
                             } 
                         },
                             availableOptions.families.map(family => {
-                                const count = specimens.filter(s => s.family === family && s.status === 'approved').length;
                                 const isSelected = filters.family.includes(family);
-                                
                                 return React.createElement('label', {
                                     key: family,
                                     style: {
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
-                                        padding: '0.5rem',
-                                        backgroundColor: isSelected ? '#f0f9ff' : '#f9fafb',
-                                        border: `1px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
-                                        borderRadius: '0.375rem',
-                                        cursor: 'pointer'
+                                        padding: '0.5rem 0.75rem',
+                                        backgroundColor: isSelected ? COLORS.ACCENT_PRIMARY : COLORS.BG_PRIMARY,
+                                        color: isSelected ? COLORS.TEXT_PRIMARY : COLORS.TEXT_SECONDARY,
+                                        border: `1px solid ${isSelected ? COLORS.BORDER_ACTIVE : COLORS.BORDER_DEFAULT}`,
+                                        borderRadius: '0.5rem',
+                                        cursor: 'pointer',
+                                        fontSize: '0.875rem',
+                                        transition: 'all 0.2s'
+                                    },
+                                    onMouseEnter: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_HOVER;
+                                        }
+                                    },
+                                    onMouseLeave: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_PRIMARY;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                                        }
                                     }
                                 },
                                     React.createElement('input', {
@@ -190,23 +242,22 @@
                                         onChange: () => handleFilterChange('family', family),
                                         style: { margin: 0 }
                                     }),
-                                    React.createElement('span', { style: { fontSize: '0.875rem' } }, 
-                                        `${family} (${count})`
-                                    )
+                                    React.createElement('span', null, family)
                                 );
                             })
                         )
                     ),
                     
-                    // Genus Filter
+                    // Genus Filter with counts
                     React.createElement('div', { style: { marginBottom: '2rem' } },
                         React.createElement('h3', { 
                             style: { 
                                 fontSize: '1rem', 
                                 fontWeight: '600', 
-                                marginBottom: '0.75rem' 
+                                marginBottom: '0.75rem',
+                                color: COLORS.TEXT_PRIMARY
                             } 
-                        }, '🧬 Genus'),
+                        }, '🍄 Genus'),
                         React.createElement('div', { 
                             style: { 
                                 display: 'grid', 
@@ -215,7 +266,7 @@
                                 maxHeight: '200px',
                                 overflowY: 'auto',
                                 padding: '0.5rem',
-                                border: '1px solid #e5e7eb',
+                                backgroundColor: COLORS.BG_PRIMARY,
                                 borderRadius: '0.5rem'
                             } 
                         },
@@ -229,11 +280,23 @@
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '0.5rem',
-                                        padding: '0.25rem',
-                                        backgroundColor: isSelected ? '#f0f9ff' : 'transparent',
+                                        padding: '0.25rem 0.5rem',
+                                        backgroundColor: isSelected ? COLORS.ACCENT_PRIMARY : 'transparent',
+                                        color: isSelected ? COLORS.TEXT_PRIMARY : COLORS.TEXT_SECONDARY,
                                         borderRadius: '0.25rem',
                                         cursor: 'pointer',
-                                        fontSize: '0.875rem'
+                                        fontSize: '0.875rem',
+                                        transition: 'all 0.2s'
+                                    },
+                                    onMouseEnter: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                                        }
+                                    },
+                                    onMouseLeave: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                        }
                                     }
                                 },
                                     React.createElement('input', {
@@ -254,7 +317,8 @@
                             style: { 
                                 fontSize: '1rem', 
                                 fontWeight: '600', 
-                                marginBottom: '0.75rem' 
+                                marginBottom: '0.75rem',
+                                color: COLORS.TEXT_PRIMARY
                             } 
                         }, '⚡ Features'),
                         React.createElement('div', { 
@@ -273,10 +337,24 @@
                                         alignItems: 'center',
                                         gap: '0.5rem',
                                         padding: '0.75rem 1rem',
-                                        backgroundColor: isSelected ? '#f0f9ff' : '#f9fafb',
-                                        border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                                        backgroundColor: isSelected ? COLORS.ACCENT_SUCCESS : COLORS.BG_PRIMARY,
+                                        color: isSelected ? COLORS.TEXT_PRIMARY : COLORS.TEXT_SECONDARY,
+                                        border: `2px solid ${isSelected ? COLORS.ACCENT_SUCCESS : COLORS.BORDER_DEFAULT}`,
                                         borderRadius: '0.5rem',
-                                        cursor: 'pointer'
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    },
+                                    onMouseEnter: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_HOVER;
+                                        }
+                                    },
+                                    onMouseLeave: (e) => {
+                                        if (!isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_PRIMARY;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                                        }
                                     }
                                 },
                                     React.createElement('input', {
@@ -286,11 +364,16 @@
                                         style: { margin: 0 }
                                     }),
                                     React.createElement('div', null,
-                                        React.createElement('div', { style: { fontWeight: '500' } }, feature.label),
+                                        React.createElement('div', { 
+                                            style: { 
+                                                fontWeight: '500',
+                                                color: COLORS.TEXT_PRIMARY
+                                            } 
+                                        }, feature.label),
                                         React.createElement('div', { 
                                             style: { 
                                                 fontSize: '0.75rem', 
-                                                color: '#6b7280' 
+                                                color: COLORS.TEXT_MUTED
                                             } 
                                         }, `${feature.count} specimens`)
                                     )
@@ -302,17 +385,18 @@
                     // Study Session Summary
                     React.createElement('div', {
                         style: {
-                            backgroundColor: '#f8fafc',
-                            border: '1px solid #e2e8f0',
+                            background: GRADIENTS.MUSHROOM,
                             borderRadius: '0.5rem',
                             padding: '1rem',
-                            marginBottom: '2rem'
+                            marginBottom: '2rem',
+                            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
                         }
                     },
                         React.createElement('h4', { 
                             style: { 
                                 fontWeight: '600', 
-                                marginBottom: '0.5rem' 
+                                marginBottom: '0.5rem',
+                                color: '#FFFFFF'
                             } 
                         }, '📊 Study Session Preview'),
                         React.createElement('div', { 
@@ -327,58 +411,62 @@
                                     style: { 
                                         fontSize: '2rem', 
                                         fontWeight: 'bold',
-                                        color: filteredCount >= 5 ? '#10b981' : '#ef4444'
+                                        color: filteredCount >= 5 ? '#FFFFFF' : 'rgba(255,255,255,0.5)'
                                     } 
                                 }, filteredCount),
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '0.75rem', 
-                                        color: '#6b7280' 
+                                        color: 'rgba(255,255,255,0.9)'
                                     } 
-                                }, 'Total Specimens')
+                                }, 'Specimens')
                             ),
                             React.createElement('div', { style: { textAlign: 'center' } },
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '2rem', 
                                         fontWeight: 'bold',
-                                        color: '#3b82f6'
+                                        color: filters.family.length > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.5)'
                                     } 
-                                }, Math.min(20, filteredCount)),
+                                }, filters.family.length),
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '0.75rem', 
-                                        color: '#6b7280' 
+                                        color: 'rgba(255,255,255,0.9)'
                                     } 
-                                }, 'Questions')
+                                }, 'Families')
                             ),
                             React.createElement('div', { style: { textAlign: 'center' } },
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '2rem', 
                                         fontWeight: 'bold',
-                                        color: '#8b5cf6'
+                                        color: filters.genus.length > 0 ? '#FFFFFF' : 'rgba(255,255,255,0.5)'
                                     } 
-                                }, `~${Math.ceil(Math.min(20, filteredCount) * 1.5)}`),
+                                }, filters.genus.length),
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '0.75rem', 
-                                        color: '#6b7280' 
+                                        color: 'rgba(255,255,255,0.9)'
                                     } 
-                                }, 'Est. Minutes')
+                                }, 'Genera')
                             )
-                        ),
-                        filteredCount < 5 && React.createElement('div', {
-                            style: {
-                                marginTop: '0.75rem',
-                                padding: '0.5rem',
-                                backgroundColor: '#fef2f2',
-                                color: '#dc2626',
-                                borderRadius: '0.25rem',
-                                fontSize: '0.875rem',
-                                textAlign: 'center'
-                            }
-                        }, '⚠️ Need at least 5 specimens for effective study. Adjust your filters.')
+                        )
+                    ),
+                    
+                    // Minimum requirement notice
+                    filteredCount < 5 && React.createElement('div', {
+                        style: {
+                            padding: '1rem',
+                            backgroundColor: COLORS.ACCENT_ERROR,
+                            color: COLORS.TEXT_PRIMARY,
+                            borderRadius: '0.5rem',
+                            marginBottom: '1rem',
+                            textAlign: 'center'
+                        }
+                    },
+                        React.createElement('p', null, 
+                            `⚠️ At least 5 specimens required (currently ${filteredCount}). Adjust your filters.`)
                     ),
                     
                     // Action Buttons
@@ -393,12 +481,22 @@
                             onClick: () => setFilters({ family: [], genus: [], features: [] }),
                             style: {
                                 padding: '0.75rem 1.5rem',
-                                backgroundColor: '#6b7280',
+                                background: GRADIENTS.FOREST,
                                 color: 'white',
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 cursor: 'pointer',
-                                fontWeight: '500'
+                                fontWeight: '500',
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            },
+                            onMouseEnter: (e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                            },
+                            onMouseLeave: (e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
                             }
                         }, 'Clear All'),
                         React.createElement('button', {
@@ -406,13 +504,27 @@
                             disabled: filteredCount < 5,
                             style: {
                                 padding: '0.75rem 2rem',
-                                backgroundColor: filteredCount >= 5 ? '#10b981' : '#d1d5db',
-                                color: 'white',
+                                background: filteredCount >= 5 ? GRADIENTS.EARTH : COLORS.BG_HOVER,
+                                color: filteredCount >= 5 ? 'white' : COLORS.TEXT_MUTED,
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 cursor: filteredCount >= 5 ? 'pointer' : 'not-allowed',
                                 fontWeight: '500',
-                                fontSize: '1rem'
+                                fontSize: '1rem',
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                boxShadow: filteredCount >= 5 ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none'
+                            },
+                            onMouseEnter: (e) => {
+                                if (filteredCount >= 5) {
+                                    e.target.style.transform = 'translateY(-2px)';
+                                    e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                                }
+                            },
+                            onMouseLeave: (e) => {
+                                if (filteredCount >= 5) {
+                                    e.target.style.transform = 'translateY(0)';
+                                    e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                                }
                             }
                         }, `🎯 Start Focused Study (${filteredCount} specimens)`)
                     )
@@ -421,6 +533,6 @@
         );
     };
     
-    console.log('✅ FocusedStudy component loaded');
+    console.log('✅ FocusedStudy component loaded with dark theme');
     
 })();
