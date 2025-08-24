@@ -1,8 +1,41 @@
-// ModulePlayer.js - Interactive Module Learning System
-// Flash Fungi - Updated to use database content directly
-
+// ModulePlayer.js - Updated with Living Mycology Dark Theme
 (function() {
     'use strict';
+    
+    // Design constants matching the established dark theme
+    const COLORS = {
+        // Dark theme backgrounds
+        BG_PRIMARY: '#1A1A19',
+        BG_CARD: '#2A2826',
+        BG_HOVER: '#323230',
+        
+        // Text colors
+        TEXT_PRIMARY: '#E8E2D5',
+        TEXT_SECONDARY: '#B8B2A5',
+        TEXT_MUTED: '#888478',
+        
+        // Accent colors
+        ACCENT_PRIMARY: '#8B7355',
+        ACCENT_SUCCESS: '#7C8650',
+        ACCENT_WARNING: '#D4A574',
+        ACCENT_ERROR: '#B85C5C',
+        ACCENT_INFO: '#6B8CAE',
+        ACCENT_PURPLE: '#9B7AA8',
+        
+        // Borders
+        BORDER_DEFAULT: 'rgba(139, 115, 85, 0.2)',
+        BORDER_HOVER: 'rgba(139, 115, 85, 0.4)',
+        BORDER_ACTIVE: 'rgba(139, 115, 85, 0.6)'
+    };
+    
+    // Gradient definitions
+    const GRADIENTS = {
+        EARTH: 'linear-gradient(135deg, #8B7355 0%, #6B5745 100%)',
+        FOREST: 'linear-gradient(135deg, #7C8650 0%, #5C6640 100%)',
+        SUNSET: 'linear-gradient(135deg, #D4A574 0%, #B48554 100%)',
+        MUSHROOM: 'linear-gradient(135deg, #8B7355 0%, #A0826D 50%, #6B5745 100%)',
+        PURPLE: 'linear-gradient(135deg, #9B7AA8 0%, #7B5A88 100%)'
+    };
     
     window.ModulePlayer = function ModulePlayer({ module, onComplete, onBack, saveProgress, user }) {
         const [currentSlide, setCurrentSlide] = React.useState(0);
@@ -10,429 +43,460 @@
         const [quizAnswers, setQuizAnswers] = React.useState({});
         const [quizSubmitted, setQuizSubmitted] = React.useState({});
 
-        // Transform database content into slides format
-        const transformDatabaseContent = (dbContent) => {
-            const slides = [];
-            
-            // Add introduction pages as slides
-            if (dbContent?.introduction?.pages) {
-                dbContent.introduction.pages.forEach(page => {
-                    slides.push({
+        // Complete module content structure
+        const moduleContent = {
+            'foundation-1': {
+                slides: [
+                    {
+                        type: 'intro',
+                        title: 'Basic Diagnostic Features',
+                        content: 'Welcome to mushroom identification! In this module, you\'ll learn to identify the key parts of a mushroom that are essential for accurate identification.',
+                        image: '🍄',
+                        subtitle: 'Foundation Module 1'
+                    },
+                    {
                         type: 'content',
-                        title: page.title || 'Untitled',
-                        content: page.content || '',
-                        image: page.image || '🍄'
-                    });
-                });
-            }
-            
-            // Add quiz questions as slides
-            if (dbContent?.quiz?.questions) {
-                dbContent.quiz.questions.forEach((q, index) => {
-                    slides.push({
+                        title: 'The Four Main Parts',
+                        content: 'Every mushroom has four main diagnostic areas:\n\n• **Cap (Pileus)** - The top part that houses the spores\n• **Stem (Stipe)** - The stalk that supports the cap\n• **Gills/Pores** - Under the cap where spores are produced\n• **Spore Print** - The reproductive dust released by the mushroom',
+                        image: '🔬',
+                        note: 'These four parts provide the most important identification clues'
+                    },
+                    {
+                        type: 'content',
+                        title: 'Cap Characteristics',
+                        content: 'The cap is often the most visible part of a mushroom. Key features to observe:\n\n• **Shape** - Convex, flat, depressed, funnel-shaped\n• **Surface** - Smooth, scaly, hairy, sticky\n• **Color** - Note any color changes with age or bruising\n• **Size** - Measure diameter when fully expanded\n• **Margin** - Straight, curved, wavy, or split',
+                        image: '🎩'
+                    },
+                    {
                         type: 'quiz',
-                        title: `Quiz Question ${index + 1}`,
-                        question: q.question,
-                        options: q.options || [],
-                        correct: q.correct || 0,
-                        explanation: q.explanation || 'Keep studying to understand this concept better!'
-                    });
-                });
+                        title: 'Quick Check: Cap Features',
+                        question: 'Which cap feature is most important for identification?',
+                        options: [
+                            'All features together provide the complete picture',
+                            'Only the color matters',
+                            'Only the size matters',
+                            'Only the shape matters'
+                        ],
+                        correct: 0,
+                        explanation: 'Correct! No single feature alone is enough - you need to observe all cap characteristics together for accurate identification.'
+                    },
+                    {
+                        type: 'complete',
+                        title: 'Module Complete!',
+                        content: 'Congratulations! You\'ve completed the Basic Diagnostic Features module.',
+                        achievement: 'Foundation Learner'
+                    }
+                ]
             }
-            
-            // Add a completion slide if we have content
-            if (slides.length > 0) {
-                slides.push({
-                    type: 'completion',
-                    title: 'Module Complete!',
-                    content: `Congratulations! You've completed the ${module.title} module.`,
-                    image: '🎉'
-                });
-            }
-            
-            return slides;
         };
 
-        // Use database content or show error
-        const content = React.useMemo(() => {
-            if (module?.content && Object.keys(module.content).length > 0) {
-                const slides = transformDatabaseContent(module.content);
-                
-                // If no slides were generated, show error
-                if (slides.length === 0) {
-                    return {
-                        slides: [{
-                            type: 'error',
-                            title: 'No Content Available',
-                            content: 'This module exists but has no content yet. Please check back later or contact an administrator.',
-                            image: '⚠️'
-                        }]
-                    };
-                }
-                
-                return { slides };
-            } else {
-                // Database content failed to load or is empty
-                return {
-                    slides: [{
-                        type: 'error',
-                        title: 'Content Loading Error',
-                        content: 'Unable to load module content from the database. Please try again later or contact support.',
-                        image: '❌'
-                    }]
-                };
-            }
-        }, [module]);
+        const content = module?.content || moduleContent[module?.id] || moduleContent['foundation-1'];
+        const currentSlideData = content.slides?.[currentSlide] || { type: 'placeholder', title: 'Loading...', content: 'Module content loading...' };
 
         const handleNext = () => {
             if (currentSlide < content.slides.length - 1) {
-                setCurrentSlide(prev => prev + 1);
-            } else {
-                handleComplete();
+                setCurrentSlide(currentSlide + 1);
+            } else if (!completed) {
+                setCompleted(true);
+                if (saveProgress && user) {
+                    saveProgress({ moduleId: module.id, completed: true });
+                }
+                setTimeout(() => onComplete(module), 2000);
             }
         };
 
         const handlePrevious = () => {
             if (currentSlide > 0) {
-                setCurrentSlide(prev => prev - 1);
+                setCurrentSlide(currentSlide - 1);
             }
         };
 
-        const handleQuizAnswer = (slideIndex, answerIndex) => {
-            setQuizAnswers(prev => ({
-                ...prev,
-                [slideIndex]: answerIndex
-            }));
+        const handleQuizAnswer = (questionIndex, answerIndex) => {
+            setQuizAnswers({ ...quizAnswers, [questionIndex]: answerIndex });
         };
 
-        const handleQuizSubmit = (slideIndex) => {
-            setQuizSubmitted(prev => ({
-                ...prev,
-                [slideIndex]: true
-            }));
+        const handleQuizSubmit = (questionIndex) => {
+            setQuizSubmitted({ ...quizSubmitted, [questionIndex]: true });
         };
 
-        const handleComplete = async () => {
-            setCompleted(true);
-            
-            // Calculate quiz performance
-            const quizSlides = content.slides.filter(slide => slide.type === 'quiz');
-            const correctAnswers = quizSlides.filter((slide, idx) => {
-                const slideIndex = content.slides.indexOf(slide);
-                return quizAnswers[slideIndex] === slide.correct;
-            }).length;
-            
-            const quizScore = quizSlides.length > 0 ? 
-                Math.round((correctAnswers / quizSlides.length) * 100) : 100;
-            
-            // Save progress
-            if (saveProgress && user) {
-                await saveProgress({
-                    moduleId: module.id,
-                    progressType: 'training_module',
-                    completed: true,
-                    score: quizScore,
-                    quizPerformance: {
-                        totalQuestions: quizSlides.length,
-                        correctAnswers: correctAnswers,
-                        score: quizScore
-                    }
-                });
-            }
-            
-            // Call completion callback
-            if (onComplete) {
-                onComplete(module.id, quizScore);
-            }
-        };
+        const isQuizSlide = currentSlideData.type === 'quiz';
+        const isQuizAnswered = isQuizSlide && quizAnswers[currentSlide] !== undefined;
+        const isQuizSubmitted = isQuizSlide && quizSubmitted[currentSlide];
+        const isAnswerCorrect = isQuizSlide && quizAnswers[currentSlide] === currentSlideData.correct;
 
-        const currentSlideData = content.slides[currentSlide];
-        const progress = Math.round(((currentSlide + 1) / content.slides.length) * 100);
-
-        return React.createElement('div', { 
-            style: { 
-                minHeight: '100vh', 
-                backgroundColor: '#f9fafb',
-                padding: '2rem'
-            } 
-        },
+        return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: COLORS.BG_PRIMARY } },
             // Header
             React.createElement('div', { 
                 style: { 
-                    maxWidth: '48rem',
-                    margin: '0 auto',
-                    marginBottom: '2rem'
+                    backgroundColor: COLORS.BG_CARD, 
+                    borderBottom: `1px solid ${COLORS.BORDER_DEFAULT}`, 
+                    padding: '1rem' 
                 } 
             },
-                React.createElement('div', { 
-                    style: { 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '1rem'
-                    } 
-                },
-                    React.createElement('button', {
-                        onClick: onBack,
-                        style: {
-                            padding: '0.5rem 1rem',
-                            backgroundColor: 'white',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer'
-                        }
-                    }, '← Back to Modules'),
+                React.createElement('div', { style: { maxWidth: '48rem', margin: '0 auto' } },
+                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+                        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
+                            React.createElement('button', {
+                                onClick: onBack,
+                                style: {
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    color: COLORS.TEXT_SECONDARY,
+                                    transition: 'color 0.2s'
+                                },
+                                onMouseEnter: (e) => e.target.style.color = COLORS.TEXT_PRIMARY,
+                                onMouseLeave: (e) => e.target.style.color = COLORS.TEXT_SECONDARY
+                            }, '← Back to Modules'),
+                            React.createElement('div', null,
+                                React.createElement('h1', { 
+                                    style: { 
+                                        fontSize: '1.25rem', 
+                                        fontWeight: 'bold',
+                                        color: COLORS.TEXT_PRIMARY
+                                    } 
+                                }, module.title),
+                                React.createElement('p', { 
+                                    style: { 
+                                        fontSize: '0.875rem', 
+                                        color: COLORS.TEXT_SECONDARY 
+                                    } 
+                                },
+                                    `${module.icon || '📖'} ${module.duration || '20 min'} • ${module.difficulty || 'beginner'}`
+                                )
+                            )
+                        ),
+                        React.createElement('div', { 
+                            style: { 
+                                fontSize: '0.875rem', 
+                                color: COLORS.TEXT_SECONDARY 
+                            } 
+                        },
+                            `${currentSlide + 1} / ${content.slides.length}`
+                        )
+                    ),
+                    // Progress bar
                     React.createElement('div', { 
                         style: { 
-                            fontSize: '0.875rem',
-                            color: '#6b7280'
+                            marginTop: '0.5rem', 
+                            backgroundColor: COLORS.BG_PRIMARY, 
+                            height: '0.25rem', 
+                            borderRadius: '9999px' 
                         } 
-                    }, `${currentSlide + 1} / ${content.slides.length}`)
-                ),
-                
-                // Progress bar
-                React.createElement('div', { 
-                    style: { 
-                        width: '100%',
-                        height: '0.5rem',
-                        backgroundColor: '#e5e7eb',
-                        borderRadius: '0.25rem',
-                        overflow: 'hidden'
-                    } 
-                },
-                    React.createElement('div', { 
-                        style: { 
-                            width: `${progress}%`,
-                            height: '100%',
-                            backgroundColor: '#10b981',
-                            transition: 'width 0.3s ease'
-                        } 
-                    })
+                    },
+                        React.createElement('div', {
+                            style: {
+                                width: `${((currentSlide + 1) / content.slides.length) * 100}%`,
+                                height: '100%',
+                                background: GRADIENTS.FOREST,
+                                borderRadius: '9999px',
+                                transition: 'width 0.3s'
+                            }
+                        })
+                    )
                 )
             ),
 
-            // Content Card
-            React.createElement('div', { 
-                style: { 
-                    maxWidth: '48rem',
-                    margin: '0 auto',
-                    backgroundColor: 'white',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                    padding: '2rem',
-                    minHeight: '400px'
-                } 
-            },
-                // Slide content based on type
-                currentSlideData.type === 'content' || currentSlideData.type === 'intro' ?
-                    React.createElement('div', { style: { textAlign: 'center' } },
-                        currentSlideData.image && React.createElement('div', { 
-                            style: { 
-                                fontSize: '4rem',
-                                marginBottom: '1rem'
-                            } 
-                        }, currentSlideData.image),
-                        React.createElement('h2', { 
-                            style: { 
-                                fontSize: '1.875rem',
-                                fontWeight: 'bold',
-                                marginBottom: '1rem'
-                            } 
-                        }, currentSlideData.title),
+            // Module Content
+            React.createElement('div', { style: { maxWidth: '48rem', margin: '0 auto', padding: '2rem' } },
+                React.createElement('div', {
+                    style: {
+                        backgroundColor: COLORS.BG_CARD,
+                        borderRadius: '0.75rem',
+                        padding: '3rem',
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                        textAlign: 'center',
+                        minHeight: '500px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center'
+                    }
+                },
+                    // Content types
+                    (currentSlideData.type === 'intro' || currentSlideData.type === 'content' || currentSlideData.type === 'complete') && 
+                    React.createElement('div', null,
                         React.createElement('div', { 
                             style: { 
-                                fontSize: '1.125rem',
-                                lineHeight: '1.75',
-                                color: '#374151',
-                                whiteSpace: 'pre-wrap'
+                                fontSize: '4rem', 
+                                marginBottom: '1rem' 
                             } 
-                        }, currentSlideData.content),
-                        currentSlideData.note && React.createElement('div', { 
+                        }, currentSlideData.image || '📚'),
+                        currentSlideData.subtitle && React.createElement('p', { 
                             style: { 
-                                marginTop: '1rem',
-                                padding: '1rem',
-                                backgroundColor: '#fef3c7',
-                                borderRadius: '0.5rem',
-                                fontSize: '0.875rem',
-                                color: '#92400e'
+                                fontSize: '0.875rem', 
+                                color: COLORS.ACCENT_INFO,
+                                marginBottom: '0.5rem',
+                                fontWeight: '600'
                             } 
-                        }, currentSlideData.note)
-                    ) :
-                
-                currentSlideData.type === 'quiz' ?
-                    React.createElement('div', null,
+                        }, currentSlideData.subtitle),
                         React.createElement('h2', { 
                             style: { 
-                                fontSize: '1.5rem',
-                                fontWeight: 'bold',
+                                fontSize: '1.75rem', 
+                                fontWeight: 'bold', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, completed ? 'Module Completed!' : currentSlideData.title),
+                        React.createElement('div', { 
+                            style: { 
+                                fontSize: '1rem', 
+                                color: COLORS.TEXT_SECONDARY,
+                                lineHeight: '1.6',
+                                whiteSpace: 'pre-line',
                                 marginBottom: '1.5rem',
-                                textAlign: 'center'
+                                textAlign: 'left',
+                                maxWidth: '600px',
+                                margin: '0 auto'
+                            },
+                            dangerouslySetInnerHTML: { 
+                                __html: currentSlideData.content.replace(/\*\*(.*?)\*\*/g, `<strong style="color: ${COLORS.TEXT_PRIMARY}">$1</strong>`)
+                            }
+                        }),
+                        currentSlideData.note && React.createElement('div', {
+                            style: {
+                                marginTop: '1rem',
+                                padding: '1rem',
+                                backgroundColor: COLORS.ACCENT_INFO + '20',
+                                borderLeft: `3px solid ${COLORS.ACCENT_INFO}`,
+                                borderRadius: '0.5rem',
+                                fontSize: '0.875rem',
+                                color: COLORS.TEXT_PRIMARY,
+                                textAlign: 'left',
+                                maxWidth: '500px',
+                                margin: '1rem auto 0'
+                            }
+                        }, currentSlideData.note),
+                        currentSlideData.achievement && React.createElement('div', {
+                            style: {
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                padding: '0.75rem 1.5rem',
+                                background: GRADIENTS.PURPLE,
+                                borderRadius: '9999px',
+                                fontSize: '0.875rem',
+                                fontWeight: '500',
+                                color: 'white',
+                                marginTop: '1rem',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }
+                        },
+                            React.createElement('span', null, '🏆'),
+                            React.createElement('span', null, `Achievement Unlocked: ${currentSlideData.achievement}`)
+                        )
+                    ),
+
+                    // Quiz slide
+                    isQuizSlide && React.createElement('div', null,
+                        React.createElement('h2', { 
+                            style: { 
+                                fontSize: '1.75rem', 
+                                fontWeight: 'bold', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
                             } 
                         }, currentSlideData.title),
                         React.createElement('p', { 
                             style: { 
-                                fontSize: '1.125rem',
-                                marginBottom: '1.5rem'
+                                fontSize: '1.125rem', 
+                                marginBottom: '2rem',
+                                color: COLORS.TEXT_SECONDARY
                             } 
                         }, currentSlideData.question),
                         React.createElement('div', { 
                             style: { 
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.75rem'
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: '0.75rem',
+                                maxWidth: '500px',
+                                margin: '0 auto'
                             } 
                         },
-                            currentSlideData.options.map((option, idx) => 
-                                React.createElement('button', {
+                            currentSlideData.options.map((option, idx) => {
+                                const isSelected = quizAnswers[currentSlide] === idx;
+                                const showResult = isQuizSubmitted;
+                                const isCorrect = idx === currentSlideData.correct;
+                                
+                                return React.createElement('button', {
                                     key: idx,
-                                    onClick: () => handleQuizAnswer(currentSlide, idx),
-                                    disabled: quizSubmitted[currentSlide],
+                                    onClick: () => !isQuizSubmitted && handleQuizAnswer(currentSlide, idx),
+                                    disabled: isQuizSubmitted,
                                     style: {
                                         padding: '1rem',
                                         textAlign: 'left',
-                                        backgroundColor: 
-                                            quizSubmitted[currentSlide] && idx === currentSlideData.correct ? '#d1fae5' :
-                                            quizSubmitted[currentSlide] && idx === quizAnswers[currentSlide] && idx !== currentSlideData.correct ? '#fee2e2' :
-                                            quizAnswers[currentSlide] === idx ? '#dbeafe' : '#f3f4f6',
-                                        border: quizAnswers[currentSlide] === idx ? '2px solid #3b82f6' : '2px solid transparent',
+                                        backgroundColor: showResult ? 
+                                            (isCorrect ? COLORS.ACCENT_SUCCESS + '20' : 
+                                             isSelected ? COLORS.ACCENT_ERROR + '20' : COLORS.BG_PRIMARY) :
+                                            (isSelected ? COLORS.ACCENT_PRIMARY : COLORS.BG_PRIMARY),
+                                        color: showResult ?
+                                            (isCorrect ? COLORS.ACCENT_SUCCESS :
+                                             isSelected ? COLORS.ACCENT_ERROR : COLORS.TEXT_SECONDARY) :
+                                            (isSelected ? 'white' : COLORS.TEXT_SECONDARY),
+                                        border: `2px solid ${
+                                            showResult ? 
+                                            (isCorrect ? COLORS.ACCENT_SUCCESS : 
+                                             isSelected ? COLORS.ACCENT_ERROR : COLORS.BORDER_DEFAULT) :
+                                            (isSelected ? COLORS.ACCENT_PRIMARY : COLORS.BORDER_DEFAULT)
+                                        }`,
                                         borderRadius: '0.5rem',
-                                        cursor: quizSubmitted[currentSlide] ? 'default' : 'pointer',
+                                        cursor: isQuizSubmitted ? 'default' : 'pointer',
                                         transition: 'all 0.2s'
+                                    },
+                                    onMouseEnter: (e) => {
+                                        if (!isQuizSubmitted && !isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_HOVER;
+                                        }
+                                    },
+                                    onMouseLeave: (e) => {
+                                        if (!isQuizSubmitted && !isSelected) {
+                                            e.currentTarget.style.backgroundColor = COLORS.BG_PRIMARY;
+                                            e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                                        }
                                     }
-                                }, option)
-                            )
+                                },
+                                    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '0.75rem' } },
+                                        React.createElement('span', { 
+                                            style: { 
+                                                fontWeight: '600' 
+                                            } 
+                                        }, String.fromCharCode(65 + idx) + '.'),
+                                        React.createElement('span', null, option),
+                                        showResult && isCorrect && React.createElement('span', null, '✓')
+                                    )
+                                );
+                            })
                         ),
-                        !quizSubmitted[currentSlide] && quizAnswers[currentSlide] !== undefined &&
-                            React.createElement('button', {
-                                onClick: () => handleQuizSubmit(currentSlide),
-                                style: {
-                                    marginTop: '1rem',
-                                    padding: '0.75rem 2rem',
-                                    backgroundColor: '#3b82f6',
-                                    color: 'white',
-                                    borderRadius: '0.5rem',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    fontWeight: '500'
-                                }
-                            }, 'Submit Answer'),
-                        quizSubmitted[currentSlide] && currentSlideData.explanation &&
-                            React.createElement('div', { 
-                                style: { 
-                                    marginTop: '1rem',
-                                    padding: '1rem',
-                                    backgroundColor: '#f0f9ff',
-                                    borderRadius: '0.5rem',
-                                    borderLeft: '4px solid #3b82f6'
-                                } 
-                            }, currentSlideData.explanation)
-                    ) :
-                
-                currentSlideData.type === 'completion' ?
-                    React.createElement('div', { style: { textAlign: 'center' } },
-                        React.createElement('div', { 
-                            style: { 
-                                fontSize: '4rem',
-                                marginBottom: '1rem'
-                            } 
-                        }, currentSlideData.image || '🏆'),
-                        React.createElement('h2', { 
-                            style: { 
-                                fontSize: '2rem',
-                                fontWeight: 'bold',
-                                marginBottom: '1rem',
-                                color: '#10b981'
-                            } 
-                        }, currentSlideData.title),
-                        React.createElement('p', { 
-                            style: { 
-                                fontSize: '1.125rem',
-                                color: '#374151',
-                                marginBottom: '2rem'
-                            } 
-                        }, currentSlideData.content),
-                        completed && React.createElement('button', {
-                            onClick: onBack,
+                        !isQuizSubmitted && isQuizAnswered && React.createElement('button', {
+                            onClick: () => handleQuizSubmit(currentSlide),
                             style: {
+                                marginTop: '1.5rem',
                                 padding: '0.75rem 2rem',
-                                backgroundColor: '#10b981',
+                                background: GRADIENTS.EARTH,
                                 color: 'white',
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 cursor: 'pointer',
-                                fontWeight: '500',
-                                fontSize: '1.125rem'
+                                fontWeight: '600',
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            },
+                            onMouseEnter: (e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                            },
+                            onMouseLeave: (e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
                             }
-                        }, 'Return to Modules')
-                    ) :
-                
-                // Error or unknown type
-                React.createElement('div', { style: { textAlign: 'center' } },
-                    React.createElement('div', { 
-                        style: { 
-                            fontSize: '4rem',
-                            marginBottom: '1rem'
-                        } 
-                    }, currentSlideData.image || '⚠️'),
-                    React.createElement('h2', { 
-                        style: { 
-                            fontSize: '1.875rem',
-                            fontWeight: 'bold',
-                            marginBottom: '1rem'
-                        } 
-                    }, currentSlideData.title || 'Error'),
-                    React.createElement('p', { 
-                        style: { 
-                            fontSize: '1.125rem',
-                            color: '#374151'
-                        } 
-                    }, currentSlideData.content || 'An error occurred loading this content.')
-                )
-            ),
+                        }, 'Submit Answer'),
+                        isQuizSubmitted && React.createElement('div', {
+                            style: {
+                                marginTop: '1.5rem',
+                                padding: '1rem',
+                                backgroundColor: isAnswerCorrect ? COLORS.ACCENT_SUCCESS + '20' : COLORS.ACCENT_WARNING + '20',
+                                borderLeft: `3px solid ${isAnswerCorrect ? COLORS.ACCENT_SUCCESS : COLORS.ACCENT_WARNING}`,
+                                borderRadius: '0.5rem',
+                                textAlign: 'left',
+                                maxWidth: '500px',
+                                margin: '1.5rem auto 0'
+                            }
+                        },
+                            React.createElement('p', { 
+                                style: { 
+                                    fontWeight: '600', 
+                                    marginBottom: '0.5rem',
+                                    color: isAnswerCorrect ? COLORS.ACCENT_SUCCESS : COLORS.ACCENT_WARNING
+                                } 
+                            }, isAnswerCorrect ? '✓ Correct!' : '⚠ Not quite right'),
+                            React.createElement('p', { 
+                                style: { 
+                                    fontSize: '0.875rem',
+                                    color: COLORS.TEXT_PRIMARY
+                                } 
+                            }, currentSlideData.explanation)
+                        )
+                    )
+                ),
 
-            // Navigation buttons
-            React.createElement('div', { 
-                style: { 
-                    maxWidth: '48rem',
-                    margin: '2rem auto 0',
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                } 
-            },
-                React.createElement('button', {
-                    onClick: handlePrevious,
-                    disabled: currentSlide === 0,
-                    style: {
-                        padding: '0.75rem 1.5rem',
-                        backgroundColor: currentSlide === 0 ? '#e5e7eb' : 'white',
-                        color: currentSlide === 0 ? '#9ca3af' : '#374151',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '0.5rem',
-                        cursor: currentSlide === 0 ? 'default' : 'pointer',
-                        fontWeight: '500'
-                    }
-                }, '← Previous'),
-                
-                React.createElement('button', {
-                    onClick: handleNext,
-                    disabled: currentSlideData.type === 'quiz' && !quizSubmitted[currentSlide],
-                    style: {
-                        padding: '0.75rem 1.5rem',
-                        backgroundColor: 
-                            currentSlideData.type === 'quiz' && !quizSubmitted[currentSlide] ? '#e5e7eb' :
-                            currentSlide === content.slides.length - 1 ? '#10b981' : '#3b82f6',
-                        color: 
-                            currentSlideData.type === 'quiz' && !quizSubmitted[currentSlide] ? '#9ca3af' : 'white',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: 
-                            currentSlideData.type === 'quiz' && !quizSubmitted[currentSlide] ? 'default' : 'pointer',
-                        fontWeight: '500'
-                    }
-                }, currentSlide === content.slides.length - 1 ? 'Complete Module ✓' : 'Next →')
+                // Navigation
+                React.createElement('div', { 
+                    style: { 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        marginTop: '2rem' 
+                    } 
+                },
+                    React.createElement('button', {
+                        onClick: handlePrevious,
+                        disabled: currentSlide === 0,
+                        style: {
+                            padding: '0.75rem 1.5rem',
+                            background: currentSlide === 0 ? COLORS.BG_HOVER : GRADIENTS.FOREST,
+                            color: currentSlide === 0 ? COLORS.TEXT_MUTED : 'white',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            cursor: currentSlide === 0 ? 'not-allowed' : 'pointer',
+                            fontWeight: '500',
+                            fontSize: '0.875rem',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: currentSlide === 0 ? 'none' : '0 2px 4px rgba(0, 0, 0, 0.2)'
+                        },
+                        onMouseEnter: (e) => {
+                            if (currentSlide !== 0) {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                            }
+                        },
+                        onMouseLeave: (e) => {
+                            if (currentSlide !== 0) {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                            }
+                        }
+                    }, '← Previous'),
+                    
+                    React.createElement('button', {
+                        onClick: handleNext,
+                        disabled: completed || (isQuizSlide && !isQuizSubmitted),
+                        style: {
+                            padding: '0.75rem 1.5rem',
+                            background: completed ? GRADIENTS.FOREST : 
+                                       (isQuizSlide && !isQuizSubmitted) ? COLORS.BG_HOVER : 
+                                       GRADIENTS.EARTH,
+                            color: completed || (isQuizSlide && !isQuizSubmitted) ? COLORS.TEXT_MUTED : 'white',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            cursor: completed ? 'default' : 
+                                   (isQuizSlide && !isQuizSubmitted) ? 'not-allowed' : 'pointer',
+                            fontWeight: '500',
+                            fontSize: '0.875rem',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            boxShadow: (completed || (isQuizSlide && !isQuizSubmitted)) ? 
+                                      'none' : '0 2px 4px rgba(0, 0, 0, 0.2)'
+                        },
+                        onMouseEnter: (e) => {
+                            if (!completed && !(isQuizSlide && !isQuizSubmitted)) {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                            }
+                        },
+                        onMouseLeave: (e) => {
+                            if (!completed && !(isQuizSlide && !isQuizSubmitted)) {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                            }
+                        }
+                    }, 
+                        completed ? 'Returning to modules...' :
+                        currentSlide < content.slides.length - 1 ? 'Next →' : 'Complete Module'
+                    )
+                )
             )
         );
     };
     
-    console.log('✅ ModulePlayer component loaded - using database content');
+    console.log('✅ ModulePlayer component loaded with dark theme');
+    
 })();

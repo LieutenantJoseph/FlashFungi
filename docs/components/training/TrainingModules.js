@@ -1,8 +1,41 @@
-// TrainingModules.js - Training Modules Display Component
-// Updated to use database modules via ModuleLoader
-
+// TrainingModules.js - Updated with Living Mycology Dark Theme
 (function() {
     'use strict';
+    
+    // Design constants matching the established dark theme
+    const COLORS = {
+        // Dark theme backgrounds
+        BG_PRIMARY: '#1A1A19',
+        BG_CARD: '#2A2826',
+        BG_HOVER: '#323230',
+        
+        // Text colors
+        TEXT_PRIMARY: '#E8E2D5',
+        TEXT_SECONDARY: '#B8B2A5',
+        TEXT_MUTED: '#888478',
+        
+        // Accent colors
+        ACCENT_PRIMARY: '#8B7355',
+        ACCENT_SUCCESS: '#7C8650',
+        ACCENT_WARNING: '#D4A574',
+        ACCENT_ERROR: '#B85C5C',
+        ACCENT_INFO: '#6B8CAE',
+        ACCENT_PURPLE: '#9B7AA8',
+        
+        // Borders
+        BORDER_DEFAULT: 'rgba(139, 115, 85, 0.2)',
+        BORDER_HOVER: 'rgba(139, 115, 85, 0.4)',
+        BORDER_ACTIVE: 'rgba(139, 115, 85, 0.6)'
+    };
+    
+    // Gradient definitions
+    const GRADIENTS = {
+        EARTH: 'linear-gradient(135deg, #8B7355 0%, #6B5745 100%)',
+        FOREST: 'linear-gradient(135deg, #7C8650 0%, #5C6640 100%)',
+        SUNSET: 'linear-gradient(135deg, #D4A574 0%, #B48554 100%)',
+        MUSHROOM: 'linear-gradient(135deg, #8B7355 0%, #A0826D 50%, #6B5745 100%)',
+        PURPLE: 'linear-gradient(135deg, #9B7AA8 0%, #7B5A88 100%)'
+    };
     
     window.TrainingModules = function TrainingModules({ 
         modules = [], 
@@ -40,7 +73,7 @@
         return React.createElement('div', { 
             style: { 
                 minHeight: '100vh', 
-                backgroundColor: '#f9fafb',
+                backgroundColor: COLORS.BG_PRIMARY,
                 padding: '2rem'
             } 
         },
@@ -59,11 +92,23 @@
                         alignItems: 'center',
                         gap: '0.5rem',
                         padding: '0.5rem 1rem',
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
+                        backgroundColor: COLORS.BG_CARD,
+                        border: `1px solid ${COLORS.BORDER_DEFAULT}`,
                         borderRadius: '0.5rem',
                         cursor: 'pointer',
-                        marginBottom: '1rem'
+                        marginBottom: '1rem',
+                        color: COLORS.TEXT_SECONDARY,
+                        transition: 'all 0.2s'
+                    },
+                    onMouseEnter: (e) => {
+                        e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                        e.currentTarget.style.borderColor = COLORS.BORDER_HOVER;
+                        e.currentTarget.style.color = COLORS.TEXT_PRIMARY;
+                    },
+                    onMouseLeave: (e) => {
+                        e.currentTarget.style.backgroundColor = COLORS.BG_CARD;
+                        e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                        e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
                     }
                 }, '← Back to Home'),
                 
@@ -71,87 +116,80 @@
                     style: { 
                         fontSize: '2rem', 
                         fontWeight: 'bold',
-                        marginBottom: '0.5rem'
+                        marginBottom: '0.5rem',
+                        color: COLORS.TEXT_PRIMARY
                     } 
                 }, '📚 Training Modules'),
                 
                 React.createElement('p', { 
                     style: { 
-                        color: '#6b7280',
-                        marginBottom: '1rem'
+                        fontSize: '1rem', 
+                        color: COLORS.TEXT_SECONDARY,
+                        marginBottom: '1.5rem'
                     } 
-                }, 'Structured learning paths for systematic mushroom identification mastery')
-            ),
-            
-            // Progress bar
-            totalModules > 0 && React.createElement('div', { 
-                style: { 
-                    maxWidth: '72rem', 
-                    margin: '0 auto',
-                    marginBottom: '2rem',
-                    backgroundColor: 'white',
-                    padding: '1.5rem',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
-                } 
-            },
+                }, 'Master mushroom identification through structured learning'),
+                
+                // Progress bar
                 React.createElement('div', { 
                     style: { 
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: '0.5rem'
-                    } 
-                },
-                    React.createElement('span', { 
-                        style: { 
-                            fontWeight: '600' 
-                        } 
-                    }, 'Overall Progress'),
-                    React.createElement('span', { 
-                        style: { 
-                            color: '#6b7280' 
-                        } 
-                    }, `${completedCount} of ${totalModules} modules completed`)
-                ),
-                React.createElement('div', { 
-                    style: { 
-                        backgroundColor: '#e5e7eb',
-                        borderRadius: '9999px',
-                        height: '0.5rem',
-                        overflow: 'hidden'
+                        backgroundColor: COLORS.BG_CARD,
+                        borderRadius: '0.75rem',
+                        padding: '1rem',
+                        marginBottom: '1.5rem',
+                        border: `1px solid ${COLORS.BORDER_DEFAULT}`
                     } 
                 },
                     React.createElement('div', { 
                         style: { 
-                            backgroundColor: '#10b981',
-                            height: '100%',
-                            width: `${progressPercentage}%`,
-                            transition: 'width 0.3s ease'
+                            display: 'flex', 
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '0.5rem'
                         } 
-                    })
-                )
-            ),
-            
-            // Category tabs
-            React.createElement('div', { 
-                style: { 
-                    maxWidth: '72rem', 
-                    margin: '0 auto',
-                    marginBottom: '2rem'
-                } 
-            },
+                    },
+                        React.createElement('span', { 
+                            style: { 
+                                fontSize: '0.875rem',
+                                fontWeight: '600',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, 'Overall Progress'),
+                        React.createElement('span', { 
+                            style: { 
+                                fontSize: '0.875rem',
+                                color: COLORS.TEXT_SECONDARY
+                            } 
+                        }, `${completedCount} / ${totalModules} modules completed`)
+                    ),
+                    React.createElement('div', { 
+                        style: { 
+                            backgroundColor: COLORS.BG_PRIMARY,
+                            height: '0.5rem',
+                            borderRadius: '9999px',
+                            overflow: 'hidden'
+                        } 
+                    },
+                        React.createElement('div', {
+                            style: {
+                                width: `${progressPercentage}%`,
+                                height: '100%',
+                                background: GRADIENTS.FOREST,
+                                borderRadius: '9999px',
+                                transition: 'width 0.3s'
+                            }
+                        })
+                    )
+                ),
+                
+                // Category filters
                 React.createElement('div', { 
                     style: { 
-                        display: 'flex',
+                        display: 'flex', 
                         gap: '0.5rem',
-                        overflowX: 'auto',
-                        padding: '0.25rem',
-                        backgroundColor: 'white',
-                        borderRadius: '0.75rem',
-                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                        flexWrap: 'wrap'
                     } 
                 },
-                    categories.map(cat => 
+                    categories.map(cat =>
                         React.createElement('button', {
                             key: cat.id,
                             onClick: () => setSelectedCategory(cat.id),
@@ -163,11 +201,23 @@
                                 borderRadius: '0.5rem',
                                 border: 'none',
                                 cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                backgroundColor: selectedCategory === cat.id ? '#8b5cf6' : 'transparent',
-                                color: selectedCategory === cat.id ? 'white' : '#374151',
+                                background: selectedCategory === cat.id ? GRADIENTS.PURPLE : COLORS.BG_CARD,
+                                color: selectedCategory === cat.id ? 'white' : COLORS.TEXT_SECONDARY,
                                 fontWeight: selectedCategory === cat.id ? '600' : '400',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                boxShadow: selectedCategory === cat.id ? '0 2px 4px rgba(0, 0, 0, 0.2)' : 'none'
+                            },
+                            onMouseEnter: (e) => {
+                                if (selectedCategory !== cat.id) {
+                                    e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                                    e.currentTarget.style.color = COLORS.TEXT_PRIMARY;
+                                }
+                            },
+                            onMouseLeave: (e) => {
+                                if (selectedCategory !== cat.id) {
+                                    e.currentTarget.style.backgroundColor = COLORS.BG_CARD;
+                                    e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+                                }
                             }
                         },
                             React.createElement('span', null, cat.icon),
@@ -182,13 +232,25 @@
                     style: {
                         marginTop: '1rem',
                         padding: '0.5rem 1rem',
-                        backgroundColor: '#f3f4f6',
-                        border: 'none',
+                        backgroundColor: COLORS.BG_CARD,
+                        border: `1px solid ${COLORS.BORDER_DEFAULT}`,
                         borderRadius: '0.5rem',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '0.5rem'
+                        gap: '0.5rem',
+                        color: COLORS.TEXT_SECONDARY,
+                        transition: 'all 0.2s'
+                    },
+                    onMouseEnter: (e) => {
+                        e.currentTarget.style.backgroundColor = COLORS.BG_HOVER;
+                        e.currentTarget.style.borderColor = COLORS.BORDER_HOVER;
+                        e.currentTarget.style.color = COLORS.TEXT_PRIMARY;
+                    },
+                    onMouseLeave: (e) => {
+                        e.currentTarget.style.backgroundColor = COLORS.BG_CARD;
+                        e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                        e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
                     }
                 }, '🔄 Refresh Modules')
             ),
@@ -212,7 +274,7 @@
                 React.createElement('p', { 
                     style: { 
                         marginTop: '1rem',
-                        color: '#6b7280'
+                        color: COLORS.TEXT_SECONDARY
                     } 
                 }, 'Loading modules from database...')
             ) :
@@ -224,20 +286,21 @@
                     margin: '0 auto' 
                 } 
             },
-                filteredModules.length === 0 ? 
+                filteredModules.length === 0 ?
                     React.createElement('div', { 
                         style: { 
-                            backgroundColor: 'white',
+                            backgroundColor: COLORS.BG_CARD,
                             borderRadius: '0.75rem',
                             padding: '3rem',
                             textAlign: 'center',
-                            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                            border: `1px solid ${COLORS.BORDER_DEFAULT}`
                         } 
                     },
                         React.createElement('p', { 
                             style: { 
                                 fontSize: '1.25rem',
-                                color: '#6b7280',
+                                color: COLORS.TEXT_SECONDARY,
                                 marginBottom: '1rem'
                             } 
                         }, selectedCategory === 'all' ? 
@@ -246,7 +309,7 @@
                         ),
                         React.createElement('p', { 
                             style: { 
-                                color: '#9ca3af',
+                                color: COLORS.TEXT_MUTED,
                                 fontSize: '0.875rem'
                             } 
                         }, 'Modules can be created through the admin portal.')
@@ -262,153 +325,133 @@
                         filteredModules.map((module, idx) => {
                             const isCompleted = userProgress[module.id]?.completed || false;
                             const difficultyColor = {
-                                'beginner': '#10b981',
-                                'intermediate': '#f59e0b', 
-                                'advanced': '#ef4444'
-                            }[module.difficulty_level] || '#6b7280';
+                                'beginner': COLORS.ACCENT_SUCCESS,
+                                'intermediate': COLORS.ACCENT_WARNING, 
+                                'advanced': COLORS.ACCENT_ERROR
+                            }[module.difficulty_level] || COLORS.TEXT_MUTED;
                             
                             return React.createElement('div', {
                                 key: module.id,
                                 onClick: () => onModuleSelect(module),
                                 style: {
-                                    backgroundColor: 'white',
+                                    backgroundColor: COLORS.BG_CARD,
                                     borderRadius: '0.75rem',
                                     padding: '1.5rem',
-                                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                                    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
                                     cursor: 'pointer',
-                                    border: '2px solid transparent',
+                                    border: `2px solid ${COLORS.BORDER_DEFAULT}`,
                                     transition: 'all 0.2s',
                                     position: 'relative',
                                     overflow: 'hidden'
                                 },
                                 onMouseEnter: (e) => {
-                                    e.currentTarget.style.borderColor = '#8b5cf6';
+                                    e.currentTarget.style.borderColor = COLORS.ACCENT_PRIMARY;
                                     e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.4)';
                                 },
                                 onMouseLeave: (e) => {
-                                    e.currentTarget.style.borderColor = 'transparent';
+                                    e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
                                     e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
+                                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.3)';
                                 }
                             },
                                 // Completed badge
                                 isCompleted && React.createElement('div', {
                                     style: {
                                         position: 'absolute',
-                                        top: '0.5rem',
-                                        right: '0.5rem',
-                                        backgroundColor: '#10b981',
+                                        top: '1rem',
+                                        right: '1rem',
+                                        backgroundColor: COLORS.ACCENT_SUCCESS,
                                         color: 'white',
-                                        borderRadius: '50%',
-                                        width: '32px',
-                                        height: '32px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '1rem',
-                                        fontWeight: 'bold'
+                                        padding: '0.25rem 0.75rem',
+                                        borderRadius: '9999px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: '600'
                                     }
-                                }, '✓'),
+                                }, '✓ Completed'),
                                 
-                                // Module content
-                                React.createElement('div', { style: { marginBottom: '1rem' } },
-                                    React.createElement('h3', { 
-                                        style: { 
-                                            fontSize: '1.125rem',
-                                            fontWeight: '600',
-                                            marginBottom: '0.5rem'
-                                        } 
-                                    }, module.title),
+                                React.createElement('div', { 
+                                    style: { 
+                                        fontSize: '2rem',
+                                        marginBottom: '0.75rem'
+                                    } 
+                                }, module.icon || '📖'),
+                                
+                                React.createElement('h3', { 
+                                    style: { 
+                                        fontSize: '1.125rem',
+                                        fontWeight: '600',
+                                        marginBottom: '0.5rem',
+                                        color: COLORS.TEXT_PRIMARY
+                                    } 
+                                }, module.title),
+                                
+                                React.createElement('div', { 
+                                    style: { 
+                                        display: 'flex',
+                                        gap: '0.5rem',
+                                        marginBottom: '0.75rem',
+                                        flexWrap: 'wrap'
+                                    } 
+                                },
+                                    React.createElement('span', {
+                                        style: {
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            backgroundColor: COLORS.BG_PRIMARY,
+                                            borderRadius: '0.25rem',
+                                            color: COLORS.TEXT_SECONDARY
+                                        }
+                                    }, module.category),
                                     
-                                    React.createElement('div', { 
-                                        style: { 
-                                            display: 'flex',
-                                            gap: '0.5rem',
-                                            marginBottom: '0.75rem',
-                                            flexWrap: 'wrap'
-                                        } 
-                                    },
-                                        React.createElement('span', {
-                                            style: {
-                                                fontSize: '0.75rem',
-                                                padding: '0.25rem 0.5rem',
-                                                backgroundColor: '#f3f4f6',
-                                                borderRadius: '0.25rem',
-                                                color: '#374151'
-                                            }
-                                        }, module.category),
-                                        
-                                        React.createElement('span', {
-                                            style: {
-                                                fontSize: '0.75rem',
-                                                padding: '0.25rem 0.5rem',
-                                                backgroundColor: difficultyColor + '20',
-                                                color: difficultyColor,
-                                                borderRadius: '0.25rem',
-                                                fontWeight: '500'
-                                            }
-                                        }, module.difficulty_level),
-                                        
-                                        React.createElement('span', {
-                                            style: {
-                                                fontSize: '0.75rem',
-                                                padding: '0.25rem 0.5rem',
-                                                backgroundColor: '#e0e7ff',
-                                                color: '#4f46e5',
-                                                borderRadius: '0.25rem'
-                                            }
-                                        }, `${module.duration_minutes || 20} min`)
-                                    )
+                                    React.createElement('span', {
+                                        style: {
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            backgroundColor: difficultyColor + '20',
+                                            color: difficultyColor,
+                                            borderRadius: '0.25rem',
+                                            fontWeight: '500'
+                                        }
+                                    }, module.difficulty_level),
+                                    
+                                    React.createElement('span', {
+                                        style: {
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            backgroundColor: COLORS.BG_PRIMARY,
+                                            borderRadius: '0.25rem',
+                                            color: COLORS.TEXT_MUTED
+                                        }
+                                    }, `${module.duration_minutes || 20} min`)
                                 ),
                                 
-                                // Module description (if available)
-                                module.description && React.createElement('p', {
-                                    style: {
+                                module.description && React.createElement('p', { 
+                                    style: { 
                                         fontSize: '0.875rem',
-                                        color: '#6b7280',
-                                        lineHeight: '1.5',
-                                        marginBottom: '1rem'
-                                    }
+                                        color: COLORS.TEXT_SECONDARY,
+                                        lineHeight: '1.4'
+                                    } 
                                 }, module.description),
                                 
-                                // Action button
-                                React.createElement('button', {
+                                // Prerequisites
+                                module.prerequisites && module.prerequisites.length > 0 && 
+                                React.createElement('div', {
                                     style: {
-                                        width: '100%',
-                                        padding: '0.5rem',
-                                        backgroundColor: isCompleted ? '#f3f4f6' : '#8b5cf6',
-                                        color: isCompleted ? '#374151' : 'white',
-                                        border: 'none',
-                                        borderRadius: '0.5rem',
-                                        fontWeight: '500',
-                                        cursor: 'pointer',
-                                        transition: 'background-color 0.2s'
-                                    },
-                                    onMouseEnter: (e) => {
-                                        e.stopPropagation();
-                                        e.currentTarget.style.backgroundColor = isCompleted ? '#e5e7eb' : '#7c3aed';
-                                    },
-                                    onMouseLeave: (e) => {
-                                        e.stopPropagation();
-                                        e.currentTarget.style.backgroundColor = isCompleted ? '#f3f4f6' : '#8b5cf6';
+                                        marginTop: '0.75rem',
+                                        paddingTop: '0.75rem',
+                                        borderTop: `1px solid ${COLORS.BORDER_DEFAULT}`,
+                                        fontSize: '0.75rem',
+                                        color: COLORS.TEXT_MUTED
                                     }
-                                }, isCompleted ? 'Review Module' : 'Start Module')
+                                }, `Prerequisites: ${module.prerequisites.join(', ')}`)
                             );
                         })
                     )
-            ),
-            
-            // Add CSS animation for loading spinner
-            React.createElement('style', null, `
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-            `)
+            )
         );
     };
     
-    console.log('✅ TrainingModules component updated for database integration');
+    console.log('✅ TrainingModules component loaded with dark theme');
     
 })();
