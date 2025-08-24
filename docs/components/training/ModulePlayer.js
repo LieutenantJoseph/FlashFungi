@@ -43,7 +43,76 @@
         const [quizAnswers, setQuizAnswers] = React.useState({});
         const [quizSubmitted, setQuizSubmitted] = React.useState({});
 
-        // Complete module content structure
+        // Helper function to convert database module content to slides format
+        const convertDatabaseModuleToSlides = (dbModule) => {
+            const slides = [];
+            
+            // Add intro slide
+            slides.push({
+                type: 'intro',
+                title: dbModule.title || 'Module',
+                content: dbModule.description || 'Learn essential mushroom identification skills in this interactive module.',
+                image: dbModule.icon || '🍄',
+                subtitle: `${dbModule.category || 'Training'} Module`
+            });
+
+            // Parse content if it exists and has structure
+            if (dbModule.content) {
+                // Handle string content (from database)
+                if (typeof dbModule.content === 'string') {
+                    try {
+                        const parsedContent = JSON.parse(dbModule.content);
+                        if (parsedContent.slides) {
+                            slides.push(...parsedContent.slides);
+                        } else {
+                            // Add a single content slide if no slides structure
+                            slides.push({
+                                type: 'content',
+                                title: 'Module Content',
+                                content: dbModule.content,
+                                image: '📚'
+                            });
+                        }
+                    } catch (e) {
+                        // If not JSON, treat as plain text content
+                        slides.push({
+                            type: 'content',
+                            title: 'Module Content',
+                            content: dbModule.content,
+                            image: '📚'
+                        });
+                    }
+                } else if (dbModule.content.slides) {
+                    // Already has slides structure
+                    slides.push(...dbModule.content.slides);
+                } else if (Array.isArray(dbModule.content)) {
+                    // Content is an array of slides
+                    slides.push(...dbModule.content);
+                } else {
+                    // Content is an object but not in expected format
+                    slides.push({
+                        type: 'content',
+                        title: 'Module Content',
+                        content: 'This module is being prepared. Check back soon for updated content.',
+                        image: '🚧'
+                    });
+                }
+            }
+
+            // Add completion slide if not already present
+            if (!slides.some(s => s.type === 'complete')) {
+                slides.push({
+                    type: 'complete',
+                    title: 'Module Complete!',
+                    content: `Congratulations! You've completed the ${dbModule.title} module.`,
+                    achievement: dbModule.achievement || 'Module Complete'
+                });
+            }
+
+            return { slides };
+        };
+
+        // Complete module content structure (fallback for demo)
         const moduleContent = {
             'foundation-1': {
                 slides: [
@@ -90,11 +159,102 @@
             }
         };
 
-        const content = module?.content || moduleContent[module?.id] || moduleContent['foundation-1'];
-        const currentSlideData = content.slides?.[currentSlide] || { type: 'placeholder', title: 'Loading...', content: 'Module content loading...' };
+        // Get content - handle database modules
+        const content = React.useMemo(() => {
+            console.log('📖 ModulePlayer - Processing module:', module?.id, module);
+            
+            // Check if module has slides directly
+            if (module?.content?.slides) {
+                console.log('📖 Module has slides directly');
+                return module.content;
+            }
+            // Check if it's a hardcoded module
+            if (moduleContent[module?.id]) {
+                console.log('📖 Using hardcoded module content');
+                return moduleContent[module.id];
+            }
+            // Convert database module format
+            if (module) {
+                console.log('📖 Converting database module to slides format');
+                return convertDatabaseModuleToSlides(module);
+            }
+            // Fallback to demo content
+            console.log('📖 Using fallback demo content');
+            return moduleContent['foundation-1'];
+        }, [module]);
+
+        // Ensure we have valid content structure
+        const slides = content?.slides || [];
+        const currentSlideData = slides[currentSlide] || { 
+            type: 'placeholder', 
+            title: 'Module Loading...', 
+            content: 'Please wait while the module content loads.',
+            image: '⏳'
+        };
+
+        // Handle case where module has no valid content
+        if (!module || slides.length === 0) {
+            return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: COLORS.BG_PRIMARY } },
+                React.createElement('div', { 
+                    style: { 
+                        maxWidth: '48rem', 
+                        margin: '0 auto', 
+                        padding: '2rem' 
+                    } 
+                },
+                    React.createElement('div', {
+                        style: {
+                            backgroundColor: COLORS.BG_CARD,
+                            borderRadius: '0.75rem',
+                            padding: '3rem',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                            textAlign: 'center'
+                        }
+                    },
+                        React.createElement('div', { style: { fontSize: '3rem', marginBottom: '1rem' } }, '🚧'),
+                        React.createElement('h2', { 
+                            style: { 
+                                fontSize: '1.5rem', 
+                                fontWeight: 'bold', 
+                                marginBottom: '1rem',
+                                color: COLORS.TEXT_PRIMARY
+                            } 
+                        }, 'Module Content Unavailable'),
+                        React.createElement('p', { 
+                            style: { 
+                                color: COLORS.TEXT_SECONDARY,
+                                marginBottom: '2rem'
+                            } 
+                        }, 'This module is currently being prepared. Please check back later or contact support if this issue persists.'),
+                        React.createElement('button', {
+                            onClick: onBack,
+                            style: {
+                                padding: '0.75rem 1.5rem',
+                                background: GRADIENTS.EARTH,
+                                color: 'white',
+                                borderRadius: '0.5rem',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontWeight: '500',
+                                transition: 'transform 0.2s, box-shadow 0.2s',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            },
+                            onMouseEnter: (e) => {
+                                e.target.style.transform = 'translateY(-2px)';
+                                e.target.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.3)';
+                            },
+                            onMouseLeave: (e) => {
+                                e.target.style.transform = 'translateY(0)';
+                                e.target.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
+                            }
+                        }, 'Back to Modules')
+                    )
+                )
+            );
+        }
 
         const handleNext = () => {
-            if (currentSlide < content.slides.length - 1) {
+            if (currentSlide < slides.length - 1) {
                 setCurrentSlide(currentSlide + 1);
             } else if (!completed) {
                 setCompleted(true);
@@ -173,7 +333,7 @@
                                 color: COLORS.TEXT_SECONDARY 
                             } 
                         },
-                            `${currentSlide + 1} / ${content.slides.length}`
+                            `${currentSlide + 1} / ${slides.length}`
                         )
                     ),
                     // Progress bar
@@ -187,7 +347,7 @@
                     },
                         React.createElement('div', {
                             style: {
-                                width: `${((currentSlide + 1) / content.slides.length) * 100}%`,
+                                width: `${((currentSlide + 1) / slides.length) * 100}%`,
                                 height: '100%',
                                 background: GRADIENTS.FOREST,
                                 borderRadius: '9999px',
@@ -490,7 +650,7 @@
                         }
                     }, 
                         completed ? 'Returning to modules...' :
-                        currentSlide < content.slides.length - 1 ? 'Next →' : 'Complete Module'
+                        currentSlide < slides.length - 1 ? 'Next →' : 'Complete Module'
                     )
                 )
             )
