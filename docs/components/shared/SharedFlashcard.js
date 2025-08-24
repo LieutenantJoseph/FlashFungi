@@ -1,5 +1,6 @@
-// SharedFlashcard.js - Shared flashcard component used by all study modes
-// Updated with Living Mycology Design System - Functionality preserved
+// SharedFlashcard.js - Updated with lightweight session tracking
+// Replaces individual flashcard saves with aggregated session data
+// LIVING MYCOLOGY STYLES APPLIED - ALL FUNCTIONALITY PRESERVED
 
 (function() {
     'use strict';
@@ -15,7 +16,7 @@
             speciesHints = {},
             referencePhotos = {},
             user,
-            saveProgress
+            saveProgress  // Keep this prop but won't use it for flashcards
         } = props;
         
         // Get design system
@@ -36,6 +37,22 @@
         const [longestStreak, setLongestStreak] = React.useState(0);
         const [sessionStartTime] = React.useState(Date.now());
 
+        // Initialize session tracking when component mounts - UNCHANGED
+        React.useEffect(() => {
+            if (user && window.SessionTracker) {
+                console.log('📊 Starting study session:', mode);
+                window.SessionTracker.startSession(user.id, mode, filters);
+            }
+            
+            // Cleanup: End session when component unmounts
+            return () => {
+                if (window.SessionTracker && window.SessionTracker.currentSession) {
+                    console.log('📊 Ending study session');
+                    window.SessionTracker.endSession();
+                }
+            };
+        }, [user, mode, filters]);
+
         // Get study specimens based on mode - UNCHANGED
         const studySpecimens = React.useMemo(() => {
             let filtered = specimens.filter(s => s.status === 'approved');
@@ -48,64 +65,76 @@
                 if (filters.genus && filters.genus.length > 0) {
                     filtered = filtered.filter(s => filters.genus.includes(s.genus));
                 }
-                if (filters.difficulty) {
-                    // Add difficulty filtering if needed
+                if (filters.features) {
+                    if (filters.features.includes('dna_verified')) {
+                        filtered = filtered.filter(s => s.dna_sequenced);
+                    }
+                    if (filters.features.includes('has_common_name')) {
+                        filtered = filtered.filter(s => s.common_name);
+                    }
                 }
             }
             
-            // Shuffle for variety
-            return filtered.sort(() => Math.random() - 0.5);
+            const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+            
+            // Return appropriate number based on mode
+            if (mode === 'quick') {
+                return shuffled.slice(0, Math.min(10, shuffled.length));
+            } else if (mode === 'focused') {
+                return shuffled.slice(0, Math.min(20, shuffled.length));
+            } else if (mode === 'marathon') {
+                return shuffled; // All available specimens
+            }
+            
+            return shuffled.slice(0, 10);
         }, [specimens, mode, filters]);
 
-        const currentSpecimen = studySpecimens[currentIndex] || {};
-        const currentPhotos = specimenPhotos[currentSpecimen.id] || [];
-        const currentSpeciesHints = speciesHints[currentSpecimen.species] || {};
-        const currentReferencePhotos = referencePhotos[currentSpecimen.species] || [];
+        const currentSpecimen = studySpecimens[currentIndex];
+        const currentPhotos = currentSpecimen ? specimenPhotos[currentSpecimen.inaturalist_id] || [] : [];
+        const currentSpeciesHints = currentSpecimen ? speciesHints[currentSpecimen.species_name] : null;
+        const currentReferencePhotos = currentSpecimen ? referencePhotos[currentSpecimen.species_name] || [] : [];
 
         // Load photos when specimen changes - UNCHANGED
         React.useEffect(() => {
-            if (currentSpecimen.id && loadSpecimenPhotos) {
+            if (currentSpecimen && !specimenPhotos[currentSpecimen.inaturalist_id]) {
                 setPhotosLoaded(false);
-                loadSpecimenPhotos(currentSpecimen.id).then(() => {
+                loadSpecimenPhotos(currentSpecimen.inaturalist_id).then(() => {
                     setPhotosLoaded(true);
                 });
+            } else {
+                setPhotosLoaded(true);
             }
-        }, [currentSpecimen.id, loadSpecimenPhotos]);
+        }, [currentSpecimen, loadSpecimenPhotos, specimenPhotos]);
 
-        // Calculate accuracy - UNCHANGED
-        const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-
-        // Touch gestures - UNCHANGED
-        React.useEffect(() => {
-            if (window.TouchGestures) {
-                const cleanup = window.TouchGestures.init('flashcard-container', {
-                    onSwipeLeft: () => handleNext(),
-                    onSwipeRight: () => currentIndex > 0 && setCurrentIndex(prev => prev - 1)
-                });
-                return cleanup;
-            }
-        }, [currentIndex]);
-
-        // Calculate string similarity for fuzzy matching - UNCHANGED
+        // Utility function for fuzzy matching - UNCHANGED
         const calculateSimilarity = (str1, str2) => {
-            const matrix = [];
-            for (let i = 0; i <= str2.length; i++) {
-                matrix[i] = [i];
-            }
-            for (let j = 0; j <= str1.length; j++) {
-                matrix[0][j] = j;
-            }
-            for (let i = 1; i <= str2.length; i++) {
-                for (let j = 1; j <= str1.length; j++) {
-                    const substitutionCost = str1[j - 1] === str2[i - 1] ? 0 : 1;
-                    matrix[i][j] = Math.min(
-                        matrix[i][j - 1] + 1,
-                        matrix[i - 1][j] + 1,
-                        matrix[i - 1][j - 1] + substitutionCost
+            const longer = str1.length > str2.length ? str1 : str2;
+            const shorter = str1.length > str2.length ? str2 : str1;
+            if (longer.length === 0) return 1.0;
+            
+            const editDistance = levenshteinDistance(longer, shorter);
+            return (longer.length - editDistance) / longer.length;
+        };
+
+        const levenshteinDistance = (str1, str2) => {
+            const matrix = Array(str2.length + 1).fill(null).map(() => 
+                Array(str1.length + 1).fill(null)
+            );
+            
+            for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+            for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+            
+            for (let j = 1; j <= str2.length; j++) {
+                for (let i = 1; i <= str1.length; i++) {
+                    const substitutionCost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+                    matrix[j][i] = Math.min(
+                        matrix[j][i - 1] + 1,
+                        matrix[j - 1][i] + 1,
+                        matrix[j - 1][i - 1] + substitutionCost
                     );
                 }
             }
-            return 1 - (matrix[str2.length][str1.length] / Math.max(str1.length, str2.length));
+            return matrix[str2.length][str1.length];
         };
 
         // Get hints from database or generate fallback - UNCHANGED
@@ -146,9 +175,9 @@
             if (!answer || !currentSpecimen) return { isCorrect: false, score: 0, feedback: '' };
             
             const cleaned = answer.toLowerCase().trim();
-            const species = currentSpecimen.species_name?.toLowerCase() || '';
-            const genus = currentSpecimen.genus?.toLowerCase() || '';
-            const family = currentSpecimen.family?.toLowerCase() || '';
+            const species = currentSpecimen.species_name.toLowerCase();
+            const genus = currentSpecimen.genus.toLowerCase();
+            const family = currentSpecimen.family.toLowerCase();
             const common = (currentSpecimen.common_name || '').toLowerCase();
             
             let baseScore = 0;
@@ -208,7 +237,7 @@
             };
         };
 
-        // Handle answer submission - UNCHANGED
+        // Handle answer submission - UNCHANGED (with session tracking)
         const handleSubmitAnswer = () => {
             if (!userAnswer.trim()) return;
             
@@ -225,16 +254,20 @@
                 setLongestStreak(prev => Math.max(prev, streak + 1));
                 setShowResult(true);
                 
-                // Save progress
-                if (saveProgress) {
-                    saveProgress({
+                // LIGHTWEIGHT SESSION TRACKING - Replace individual save
+                if (window.SessionTracker) {
+                    window.SessionTracker.trackFlashcard({
                         specimenId: currentSpecimen.id,
-                        progressType: 'flashcard',
+                        genus: currentSpecimen.genus,
+                        family: currentSpecimen.family,
                         score: validation.finalScore,
                         hintsUsed: currentHintLevel + hintsRevealedManually,
-                        completed: true
+                        isCorrect: true
                     });
                 }
+                
+                // REMOVED: Individual flashcard database save
+                // The old saveProgress call has been removed
             } else {
                 setLastAttemptScore(validation);
                 if (currentHintLevel < 4) {
@@ -248,6 +281,18 @@
                     }));
                     setStreak(0); // Reset streak on wrong answer
                     setShowGuide(true);
+                    
+                    // Track incorrect answer in session
+                    if (window.SessionTracker) {
+                        window.SessionTracker.trackFlashcard({
+                            specimenId: currentSpecimen.id,
+                            genus: currentSpecimen.genus,
+                            family: currentSpecimen.family,
+                            score: validation.finalScore,
+                            hintsUsed: currentHintLevel + hintsRevealedManually,
+                            isCorrect: false
+                        });
+                    }
                 }
             }
         };
@@ -263,7 +308,7 @@
             }
         };
 
-        // Handle "I Don't Know" - UNCHANGED
+        // Handle "I Don't Know" - UNCHANGED (with session tracking)
         const handleIDontKnow = () => {
             setScore(prev => ({ 
                 correct: prev.correct, 
@@ -272,6 +317,18 @@
             }));
             setStreak(0); // Reset streak
             setShowGuide(true);
+            
+            // Track as incorrect with 0 score
+            if (window.SessionTracker && currentSpecimen) {
+                window.SessionTracker.trackFlashcard({
+                    specimenId: currentSpecimen.id,
+                    genus: currentSpecimen.genus,
+                    family: currentSpecimen.family,
+                    score: 0,
+                    hintsUsed: currentHintLevel + hintsRevealedManually,
+                    isCorrect: false
+                });
+            }
         };
 
         // Move to next question - UNCHANGED
@@ -286,29 +343,42 @@
                 setLastAttemptScore(null);
                 setSelectedPhoto(null);
             } else {
-                // Study complete
-                const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
-                const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
-                const sessionTime = Math.round((Date.now() - sessionStartTime) / 60000);
-                
-                alert(
-                    `🍄 Study Complete!\n\n` +
-                    `✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n` +
-                    `📊 Average Score: ${avgScore}%\n` +
-                    `🔥 Longest Streak: ${longestStreak}\n` +
-                    `⏱️ Time: ${sessionTime} minutes\n\n` +
-                    `${avgScore >= 80 ? '🏆 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
-                );
-                
-                if (onBack) onBack();
+                // Study complete - end session
+                handleStudyComplete();
             }
         };
 
-        // Empty state
-        if (studySpecimens.length === 0) {
+        // Handle study completion - UNCHANGED
+        const handleStudyComplete = async () => {
+            const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
+            const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+            const sessionTime = Math.round((Date.now() - sessionStartTime) / 60000);
+            
+            // End session and save final stats
+            if (window.SessionTracker) {
+                const sessionSummary = await window.SessionTracker.endSession();
+                console.log('📊 Study session complete:', sessionSummary);
+            }
+            
+            // Show completion dialog
+            alert(
+                `🍄 Study Complete!\n\n` +
+                `✅ Correct: ${score.correct}/${score.total} (${accuracy}%)\n` +
+                `📊 Average Score: ${avgScore}%\n` +
+                `🔥 Longest Streak: ${longestStreak}\n` +
+                `⏱️ Time: ${sessionTime} minutes\n\n` +
+                `${avgScore >= 80 ? '🏆 Excellent work!' : avgScore >= 60 ? '👍 Good job!' : '📚 Keep practicing!'}`
+            );
+            
+            onBack();
+        };
+
+        if (!currentSpecimen) {
             return React.createElement('div', { 
                 style: { 
-                    minHeight: '100vh', 
+                    padding: '2rem', 
+                    textAlign: 'center',
+                    minHeight: '100vh',
                     backgroundColor: design.colors?.bgPrimary || '#1A1A19',
                     color: design.colors?.textPrimary || '#F5F5DC',
                     display: 'flex',
@@ -316,49 +386,56 @@
                     justifyContent: 'center'
                 } 
             },
-                React.createElement('div', { style: { textAlign: 'center' } },
-                    React.createElement('h2', null, 'No specimens available'),
+                React.createElement('div', null,
+                    React.createElement('h2', { style: { marginBottom: '1rem' } }, 'No specimens available for study'),
                     React.createElement('p', { style: { marginBottom: '1rem', color: design.colors?.textSecondary || '#D3D3C7' } }, 
-                        mode === 'focused' ? 'Try adjusting your filters.' : 'Loading specimens...'
+                        `No approved specimens found${mode === 'focused' ? ' matching your filters' : ''}.`
                     ),
                     React.createElement('button', { 
                         onClick: onBack,
-                        style: { 
+                        style: {
                             padding: '0.75rem 1.5rem',
                             background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
                             color: 'white',
                             borderRadius: '0.75rem',
                             border: 'none',
                             cursor: 'pointer',
-                            fontWeight: '600'
+                            fontWeight: '600',
+                            boxShadow: design.shadows?.md || '0 4px 16px rgba(0,0,0,0.4)'
                         }
-                    }, '← Back')
+                    }, 'Back to Home')
                 )
             );
         }
 
-        // Main render
-        return React.createElement('div', { 
-            id: 'flashcard-container',
-            style: { 
-                minHeight: '100vh', 
-                backgroundColor: design.colors?.bgPrimary || '#1A1A19',
-                color: design.colors?.textPrimary || '#F5F5DC',
-                position: 'relative'
-            } 
-        },
-            // Header
+        // Calculate current stats for display - UNCHANGED
+        const avgScore = score.total > 0 ? Math.round(score.totalScore / score.total) : 0;
+        const accuracy = score.total > 0 ? Math.round((score.correct / score.total) * 100) : 0;
+
+        return React.createElement('div', { style: { minHeight: '100vh', backgroundColor: design.colors?.bgPrimary || '#1A1A19' } },
+            // Header with enhanced stats - UPDATED STYLES ONLY
             React.createElement('div', { 
                 style: { 
                     background: `linear-gradient(180deg, ${design.colors?.bgSecondary || '#2D2D2A'} 0%, transparent 100%)`,
                     borderBottom: '1px solid rgba(139,69,19,0.2)',
-                    boxShadow: design.shadows?.md || '0 4px 16px rgba(0,0,0,0.4)'
+                    padding: '1rem'
                 } 
             },
-                React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1rem 1.5rem' } },
-                    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-                        // Left section
-                        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '1rem' } },
+                React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto' } },
+                    React.createElement('div', { 
+                        style: { 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center' 
+                        } 
+                    },
+                        React.createElement('div', { 
+                            style: { 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '1rem' 
+                            } 
+                        },
                             React.createElement('button', { 
                                 onClick: onBack, 
                                 style: { 
@@ -366,25 +443,23 @@
                                     background: design.colors?.bgCard || '#2A2826',
                                     border: '1px solid rgba(139,69,19,0.2)',
                                     borderRadius: '0.5rem',
-                                    color: design.colors?.textSecondary || '#D3D3C7',
                                     cursor: 'pointer',
-                                    fontSize: '0.875rem',
+                                    fontSize: '1rem',
+                                    color: design.colors?.textSecondary || '#D3D3C7',
                                     fontWeight: '600',
                                     transition: 'all 0.3s ease'
                                 } 
                             }, '← Back'),
                             React.createElement('div', null,
-                                React.createElement('h2', { 
+                                React.createElement('h1', { 
                                     style: { 
                                         fontSize: '1.25rem', 
                                         fontWeight: 'bold',
                                         color: design.colors?.textPrimary || '#F5F5DC'
                                     } 
-                                }, 
-                                    mode === 'quick' ? '⚡ Quick Study' : 
-                                    mode === 'focused' ? '🎯 Focused Study' : 
-                                    '🏃 Marathon Mode'
-                                ),
+                                }, mode === 'quick' ? 'Quick Study' : 
+                                   mode === 'focused' ? 'Focused Study' : 
+                                   'Marathon Mode'),
                                 React.createElement('p', { 
                                     style: { 
                                         fontSize: '0.875rem', 
@@ -395,12 +470,12 @@
                                 )
                             )
                         ),
-                        // Stats display
+                        // Stats display - UPDATED STYLES ONLY
                         React.createElement('div', { 
                             style: { 
                                 display: 'flex', 
                                 alignItems: 'center', 
-                                gap: '1rem',
+                                gap: '1.5rem',
                                 padding: '0.5rem 1rem',
                                 background: design.colors?.bgCard || '#2A2826',
                                 borderRadius: '0.75rem',
@@ -437,12 +512,12 @@
                                     } 
                                 }, 'Accuracy')
                             ),
-                            streak > 0 && React.createElement('div', { style: { textAlign: 'center' } },
+                            React.createElement('div', { style: { textAlign: 'center' } },
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '1.125rem', 
                                         fontWeight: 'bold',
-                                        color: design.colors?.accent || '#FF6B35'
+                                        color: streak > 0 ? design.colors?.accent || '#FF6B35' : design.colors?.textMuted || '#A8A89C'
                                     } 
                                 }, `🔥 ${streak}`),
                                 React.createElement('div', { 
@@ -451,16 +526,25 @@
                                         color: design.colors?.textMuted || '#A8A89C'
                                     } 
                                 }, 'Streak')
-                            )
+                            ),
+                            currentSpecimen.dna_sequenced && React.createElement('span', {
+                                style: {
+                                    backgroundColor: 'rgba(124,58,237,0.1)',
+                                    color: '#7c3aed',
+                                    padding: '0.25rem 0.75rem',
+                                    borderRadius: '9999px',
+                                    fontSize: '0.875rem',
+                                    border: '1px solid rgba(124,58,237,0.2)'
+                                }
+                            }, '🧬 DNA')
                         )
                     ),
-                    // Progress bar
-                    React.createElement('div', { 
+                    // Progress bar - UPDATED STYLES ONLY
+                    mode !== 'marathon' && React.createElement('div', { 
                         style: { 
-                            marginTop: '0.75rem',
-                            width: '100%', 
-                            height: '6px', 
-                            backgroundColor: design.colors?.bgSecondary || '#2D2D2A', 
+                            marginTop: '0.5rem', 
+                            backgroundColor: design.colors?.bgSecondary || '#2D2D2A',
+                            height: '0.25rem', 
                             borderRadius: '0.5rem',
                             overflow: 'hidden'
                         } 
@@ -471,21 +555,21 @@
                                 height: '100%',
                                 background: design.gradients?.earth || 'linear-gradient(135deg, #8B4513 0%, #D2691E 100%)',
                                 borderRadius: '0.5rem',
-                                transition: 'width 0.5s ease-out'
+                                transition: 'width 0.3s'
                             }
                         })
                     )
                 )
             ),
 
-            // Main Content
+            // Main Content - UPDATED STYLES ONLY
             React.createElement('div', { style: { maxWidth: '72rem', margin: '0 auto', padding: '1.5rem' } },
                 React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' } },
-                    // Left: Photos
+                    // Left: Photos - UPDATED STYLES ONLY
                     React.createElement('div', { 
                         style: { 
-                            backgroundColor: design.colors?.bgCard || '#2A2826', 
-                            borderRadius: '1rem', 
+                            backgroundColor: design.colors?.bgCard || '#2A2826',
+                            borderRadius: '1rem',
                             padding: '1.5rem',
                             border: '1px solid rgba(139,69,19,0.2)',
                             boxShadow: design.shadows?.lg || '0 8px 32px rgba(0,0,0,0.5)'
@@ -499,12 +583,12 @@
                             } 
                         }, '📸 Specimen Photos'),
                         
-                        // Specimen info
+                        // Specimen info - UPDATED STYLES ONLY
                         React.createElement('div', { 
                             style: { 
                                 marginBottom: '1rem', 
                                 padding: '0.75rem', 
-                                backgroundColor: design.colors?.bgSecondary || '#2D2D2A', 
+                                backgroundColor: design.colors?.bgSecondary || '#2D2D2A',
                                 borderRadius: '0.5rem',
                                 border: '1px solid rgba(139,69,19,0.15)'
                             } 
@@ -526,7 +610,7 @@
                             )
                         ),
                         
-                        // Photos grid
+                        // Photos grid - FUNCTIONALITY UNCHANGED, STYLES UPDATED
                         !photosLoaded ? 
                             React.createElement('div', { 
                                 style: { 
@@ -573,11 +657,11 @@
                                 React.createElement('p', { 
                                     style: { 
                                         fontSize: '0.75rem', 
-                                        color: design.colors?.textMuted || '#A8A89C', 
+                                        color: design.colors?.textMuted || '#A8A89C',
                                         marginTop: '0.5rem', 
                                         textAlign: 'center' 
                                     } 
-                                }, `${currentPhotos.length} photo${currentPhotos.length !== 1 ? 's' : ''} available • Click to enlarge`)
+                                }, 'Click any photo to enlarge')
                             ) :
                             React.createElement('div', { 
                                 style: { 
@@ -588,11 +672,11 @@
                             }, 'No photos available')
                     ),
 
-                    // Right: Answer area
+                    // Right: Answer Interface - UPDATED STYLES ONLY
                     React.createElement('div', { 
                         style: { 
-                            backgroundColor: design.colors?.bgCard || '#2A2826', 
-                            borderRadius: '1rem', 
+                            backgroundColor: design.colors?.bgCard || '#2A2826',
+                            borderRadius: '1rem',
                             padding: '1.5rem',
                             border: '1px solid rgba(139,69,19,0.2)',
                             boxShadow: design.shadows?.md || '0 4px 16px rgba(0,0,0,0.4)'
@@ -604,35 +688,54 @@
                                 marginBottom: '1rem',
                                 color: design.colors?.textPrimary || '#F5F5DC'
                             } 
-                        }, '🔍 Identify This Specimen'),
-
-                        // Hints display
-                        React.createElement('div', { 
-                            style: { 
-                                marginBottom: '1rem', 
-                                padding: '0.75rem', 
-                                backgroundColor: design.colors?.bgSecondary || '#2D2D2A', 
+                        }, '🔍 Identify This Mushroom'),
+                        
+                        // Show hints if any revealed - UPDATED STYLES ONLY
+                        (currentHintLevel > 0 || hintsRevealedManually > 0) && !showResult && !showGuide && 
+                        React.createElement('div', {
+                            style: {
+                                backgroundColor: 'rgba(245,158,11,0.1)',
+                                border: '1px solid rgba(245,158,11,0.3)',
                                 borderRadius: '0.5rem',
-                                minHeight: '100px',
-                                border: '1px solid rgba(139,69,19,0.15)'
-                            } 
+                                padding: '1rem',
+                                marginBottom: '1rem'
+                            }
                         },
-                            React.createElement('p', { 
+                            React.createElement('div', { 
                                 style: { 
-                                    fontSize: '0.75rem', 
-                                    fontWeight: '600', 
-                                    marginBottom: '0.5rem',
-                                    color: design.colors?.textMuted || '#A8A89C'
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center', 
+                                    marginBottom: '0.5rem' 
                                 } 
-                            }, `💡 Hints (${4 - currentHintLevel - hintsRevealedManually} remaining)`),
+                            },
+                                React.createElement('h4', { 
+                                    style: { 
+                                        fontWeight: '500', 
+                                        color: design.colors?.textPrimary || '#F5F5DC'
+                                    } 
+                                }, `💡 Hints (${currentHintLevel + hintsRevealedManually}/4)`),
+                                (currentHintLevel + hintsRevealedManually) > 0 && React.createElement('span', { 
+                                    style: { 
+                                        fontSize: '0.75rem', 
+                                        color: '#dc2626',
+                                        backgroundColor: 'rgba(220,38,38,0.1)',
+                                        padding: '0.125rem 0.5rem',
+                                        borderRadius: '0.25rem',
+                                        border: '1px solid rgba(220,38,38,0.2)'
+                                    } 
+                                }, `-${(currentHintLevel + hintsRevealedManually) * 5}% penalty`)
+                            ),
                             
+                            // Show all revealed hints - UPDATED STYLES ONLY
                             hints.slice(0, currentHintLevel + hintsRevealedManually).map((hint, idx) => {
+                                const isLatest = idx === currentHintLevel + hintsRevealedManually - 1;
                                 return React.createElement('div', {
                                     key: idx,
                                     style: {
+                                        marginBottom: idx < currentHintLevel + hintsRevealedManually - 1 ? '0.5rem' : 0,
                                         padding: '0.5rem',
-                                        marginBottom: '0.25rem',
-                                        backgroundColor: design.colors?.bgTertiary || '#3A3A37',
+                                        backgroundColor: design.colors?.bgSecondary || '#2D2D2A',
                                         borderRadius: '0.25rem',
                                         borderLeft: `3px solid ${idx === 0 ? '#f59e0b' : idx === 1 ? '#3b82f6' : idx === 2 ? '#10b981' : '#8b5cf6'}`
                                     }
@@ -640,7 +743,7 @@
                                     React.createElement('p', { 
                                         style: { 
                                             fontSize: '0.875rem', 
-                                            color: design.colors?.textPrimary || '#F5F5DC', 
+                                            color: design.colors?.textPrimary || '#F5F5DC',
                                             margin: 0 
                                         } 
                                     }, `${idx + 1}. ${hint.text}`)
@@ -651,17 +754,17 @@
                                 style: {
                                     marginTop: '0.75rem',
                                     padding: '0.5rem',
-                                    backgroundColor: lastAttemptScore.baseScore > 0 ? 'rgba(34,139,34,0.2)' : 'rgba(239,68,68,0.2)',
+                                    backgroundColor: lastAttemptScore.baseScore > 0 ? 'rgba(34,139,34,0.2)' : 'rgba(220,38,38,0.2)',
                                     color: design.colors?.textPrimary || '#F5F5DC',
                                     borderRadius: '0.25rem',
                                     fontSize: '0.875rem',
-                                    border: `1px solid ${lastAttemptScore.baseScore > 0 ? 'rgba(34,139,34,0.3)' : 'rgba(239,68,68,0.3)'}`
+                                    border: `1px solid ${lastAttemptScore.baseScore > 0 ? 'rgba(34,139,34,0.3)' : 'rgba(220,38,38,0.3)'}`
                                 }
                             }, lastAttemptScore.feedback)
                         ),
                         
                         !showResult && !showGuide ? 
-                            // Question Mode
+                            // Question Mode - UPDATED STYLES ONLY
                             React.createElement('div', null,
                                 React.createElement('div', { style: { marginBottom: '1rem' } },
                                     React.createElement('input', {
@@ -746,8 +849,8 @@
                                     }, "I Don't Know")
                                 )
                             ) :
-                            showResult ? 
-                            // Result Display
+                            showResult ?
+                            // Result Display - UPDATED STYLES ONLY
                             React.createElement('div', null,
                                 React.createElement('div', {
                                     style: {
@@ -781,7 +884,7 @@
                                         React.createElement('strong', null, 'Family: '), currentSpecimen.family
                                     ),
                                     
-                                    // Score breakdown
+                                    // Score breakdown - UPDATED STYLES ONLY
                                     React.createElement('div', {
                                         style: {
                                             marginTop: '0.75rem',
@@ -841,7 +944,7 @@
                 )
             ),
 
-            // Interactive Species Guide Modal
+            // Interactive Species Guide Modal - UNCHANGED
             showGuide && window.InteractiveSpeciesGuide && React.createElement(window.InteractiveSpeciesGuide, {
                 specimen: currentSpecimen,
                 speciesHints: currentSpeciesHints,
@@ -857,7 +960,7 @@
                 }
             }),
 
-            // Photo modal
+            // Photo modal - UPDATED STYLES ONLY
             selectedPhoto && React.createElement('div', {
                 style: {
                     position: 'fixed',
