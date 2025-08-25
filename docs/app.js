@@ -232,6 +232,12 @@
         
         const handleModuleComplete = (module) => {
             console.log('🎉 Module completed:', module.id);
+            
+            // Refresh user progress to show updated completion status
+            if (loadUserProgress) {
+                loadUserProgress();
+            }
+            
             setCurrentView('training-modules');
             setCurrentModule(null);
         };
@@ -369,16 +375,18 @@
                     );
 
                 case 'module-player':
-                    return window.ModulePlayer ? React.createElement(window.ModulePlayer, {
-                        module: currentModule,
-                        user,
-                        saveProgress,
-                        onComplete: handleModuleComplete,
-                        onBack: () => setCurrentView('training-modules')
-                    }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
-                        React.createElement('h1', null, 'ModulePlayer component not loaded'),
-                        React.createElement('button', { onClick: () => setCurrentView('training-modules') }, 'Back to Training')
-                    );
+                    return window.ModulePlayer ?
+                        React.createElement(window.ModulePlayer, {
+                            module: currentModule,
+                            user,
+                            userProgress,  // ADD THIS LINE
+                            saveProgress,
+                            onComplete: handleModuleComplete,
+                            onBack: () => setCurrentView('training-modules')
+                        }) : React.createElement('div', { style: { padding: '2rem', textAlign: 'center' } },
+                            React.createElement('h1', null, 'ModulePlayer component not loaded'),
+                            React.createElement('button', { onClick: () => setCurrentView('training-modules') }, 'Back to Training')
+                        );
 
                 case 'public-profile':
                     if (profileUsername && window.PublicProfile) {
