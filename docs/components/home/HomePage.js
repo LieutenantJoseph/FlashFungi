@@ -22,8 +22,27 @@
         const speciesWithHints = props.speciesWithHints || 0;
         
         // Calculate training progress
-        const completedModules = Object.values(userProgress).filter(p => p.completed).length;
-        const totalModules = 5;
+        const [modules, setModules] = React.useState([]);
+        
+        React.useEffect(() => {
+            const loadModules = async () => {
+                if (!window.ModuleLoader) return;
+                try {
+                    const loadedModules = await window.ModuleLoader.loadModules({ 
+                        published: true 
+                    });
+                    setModules(loadedModules);
+                } catch (error) {
+                    console.error('Error loading modules:', error);
+                }
+            };
+            loadModules();
+        }, []);
+        
+        // Calculate training progress - only count items with module_id (actual modules)
+        const moduleProgress = Object.values(userProgress).filter(p => p.module_id && p.completed);
+        const completedModules = moduleProgress.length;
+        const totalModules = modules.length || 0;
         const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
         
         // Animation state
