@@ -57,7 +57,17 @@
         }, [modules, selectedCategory]);
         
         // Calculate progress
-        const completedCount = Object.values(userProgress).filter(p => p?.completed).length;
+        const completedCount = React.useMemo(() => {
+            let count = 0;
+            modules.forEach(module => {
+                const progressKey = `training_module_${module.id}`;
+                const moduleProgress = userProgress[progressKey] || userProgress[module.id];
+                if (moduleProgress?.completed) {
+                    count++;
+                }
+            });
+            return count;
+        }, [modules, userProgress]);
         const totalModules = modules.length;
         const progressPercentage = totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
         
@@ -323,7 +333,11 @@
                         } 
                     },
                         filteredModules.map((module, idx) => {
-                            const isCompleted = userProgress[module.id]?.completed || false;
+                            // Check for module completion using correct progress type
+                            const progressKey = `training_module_${module.id}`;
+                            const moduleProgress = userProgress[progressKey] || userProgress[module.id];
+                            const isCompleted = moduleProgress?.completed || false;
+                            
                             const difficultyColor = {
                                 'beginner': COLORS.ACCENT_SUCCESS,
                                 'intermediate': COLORS.ACCENT_WARNING, 
@@ -339,18 +353,18 @@
                                     padding: '1.5rem',
                                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
                                     cursor: 'pointer',
-                                    border: `2px solid ${COLORS.BORDER_DEFAULT}`,
+                                    border: `2px solid ${isCompleted ? COLORS.ACCENT_SUCCESS : COLORS.BORDER_DEFAULT}`,
                                     transition: 'all 0.2s',
                                     position: 'relative',
                                     overflow: 'hidden'
                                 },
                                 onMouseEnter: (e) => {
-                                    e.currentTarget.style.borderColor = COLORS.ACCENT_PRIMARY;
+                                    e.currentTarget.style.borderColor = isCompleted ? COLORS.ACCENT_SUCCESS : COLORS.ACCENT_PRIMARY;
                                     e.currentTarget.style.transform = 'translateY(-2px)';
                                     e.currentTarget.style.boxShadow = '0 6px 12px rgba(0, 0, 0, 0.4)';
                                 },
                                 onMouseLeave: (e) => {
-                                    e.currentTarget.style.borderColor = COLORS.BORDER_DEFAULT;
+                                    e.currentTarget.style.borderColor = isCompleted ? COLORS.ACCENT_SUCCESS : COLORS.BORDER_DEFAULT;
                                     e.currentTarget.style.transform = 'translateY(0)';
                                     e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.3)';
                                 }
@@ -373,7 +387,8 @@
                                 React.createElement('div', { 
                                     style: { 
                                         fontSize: '2rem',
-                                        marginBottom: '0.75rem'
+                                        marginBottom: '0.75rem',
+                                        opacity: isCompleted ? 0.7 : 1
                                     } 
                                 }, module.icon || '📖'),
                                 
@@ -430,9 +445,47 @@
                                     style: { 
                                         fontSize: '0.875rem',
                                         color: COLORS.TEXT_SECONDARY,
-                                        lineHeight: '1.4'
+                                        lineHeight: '1.4',
+                                        marginBottom: '1rem'
                                     } 
                                 }, module.description),
+                                
+                                // Action button
+                                React.createElement('div', {
+                                    style: {
+                                        marginTop: 'auto',
+                                        paddingTop: '0.75rem'
+                                    }
+                                },
+                                    React.createElement('button', {
+                                        style: {
+                                            width: '100%',
+                                            padding: '0.5rem 1rem',
+                                            background: isCompleted ? 'transparent' : GRADIENTS.EARTH,
+                                            color: isCompleted ? COLORS.ACCENT_SUCCESS : 'white',
+                                            border: isCompleted ? `1px solid ${COLORS.ACCENT_SUCCESS}` : 'none',
+                                            borderRadius: '0.5rem',
+                                            fontWeight: '500',
+                                            fontSize: '0.875rem',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        },
+                                        onClick: (e) => {
+                                            e.stopPropagation();
+                                            onModuleSelect(module);
+                                        },
+                                        onMouseEnter: (e) => {
+                                            if (isCompleted) {
+                                                e.target.style.backgroundColor = COLORS.ACCENT_SUCCESS + '20';
+                                            }
+                                        },
+                                        onMouseLeave: (e) => {
+                                            if (isCompleted) {
+                                                e.target.style.backgroundColor = 'transparent';
+                                            }
+                                        }
+                                    }, isCompleted ? '📚 Review Module' : '🎯 Start Module')
+                                ),
                                 
                                 // Prerequisites
                                 module.prerequisites && module.prerequisites.length > 0 && 
