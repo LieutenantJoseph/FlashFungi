@@ -37,11 +37,18 @@
         PURPLE: 'linear-gradient(135deg, #9B7AA8 0%, #7B5A88 100%)'
     };
     
-    window.ModulePlayer = function ModulePlayer({ module, onComplete, onBack, saveProgress, user }) {
+    window.ModulePlayer = function ModulePlayer({ module, onComplete, onBack, saveProgress, user, userProgress }) {
         const [currentSlide, setCurrentSlide] = React.useState(0);
         const [completed, setCompleted] = React.useState(false);
         const [quizAnswers, setQuizAnswers] = React.useState({});
         const [quizSubmitted, setQuizSubmitted] = React.useState({});
+        
+        // Check if module was previously completed
+        const previouslyCompleted = React.useMemo(() => {
+            const progressKey = `training_module_${module?.id}`;
+            const moduleProgress = userProgress?.[progressKey] || userProgress?.[module?.id];
+            return moduleProgress?.completed || false;
+        }, [module, userProgress]);
 
         // Helper function to convert database module content to slides format
         const convertDatabaseModuleToSlides = (dbModule) => {
@@ -391,6 +398,41 @@
 
         const handleQuizSubmit = (questionIndex) => {
             setQuizSubmitted({ ...quizSubmitted, [questionIndex]: true });
+            
+            // Save quiz progress to database
+            if (saveProgress && user && module && currentSlideData.type === 'quiz') {
+                const isCorrect = quizAnswers[questionIndex] === currentSlideData.correct;
+                
+                const quizProgressData = {
+                    moduleId: module.id,
+                    progressType: 'quiz', // Use 'quiz' for individual quiz questions
+                    score: isCorrect ? 100 : 0,
+                    completed: false, // Module not complete yet
+                    attempts: 1,
+                    metadata: {
+                        moduleTitle: module.title,
+                        questionIndex: questionIndex,
+                        question: currentSlideData.question,
+                        userAnswer: quizAnswers[questionIndex],
+                        correctAnswer: currentSlideData.correct,
+                        isCorrect: isCorrect,
+                        slideNumber: currentSlide + 1,
+                        totalSlides: slides.length
+                    }
+                };
+                
+                console.log('💾 Saving quiz answer:', quizProgressData);
+                
+                saveProgress(quizProgressData)
+                    .then(result => {
+                        if (result) {
+                            console.log('✅ Quiz progress saved');
+                        }
+                    })
+                    .catch(err => {
+                        console.error('❌ Error saving quiz progress:', err);
+                    });
+            }
         };
 
         const isQuizSlide = currentSlideData.type === 'quiz';
@@ -428,9 +470,24 @@
                                     style: { 
                                         fontSize: '1.25rem', 
                                         fontWeight: 'bold',
-                                        color: COLORS.TEXT_PRIMARY
+                                        color: COLORS.TEXT_PRIMARY,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
                                     } 
-                                }, module.title),
+                                }, 
+                                    module.title,
+                                    previouslyCompleted && React.createElement('span', {
+                                        style: {
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            backgroundColor: COLORS.ACCENT_SUCCESS,
+                                            color: 'white',
+                                            borderRadius: '9999px',
+                                            fontWeight: '500'
+                                        }
+                                    }, '✓ Previously Completed')
+                                ),
                                 React.createElement('p', { 
                                     style: { 
                                         fontSize: '0.875rem', 
