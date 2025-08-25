@@ -1,628 +1,504 @@
-// Achievement System - Phase 3 Complete Implementation
-// Manages user achievements, triggers, and notifications
+// AchievementSystem.js - Database-Driven Achievement System
+// Flash Fungi - Living Mycology Style with Supabase Integration
 
 (function() {
     'use strict';
     
-    const { useState, useEffect, useCallback } = React;
-    
-    // Achievement Definitions
-    const ACHIEVEMENT_DEFINITIONS = {
-        // Beginner achievements
-        first_correct: {
-            id: 'first_correct',
-            name: 'First Steps',
-            description: 'Identify your first mushroom correctly',
-            icon: '🎯',
-            category: 'learning',
-            points: 10,
-            requirement_type: 'first_correct',
-            requirement_value: 1
-        },
-        
-        early_bird: {
-            id: 'early_bird',
-            name: 'Early Bird',
-            description: 'Study before 6 AM',
-            icon: '🌅',
-            category: 'dedication',
-            points: 15,
-            requirement_type: 'time_based',
-            requirement_value: 'early_bird'
-        },
-        
-        night_owl: {
-            id: 'night_owl',
-            name: 'Night Owl',
-            description: 'Study after 10 PM',
-            icon: '🦉',
-            category: 'dedication',
-            points: 15,
-            requirement_type: 'time_based',
-            requirement_value: 'night_owl'
-        },
-        
-        // Streak achievements
-        streak_5: {
-            id: 'streak_5',
-            name: 'Getting Warm',
-            description: 'Get 5 correct answers in a row',
-            icon: '🔥',
-            category: 'streaks',
-            points: 25,
-            requirement_type: 'streak',
-            requirement_value: 5
-        },
-        
-        streak_10: {
-            id: 'streak_10',
-            name: 'On Fire',
-            description: 'Get 10 correct answers in a row',
-            icon: '🔥',
-            category: 'streaks',
-            points: 50,
-            requirement_type: 'streak',
-            requirement_value: 10
-        },
-        
-        streak_25: {
-            id: 'streak_25',
-            name: 'Blazing Hot',
-            description: 'Get 25 correct answers in a row',
-            icon: '🔥',
-            category: 'streaks',
-            points: 100,
-            requirement_type: 'streak',
-            requirement_value: 25
-        },
-        
-        // Volume achievements
-        hundred_club: {
-            id: 'hundred_club',
-            name: 'Hundred Club',
-            description: 'Answer 100 questions correctly',
-            icon: '💯',
-            category: 'volume',
-            points: 75,
-            requirement_type: 'total_correct',
-            requirement_value: 100
-        },
-        
-        thousand_club: {
-            id: 'thousand_club',
-            name: 'Thousand Club',
-            description: 'Answer 1000 questions correctly',
-            icon: '🎖️',
-            category: 'volume',
-            points: 200,
-            requirement_type: 'total_correct',
-            requirement_value: 1000
-        },
-        
-        // Accuracy achievements
-        perfectionist: {
-            id: 'perfectionist',
-            name: 'Perfectionist',
-            description: 'Achieve 100% accuracy in a session of 20+ questions',
-            icon: '✨',
-            category: 'accuracy',
-            points: 150,
-            requirement_type: 'perfect_session',
-            requirement_value: 20
-        },
-        
-        accuracy_master: {
-            id: 'accuracy_master',
-            name: 'Accuracy Master',
-            description: 'Maintain 90%+ accuracy over 100 questions',
-            icon: '🎯',
-            category: 'accuracy',
-            points: 100,
-            requirement_type: 'accuracy_streak',
-            requirement_value: { accuracy: 90, questions: 100 }
-        },
-        
-        // Genus mastery
-        genus_master_agaricus: {
-            id: 'genus_master_agaricus',
-            name: 'Agaricus Expert',
-            description: 'Achieve 90% accuracy with Agaricus species',
-            icon: '🍄',
-            category: 'mastery',
-            points: 75,
-            requirement_type: 'genus_accuracy',
-            requirement_value: { genus: 'Agaricus', accuracy: 90, minimum: 20 }
-        },
-        
-        genus_master_boletus: {
-            id: 'genus_master_boletus',
-            name: 'Boletus Expert',
-            description: 'Achieve 90% accuracy with Boletus species',
-            icon: '🟫',
-            category: 'mastery',
-            points: 75,
-            requirement_type: 'genus_accuracy',
-            requirement_value: { genus: 'Boletus', accuracy: 90, minimum: 20 }
-        },
-        
-        // Special achievements
-        dna_detective: {
-            id: 'dna_detective',
-            name: 'DNA Detective',
-            description: 'Correctly identify 50 DNA-verified specimens',
-            icon: '🧬',
-            category: 'special',
-            points: 100,
-            requirement_type: 'dna_specialist',
-            requirement_value: 50
-        },
-        
-        marathon_runner: {
-            id: 'marathon_runner',
-            name: 'Marathon Runner',
-            description: 'Complete a 60+ minute Marathon Mode session',
-            icon: '🏃‍♂️',
-            category: 'dedication',
-            points: 125,
-            requirement_type: 'marathon_duration',
-            requirement_value: 60
-        },
-        
-        module_graduate: {
-            id: 'module_graduate',
-            name: 'Training Graduate',
-            description: 'Complete all foundation training modules',
-            icon: '🎓',
-            category: 'learning',
-            points: 150,
-            requirement_type: 'modules_complete',
-            requirement_value: ['foundation_intro', 'foundation_morphology', 'foundation_ecology', 'foundation_safety', 'foundation_practice']
-        },
-        
-        dangerous_game: {
-            id: 'dangerous_game',
-            name: 'Playing with Fire',
-            description: 'Correctly identify 10 toxic mushroom species',
-            icon: '☠️',
-            category: 'safety',
-            points: 200,
-            requirement_type: 'toxic_species',
-            requirement_value: 10
-        }
-    };
-    
     // Achievement Toast Component
-    window.AchievementToast = function AchievementToast({ achievement, onClose, isVisible }) {
-        const [animationClass, setAnimationClass] = useState('');
+    window.AchievementToast = function AchievementToast({ achievement, onClose }) {
+        const [isVisible, setIsVisible] = React.useState(true);
         
-        useEffect(() => {
-            if (isVisible) {
-                setAnimationClass('animate-slide-in-right');
-                const timer = setTimeout(() => {
-                    setAnimationClass('animate-slide-out-right');
-                    setTimeout(onClose, 300);
-                }, 4000);
-                return () => clearTimeout(timer);
-            }
-        }, [isVisible, onClose]);
-        
-        if (!isVisible) return null;
-        
+        React.useEffect(() => {
+            const timer = setTimeout(() => {
+                setIsVisible(false);
+                setTimeout(onClose, 300);
+            }, 5000);
+            
+            return () => clearTimeout(timer);
+        }, []);
+
         return React.createElement('div', {
-            className: `fixed top-4 right-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-sm ${animationClass}`,
-            style: { zIndex: 9999 }
+            style: {
+                position: 'fixed',
+                top: '2rem',
+                right: '2rem',
+                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                color: 'white',
+                borderRadius: '1rem',
+                padding: '1.5rem',
+                minWidth: '320px',
+                maxWidth: '400px',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                zIndex: 1000,
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'translateX(0)' : 'translateX(20px)',
+                transition: 'all 0.3s ease-out'
+            }
         },
-            React.createElement('div', { className: 'flex items-center space-x-3' },
-                React.createElement('div', { 
-                    className: 'text-2xl'
-                }, achievement.icon),
-                React.createElement('div', { className: 'flex-1' },
-                    React.createElement('div', { 
-                        className: 'font-bold text-sm'
-                    }, '🏆 Achievement Unlocked!'),
-                    React.createElement('div', { 
-                        className: 'font-semibold'
-                    }, achievement.name),
-                    React.createElement('div', { 
-                        className: 'text-sm opacity-90'
-                    }, achievement.description),
-                    achievement.points && React.createElement('div', { 
-                        className: 'text-xs font-medium mt-1'
-                    }, `+${achievement.points} points`)
-                ),
-                React.createElement('button', {
-                    onClick: onClose,
-                    className: 'text-white hover:text-gray-200 text-xl leading-none'
-                }, '×')
-            )
+            React.createElement('div', {
+                style: {
+                    fontSize: '3rem',
+                    filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.3))'
+                }
+            }, achievement.icon || '🏆'),
+            
+            React.createElement('div', { style: { flex: 1 } },
+                React.createElement('div', {
+                    style: {
+                        fontSize: '0.875rem',
+                        opacity: 0.9,
+                        marginBottom: '0.25rem'
+                    }
+                }, '🎉 Achievement Unlocked!'),
+                React.createElement('div', {
+                    style: {
+                        fontSize: '1.125rem',
+                        fontWeight: 'bold'
+                    }
+                }, achievement.name),
+                React.createElement('div', {
+                    style: {
+                        fontSize: '0.875rem',
+                        opacity: 0.9,
+                        marginTop: '0.25rem'
+                    }
+                }, achievement.description),
+                achievement.points && React.createElement('div', {
+                    style: {
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        marginTop: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                    }
+                },
+                    React.createElement('span', null, '⭐'),
+                    React.createElement('span', null, `+${achievement.points} XP`)
+                )
+            ),
+            
+            React.createElement('button', {
+                onClick: () => {
+                    setIsVisible(false);
+                    setTimeout(onClose, 300);
+                },
+                style: {
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: 'white',
+                    fontSize: '1rem'
+                }
+            }, '×')
         );
     };
     
     // Achievement Tracker Hook
     window.useAchievementTracker = function(user) {
-        const [achievements, setAchievements] = useState([]);
-        const [userAchievements, setUserAchievements] = useState([]);
-        const [toastQueue, setToastQueue] = useState([]);
-        const [userStats, setUserStats] = useState({});
+        const [achievements, setAchievements] = React.useState([]);
+        const [userAchievements, setUserAchievements] = React.useState([]);
+        const [toastQueue, setToastQueue] = React.useState([]);
+        const [loading, setLoading] = React.useState(true);
         
-        // Load achievements and user data
-        useEffect(() => {
-            if (!user?.id) return;
-            
-            const loadAchievements = async () => {
-                try {
-                    // Load all achievement definitions
-                    const allAchievements = Object.values(ACHIEVEMENT_DEFINITIONS).map(achievement => ({
-                        ...achievement,
-                        earned: false,
-                        earned_at: null,
-                        progress: 0
-                    }));
-                    
-                    // Load user's earned achievements
-                    const response = await fetch(`${window.SUPABASE_URL}/rest/v1/user_achievements?user_id=eq.${user.id}&select=*`, {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const earnedAchievements = await response.json();
-                        
-                        // Mark earned achievements
-                        const mergedAchievements = allAchievements.map(achievement => {
-                            const earned = earnedAchievements.find(ea => ea.achievement_id === achievement.id);
-                            return earned ? {
-                                ...achievement,
-                                earned: true,
-                                earned_at: earned.earned_at,
-                                progress: earned.progress || 100
-                            } : achievement;
-                        });
-                        
-                        setAchievements(mergedAchievements);
-                        setUserAchievements(earnedAchievements);
-                    } else {
-                        setAchievements(allAchievements);
-                    }
-                    
-                    // Load user stats for progress tracking
-                    const statsResponse = await fetch(`${window.SUPABASE_URL}/rest/v1/user_progress?user_id=eq.${user.id}&select=*`, {
-                        headers: {
-                            'apikey': window.SUPABASE_ANON_KEY,
-                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
-                        }
-                    });
-                    
-                    if (statsResponse.ok) {
-                        const progressData = await statsResponse.json();
-                        const stats = {
-                            total_correct: 0,
-                            total_attempts: 0,
-                            current_streak: 0,
-                            longest_streak: 0,
-                            genus_accuracy: {},
-                            modules_completed: [],
-                            dna_correct: 0,
-                            toxic_correct: 0
-                        };
-                        
-                        // Aggregate stats from progress data
-                        progressData.forEach(record => {
-                            if (record.progress_type === 'quiz') {
-                                stats.total_attempts++;
-                                if (record.score > 50) {
-                                    stats.total_correct++;
-                                }
-                            }
-                        });
-                        
-                        setUserStats(stats);
-                    }
-                } catch (error) {
-                    console.error('Error loading achievements:', error);
-                }
-            };
+        // Load achievements from database
+        React.useEffect(() => {
+            if (!user?.id) {
+                setLoading(false);
+                return;
+            }
             
             loadAchievements();
         }, [user]);
         
-        // Check achievement triggers
-        const checkAchievements = useCallback(async (eventType, eventData) => {
-            if (!user?.id || achievements.length === 0) return;
-            
-            const unearned = achievements.filter(a => !a.earned);
-            const newlyEarned = [];
-            
-            for (const achievement of unearned) {
-                let earned = false;
-                let progress = achievement.progress || 0;
+        const loadAchievements = async () => {
+            try {
+                setLoading(true);
                 
-                // Check based on requirement type
-                switch (achievement.requirement_type) {
-                    case 'first_correct':
-                        if (eventType === 'answer_correct' && userStats.total_correct === 0) {
-                            earned = true;
+                // Load all available achievements from database
+                const achievementsResponse = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/achievements?select=*&order=category,sort_order`,
+                    {
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
                         }
-                        break;
-                        
-                    case 'streak':
-                        if (eventType === 'streak_update' && eventData.streak >= achievement.requirement_value) {
-                            earned = true;
-                        }
-                        break;
-                        
-                    case 'total_correct':
-                        if (eventType === 'answer_correct') {
-                            const newTotal = userStats.total_correct + 1;
-                            progress = Math.min((newTotal / achievement.requirement_value) * 100, 100);
-                            if (newTotal >= achievement.requirement_value) {
-                                earned = true;
-                            }
-                        }
-                        break;
-                        
-                    case 'genus_accuracy':
-                        if (eventType === 'genus_complete') {
-                            const { genus, accuracy, attempts } = eventData;
-                            const req = achievement.requirement_value;
-                            if (genus === req.genus && attempts >= req.minimum && accuracy >= req.accuracy) {
-                                earned = true;
-                            }
-                        }
-                        break;
-                        
-                    case 'dna_specialist':
-                        if (eventType === 'answer_correct' && eventData.dna_verified) {
-                            const newCount = userStats.dna_correct + 1;
-                            progress = Math.min((newCount / achievement.requirement_value) * 100, 100);
-                            if (newCount >= achievement.requirement_value) {
-                                earned = true;
-                            }
-                        }
-                        break;
-                        
-                    case 'toxic_species':
-                        if (eventType === 'answer_correct' && eventData.is_toxic) {
-                            const newCount = userStats.toxic_correct + 1;
-                            progress = Math.min((newCount / achievement.requirement_value) * 100, 100);
-                            if (newCount >= achievement.requirement_value) {
-                                earned = true;
-                            }
-                        }
-                        break;
-                        
-                    case 'time_based':
-                        const hour = new Date().getHours();
-                        if (achievement.requirement_value === 'night_owl' && hour >= 22) {
-                            earned = true;
-                        } else if (achievement.requirement_value === 'early_bird' && hour < 6) {
-                            earned = true;
-                        }
-                        break;
-                        
-                    case 'perfect_session':
-                        if (eventType === 'session_complete' && 
-                            eventData.accuracy === 100 && 
-                            eventData.questions >= achievement.requirement_value) {
-                            earned = true;
-                        }
-                        break;
-                        
-                    case 'marathon_duration':
-                        if (eventType === 'marathon_complete' && 
-                            eventData.duration >= achievement.requirement_value) {
-                            earned = true;
-                        }
-                        break;
-                        
-                    case 'modules_complete':
-                        if (eventType === 'module_complete') {
-                            const requiredModules = achievement.requirement_value;
-                            const completedModules = [...userStats.modules_completed, eventData.moduleId];
-                            const uniqueCompleted = [...new Set(completedModules)];
-                            
-                            progress = Math.min((uniqueCompleted.length / requiredModules.length) * 100, 100);
-                            
-                            if (requiredModules.every(module => uniqueCompleted.includes(module))) {
-                                earned = true;
-                            }
-                        }
-                        break;
+                    }
+                );
+                
+                if (achievementsResponse.ok) {
+                    const achievementsData = await achievementsResponse.json();
+                    setAchievements(achievementsData);
                 }
                 
-                // Award achievement if earned or update progress
-                if (earned || progress > achievement.progress) {
-                    try {
-                        const response = await fetch(`${window.SUPABASE_URL}/rest/v1/user_achievements`, {
-                            method: 'POST',
-                            headers: {
-                                'apikey': window.SUPABASE_ANON_KEY,
-                                'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
-                                'Content-Type': 'application/json',
-                                'Prefer': 'resolution=merge-duplicates'
-                            },
-                            body: JSON.stringify({
-                                user_id: user.id,
-                                achievement_id: achievement.id,
-                                earned: earned,
-                                progress: earned ? 100 : progress,
-                                earned_at: earned ? new Date().toISOString() : null
-                            })
-                        });
-                        
-                        if (response.ok && earned) {
-                            newlyEarned.push(achievement);
-                            setToastQueue(prev => [...prev, achievement]);
+                // Load user's earned achievements
+                const userAchievementsResponse = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/user_achievements?user_id=eq.${user.id}&select=*`,
+                    {
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`
                         }
+                    }
+                );
+                
+                if (userAchievementsResponse.ok) {
+                    const userAchievementsData = await userAchievementsResponse.json();
+                    setUserAchievements(userAchievementsData);
+                }
+                
+            } catch (error) {
+                console.error('Error loading achievements:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        // Check for new achievements based on user actions
+        const checkAchievements = async (eventType, eventData = {}) => {
+            if (!user?.id || loading) return;
+            
+            try {
+                // Call a Supabase function to check achievements
+                const response = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/rpc/check_achievements`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            p_user_id: user.id,
+                            p_event_type: eventType,
+                            p_event_data: eventData
+                        })
+                    }
+                );
+                
+                if (response.ok) {
+                    const newAchievements = await response.json();
+                    
+                    if (newAchievements && newAchievements.length > 0) {
+                        // Add new achievements to the toast queue
+                        setToastQueue(prev => [...prev, ...newAchievements]);
                         
-                        // Update local achievement state
-                        setAchievements(prev => prev.map(a => 
-                            a.id === achievement.id 
-                                ? { ...a, earned, progress: earned ? 100 : progress, earned_at: earned ? new Date().toISOString() : null }
-                                : a
-                        ));
-                    } catch (error) {
-                        console.error('Error awarding achievement:', error);
+                        // Update user achievements list
+                        setUserAchievements(prev => [
+                            ...prev,
+                            ...newAchievements.map(a => ({
+                                achievement_id: a.id,
+                                user_id: user.id,
+                                earned_at: new Date().toISOString()
+                            }))
+                        ]);
                     }
                 }
+            } catch (error) {
+                console.error('Error checking achievements:', error);
+            }
+        };
+        
+        // Award achievement manually (for testing or special cases)
+        const awardAchievement = async (achievementId) => {
+            if (!user?.id) return false;
+            
+            try {
+                const response = await fetch(
+                    `${window.SUPABASE_URL}/rest/v1/user_achievements`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'apikey': window.SUPABASE_ANON_KEY,
+                            'Authorization': `Bearer ${window.SUPABASE_ANON_KEY}`,
+                            'Content-Type': 'application/json',
+                            'Prefer': 'return=representation'
+                        },
+                        body: JSON.stringify({
+                            user_id: user.id,
+                            achievement_id: achievementId,
+                            earned_at: new Date().toISOString()
+                        })
+                    }
+                );
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Find the achievement details
+                    const achievement = achievements.find(a => a.id === achievementId);
+                    if (achievement) {
+                        setToastQueue(prev => [...prev, achievement]);
+                    }
+                    
+                    // Reload achievements
+                    await loadAchievements();
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error awarding achievement:', error);
             }
             
-            // Update user stats
-            if (eventType === 'answer_correct') {
-                setUserStats(prev => ({
-                    ...prev,
-                    total_correct: prev.total_correct + 1,
-                    total_attempts: prev.total_attempts + 1,
-                    dna_correct: eventData.dna_verified ? prev.dna_correct + 1 : prev.dna_correct,
-                    toxic_correct: eventData.is_toxic ? prev.toxic_correct + 1 : prev.toxic_correct
-                }));
-            }
-            
-        }, [user, achievements, userStats]);
+            return false;
+        };
         
         return {
             achievements,
             userAchievements,
-            checkAchievements,
             toastQueue,
-            clearToast: () => setToastQueue(prev => prev.slice(1)),
-            userStats
+            setToastQueue,
+            checkAchievements,
+            awardAchievement,
+            loading,
+            reload: loadAchievements
         };
     };
     
-    // Achievement Showcase Component
-    window.AchievementShowcase = function({ achievements, user }) {
-        const [selectedCategory, setSelectedCategory] = useState('all');
+    // Achievement Display Component
+    window.AchievementDisplay = function AchievementDisplay({ achievements = [], userAchievements = [], showAll = false }) {
+        const [selectedCategory, setSelectedCategory] = React.useState('all');
         
-        const earned = achievements.filter(a => a.earned);
-        const categories = ['all', ...new Set(achievements.map(a => a.category))];
+        // Get unique categories
+        const categories = React.useMemo(() => {
+            const cats = ['all', ...new Set(achievements.map(a => a.category))];
+            return cats.filter(Boolean);
+        }, [achievements]);
         
-        const filteredAchievements = selectedCategory === 'all' 
-            ? achievements 
-            : achievements.filter(a => a.category === selectedCategory);
-        
-        const totalPoints = earned.reduce((sum, a) => sum + (a.points || 0), 0);
-        
-        return React.createElement('div', { className: 'p-6' },
-            React.createElement('h2', { 
-                className: 'text-2xl font-bold text-gray-800 mb-6'
-            }, '🏆 Your Achievements'),
+        // Filter achievements
+        const displayAchievements = React.useMemo(() => {
+            let filtered = achievements;
             
-            // Stats overview
-            React.createElement('div', { 
-                className: 'grid grid-cols-3 gap-4 mb-6'
+            if (!showAll) {
+                // Only show earned achievements
+                filtered = achievements.filter(a => 
+                    userAchievements.some(ua => ua.achievement_id === a.id)
+                );
+            }
+            
+            if (selectedCategory !== 'all') {
+                filtered = filtered.filter(a => a.category === selectedCategory);
+            }
+            
+            return filtered;
+        }, [achievements, userAchievements, selectedCategory, showAll]);
+        
+        // Check if achievement is earned
+        const isEarned = (achievementId) => {
+            return userAchievements.some(ua => ua.achievement_id === achievementId);
+        };
+        
+        return React.createElement('div', null,
+            // Category Filter
+            React.createElement('div', {
+                style: {
+                    display: 'flex',
+                    gap: '0.5rem',
+                    marginBottom: '2rem',
+                    flexWrap: 'wrap'
+                }
             },
-                React.createElement('div', { 
-                    className: 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg p-4 text-center'
-                },
-                    React.createElement('div', { className: 'text-2xl font-bold' }, earned.length),
-                    React.createElement('div', { className: 'text-sm opacity-90' }, 'Earned')
-                ),
-                React.createElement('div', { 
-                    className: 'bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4 text-center'
-                },
-                    React.createElement('div', { className: 'text-2xl font-bold' }, achievements.length),
-                    React.createElement('div', { className: 'text-sm opacity-90' }, 'Total')
-                ),
-                React.createElement('div', { 
-                    className: 'bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-lg p-4 text-center'
-                },
-                    React.createElement('div', { className: 'text-2xl font-bold' }, totalPoints),
-                    React.createElement('div', { className: 'text-sm opacity-90' }, 'Points')
+                categories.map(category =>
+                    React.createElement('button', {
+                        key: category,
+                        onClick: () => setSelectedCategory(category),
+                        style: {
+                            padding: '0.5rem 1rem',
+                            borderRadius: '0.5rem',
+                            border: 'none',
+                            background: selectedCategory === category
+                                ? 'linear-gradient(135deg, #059669 0%, #047857 100%)'
+                                : '#e5e7eb',
+                            color: selectedCategory === category ? 'white' : '#6b7280',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            textTransform: 'capitalize'
+                        }
+                    }, category === 'all' ? 'All Categories' : category)
                 )
             ),
             
-            // Category filter
-            React.createElement('div', { className: 'mb-6' },
-                React.createElement('div', { className: 'flex flex-wrap gap-2' },
-                    categories.map(category =>
-                        React.createElement('button', {
-                            key: category,
-                            onClick: () => setSelectedCategory(category),
-                            className: `px-4 py-2 rounded-lg font-medium transition-colors ${
-                                selectedCategory === category
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`
-                        }, category.charAt(0).toUpperCase() + category.slice(1))
-                    )
-                )
-            ),
-            
-            // Achievement grid
-            React.createElement('div', { 
-                className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'
+            // Achievements Grid
+            React.createElement('div', {
+                style: {
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '1.5rem'
+                }
             },
-                filteredAchievements.map(achievement =>
-                    React.createElement('div', {
+                displayAchievements.map(achievement => {
+                    const earned = isEarned(achievement.id);
+                    const earnedData = userAchievements.find(ua => ua.achievement_id === achievement.id);
+                    
+                    return React.createElement('div', {
                         key: achievement.id,
-                        className: `p-4 rounded-lg border-2 transition-all ${
-                            achievement.earned
-                                ? 'bg-green-50 border-green-300 shadow-md'
-                                : 'bg-gray-50 border-gray-200 opacity-75'
-                        }`
+                        style: {
+                            backgroundColor: earned ? 'white' : '#f9fafb',
+                            borderRadius: '1rem',
+                            padding: '1.5rem',
+                            border: earned ? '2px solid #059669' : '2px solid #e5e7eb',
+                            opacity: earned ? 1 : 0.7,
+                            transition: 'all 0.2s',
+                            position: 'relative',
+                            cursor: 'default'
+                        },
+                        onMouseEnter: (e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                        },
+                        onMouseLeave: (e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }
                     },
-                        React.createElement('div', { className: 'flex items-start space-x-3' },
-                            React.createElement('div', { 
-                                className: `text-2xl ${achievement.earned ? '' : 'grayscale'}`
-                            }, achievement.icon),
-                            React.createElement('div', { className: 'flex-1' },
-                                React.createElement('h3', { 
-                                    className: `font-semibold ${
-                                        achievement.earned ? 'text-green-800' : 'text-gray-600'
-                                    }`
+                        // Earned Badge
+                        earned && React.createElement('div', {
+                            style: {
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '-8px',
+                                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '1rem',
+                                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+                            }
+                        }, '✓'),
+                        
+                        // Icon and Content
+                        React.createElement('div', {
+                            style: {
+                                display: 'flex',
+                                gap: '1rem',
+                                marginBottom: '1rem'
+                            }
+                        },
+                            React.createElement('div', {
+                                style: {
+                                    fontSize: '2.5rem',
+                                    filter: earned ? 'none' : 'grayscale(100%)'
+                                }
+                            }, achievement.icon || '🏆'),
+                            
+                            React.createElement('div', { style: { flex: 1 } },
+                                React.createElement('h4', {
+                                    style: {
+                                        fontSize: '1rem',
+                                        fontWeight: 'bold',
+                                        color: earned ? '#111827' : '#6b7280',
+                                        marginBottom: '0.25rem'
+                                    }
                                 }, achievement.name),
-                                React.createElement('p', { 
-                                    className: `text-sm ${
-                                        achievement.earned ? 'text-green-700' : 'text-gray-500'
-                                    }`
-                                }, achievement.description),
-                                achievement.points && React.createElement('div', { 
-                                    className: `text-xs font-medium mt-2 ${
-                                        achievement.earned ? 'text-green-600' : 'text-gray-400'
-                                    }`
-                                }, `${achievement.points} points`),
                                 
-                                // Progress bar for unearned achievements
-                                !achievement.earned && achievement.progress > 0 && (
-                                    React.createElement('div', { className: 'mt-2' },
-                                        React.createElement('div', { 
-                                            className: 'w-full bg-gray-200 rounded-full h-2'
-                                        },
-                                            React.createElement('div', {
-                                                className: 'bg-blue-600 h-2 rounded-full transition-all duration-300',
-                                                style: { width: `${achievement.progress}%` }
-                                            })
-                                        ),
-                                        React.createElement('div', { 
-                                            className: 'text-xs text-gray-500 mt-1'
-                                        }, `${Math.round(achievement.progress)}% complete`)
-                                    )
-                                ),
-                                
-                                // Earned date
-                                achievement.earned && achievement.earned_at && (
-                                    React.createElement('div', { 
-                                        className: 'text-xs text-green-600 mt-2'
-                                    }, `Earned: ${new Date(achievement.earned_at).toLocaleDateString()}`)
-                                )
+                                React.createElement('div', {
+                                    style: {
+                                        fontSize: '0.75rem',
+                                        color: '#6b7280'
+                                    }
+                                }, achievement.description)
                             )
+                        ),
+                        
+                        // Footer
+                        React.createElement('div', {
+                            style: {
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginTop: '1rem',
+                                paddingTop: '1rem',
+                                borderTop: '1px solid #e5e7eb'
+                            }
+                        },
+                            React.createElement('div', {
+                                style: {
+                                    display: 'flex',
+                                    gap: '0.5rem',
+                                    fontSize: '0.75rem'
+                                }
+                            },
+                                achievement.points && React.createElement('span', {
+                                    style: {
+                                        backgroundColor: '#fef3c7',
+                                        color: '#92400e',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '0.25rem',
+                                        fontWeight: '600'
+                                    }
+                                }, `${achievement.points} XP`),
+                                
+                                achievement.rarity && React.createElement('span', {
+                                    style: {
+                                        backgroundColor: achievement.rarity === 'legendary' ? '#f3e8ff'
+                                            : achievement.rarity === 'rare' ? '#dbeafe'
+                                            : '#f0fdf4',
+                                        color: achievement.rarity === 'legendary' ? '#6b21a8'
+                                            : achievement.rarity === 'rare' ? '#1e40af'
+                                            : '#166534',
+                                        padding: '0.25rem 0.5rem',
+                                        borderRadius: '0.25rem',
+                                        fontWeight: '600',
+                                        textTransform: 'capitalize'
+                                    }
+                                }, achievement.rarity)
+                            ),
+                            
+                            earned && earnedData && React.createElement('div', {
+                                style: {
+                                    fontSize: '0.75rem',
+                                    color: '#6b7280'
+                                }
+                            }, new Date(earnedData.earned_at).toLocaleDateString())
                         )
-                    )
-                )
+                    );
+                })
+            ),
+            
+            // Empty State
+            displayAchievements.length === 0 && React.createElement('div', {
+                style: {
+                    textAlign: 'center',
+                    padding: '3rem',
+                    color: '#6b7280'
+                }
+            },
+                React.createElement('div', {
+                    style: { fontSize: '4rem', marginBottom: '1rem' }
+                }, '🎯'),
+                React.createElement('p', {
+                    style: {
+                        fontSize: '1.125rem',
+                        fontWeight: '600',
+                        marginBottom: '0.5rem'
+                    }
+                }, 'No achievements yet'),
+                React.createElement('p', null, 'Start studying to unlock achievements!')
             )
         );
     };
     
-    // Global achievement checker function
-    window.checkAchievements = function(eventType, eventData) {
-        if (window.achievementChecker) {
-            window.achievementChecker(eventType, eventData);
-        }
+    // Export Achievement Manager
+    window.AchievementSystem = {
+        useAchievementTracker,
+        AchievementToast,
+        AchievementDisplay
     };
     
-    console.log('✅ AchievementSystem component loaded successfully');
-    
+    console.log('✅ Achievement System loaded - Database-driven with Living Mycology Style');
 })();
