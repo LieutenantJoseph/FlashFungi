@@ -64,16 +64,60 @@
                         const parsedContent = JSON.parse(dbModule.content);
                         if (parsedContent.slides) {
                             slides.push(...parsedContent.slides);
+                        } else if (parsedContent.introduction) {
+                            // Handle module structure with sections (introduction, morphology, etc.)
+                            
+                            // Add introduction pages
+                            if (parsedContent.introduction?.pages) {
+                                parsedContent.introduction.pages.forEach(page => {
+                                    slides.push({
+                                        type: 'content',
+                                        title: page.title || 'Content',
+                                        content: page.content || '',
+                                        image: page.image || '📖',
+                                        note: page.key_points ? page.key_points.join('\n') : null
+                                    });
+                                });
+                            }
+                            
+                            // Add quiz/assessment questions
+                            if (parsedContent.assessment?.questions) {
+                                parsedContent.assessment.questions.forEach((q, idx) => {
+                                    slides.push({
+                                        type: 'quiz',
+                                        title: `Question ${idx + 1}`,
+                                        question: q.question,
+                                        options: q.options || [],
+                                        correct: q.correct || 0,
+                                        explanation: q.explanation || 'Review the module content and try again.'
+                                    });
+                                });
+                            }
+                            
+                            // Add comparison questions
+                            if (parsedContent.comparison?.questions) {
+                                parsedContent.comparison.questions.forEach((q, idx) => {
+                                    slides.push({
+                                        type: 'quiz',
+                                        title: 'Comparison Quiz',
+                                        question: q.question,
+                                        options: q.options || [],
+                                        correct: q.correct || 0,
+                                        explanation: q.explanation || 'Think about the distinguishing features.'
+                                    });
+                                });
+                            }
                         } else {
-                            // Add a single content slide if no slides structure
+                            // Add a single content slide if no recognized structure
                             slides.push({
                                 type: 'content',
                                 title: 'Module Content',
-                                content: dbModule.content,
+                                content: JSON.stringify(parsedContent, null, 2),
                                 image: '📚'
                             });
                         }
                     } catch (e) {
+                        console.warn('⚠️ Failed to parse module content as JSON:', e);
                         // If not JSON, treat as plain text content
                         slides.push({
                             type: 'content',
@@ -88,8 +132,34 @@
                 } else if (Array.isArray(dbModule.content)) {
                     // Content is an array of slides
                     slides.push(...dbModule.content);
+                } else if (typeof dbModule.content === 'object') {
+                    // Handle object content with sections
+                    if (dbModule.content.introduction?.pages) {
+                        dbModule.content.introduction.pages.forEach(page => {
+                            slides.push({
+                                type: 'content',
+                                title: page.title || 'Content',
+                                content: page.content || '',
+                                image: page.image || '📖',
+                                note: page.key_points ? page.key_points.join('\n') : null
+                            });
+                        });
+                    }
+                    
+                    if (dbModule.content.assessment?.questions) {
+                        dbModule.content.assessment.questions.forEach((q, idx) => {
+                            slides.push({
+                                type: 'quiz',
+                                title: `Question ${idx + 1}`,
+                                question: q.question,
+                                options: q.options || [],
+                                correct: q.correct || 0,
+                                explanation: q.explanation || 'Review the module content and try again.'
+                            });
+                        });
+                    }
                 } else {
-                    // Content is an object but not in expected format
+                    // Content is in an unexpected format
                     slides.push({
                         type: 'content',
                         title: 'Module Content',
@@ -176,7 +246,9 @@
             // Convert database module format
             if (module) {
                 console.log('📖 Converting database module to slides format');
-                return convertDatabaseModuleToSlides(module);
+                const converted = convertDatabaseModuleToSlides(module);
+                console.log('📖 Converted to', converted.slides?.length, 'slides');
+                return converted;
             }
             // Fallback to demo content
             console.log('📖 Using fallback demo content');
@@ -258,9 +330,51 @@
                 setCurrentSlide(currentSlide + 1);
             } else if (!completed) {
                 setCompleted(true);
-                if (saveProgress && user) {
-                    saveProgress({ moduleId: module.id, completed: true });
+                
+                // Save progress to database
+                if (saveProgress && user && module) {
+                    console.log('💾 Saving module completion:', module.id);
+                    
+                    // Calculate quiz performance
+                    const quizSlides = slides.filter(s => s.type === 'quiz');
+                    const correctAnswers = quizSlides.filter((s, idx) => {
+                        const slideIndex = slides.indexOf(s);
+                        return quizAnswers[slideIndex] === s.correct;
+                    }).length;
+                    
+                    const progressData = {
+                        moduleId: module.id,
+                        progressType: 'module_completion',
+                        completed: true,
+                        score: quizSlides.length > 0 ? Math.round((correctAnswers / quizSlides.length) * 100) : 100,
+                        attempts: 1,
+                        metadata: {
+                            title: module.title,
+                            category: module.category,
+                            difficulty: module.difficulty_level,
+                            duration_minutes: module.duration_minutes,
+                            completedAt: new Date().toISOString()
+                        },
+                        quizPerformance: {
+                            totalQuestions: quizSlides.length,
+                            correctAnswers: correctAnswers,
+                            answers: quizAnswers
+                        }
+                    };
+                    
+                    saveProgress(progressData)
+                        .then(result => {
+                            if (result) {
+                                console.log('✅ Module progress saved successfully');
+                            } else {
+                                console.warn('⚠️ Failed to save module progress');
+                            }
+                        })
+                        .catch(err => {
+                            console.error('❌ Error saving module progress:', err);
+                        });
                 }
+                
                 setTimeout(() => onComplete(module), 2000);
             }
         };
