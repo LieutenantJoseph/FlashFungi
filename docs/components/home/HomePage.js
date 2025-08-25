@@ -23,6 +23,7 @@
         
         // Calculate training progress
         const [modules, setModules] = React.useState([]);
+        const [modulesLoaded, setModulesLoaded] = React.useState(false);
         
         React.useEffect(() => {
             const loadModules = async () => {
@@ -32,16 +33,19 @@
                         published: true 
                     });
                     setModules(loadedModules);
+                    setModulesLoaded(true);
                 } catch (error) {
                     console.error('Error loading modules:', error);
+                    setModulesLoaded(true);
                 }
             };
             loadModules();
         }, []);
         
-        // Calculate training progress - only count items with module_id (actual modules)
-        const moduleProgress = Object.values(userProgress).filter(p => p.module_id && p.completed);
-        const completedModules = moduleProgress.length;
+        // Calculate training progress - ONLY count progress for actual module IDs
+        // This matches how TrainingModules checks: userProgress[module.id]?.completed
+        const completedModules = modulesLoaded ? 
+            modules.filter(module => userProgress[module.id]?.completed === true).length : 0;
         const totalModules = modules.length || 0;
         const progressPercentage = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
         
