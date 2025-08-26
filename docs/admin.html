@@ -109,8 +109,9 @@
             const h = React.createElement;
             
             // Configuration
-            const SUPABASE_URL = 'https://bhvozliqmcxzfotwuzjh.supabase.co';
-            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJodm96bGlxbWN4emZvdHd1empoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI3Mjk4ODAsImV4cCI6MjA0ODMwNTg4MH0.s8fM-r93UQvJre1OL0sJQiXqzQJxGMQZDnQMl4f5qQo';
+            const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im94Z2VkY25jcmV0dGFzcmJtd3NsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5MDY4NjQsImV4cCI6MjA2OTQ4Mjg2NH0.mu0Cb6qRr4cja0vsSzIuLwDTtNFuimWUwNs_JbnO3Pg';
+            const API_BASE = '/api';
 
             // Toast Component
             function Toast({ message, type = 'info', onClose }) {
@@ -300,18 +301,64 @@
                     setLoadingModules(true);
                     
                     try {
-                        console.log('Loading training modules...');
-                        if (window.ModuleLoader && window.ModuleLoader.getAllModules) {
-                            const allModules = await window.ModuleLoader.getAllModules();
-                            console.log('Training modules loaded:', allModules.length);
-                            setModules(allModules || []);
+                        console.log('📚 Loading training modules from database...');
+                        
+                        // Method 1: If using the API endpoint (recommended)
+                        const response = await fetch('/api/training-modules', {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const modules = await response.json();
+                            setModules(modules || []);
+                            console.log(`✅ Loaded ${modules.length} modules`);
                         } else {
-                            console.warn('ModuleLoader not available or getAllModules function missing');
-                            setModules([]);
+                            // Fallback to direct Supabase query
+                            console.log('API failed, trying direct Supabase query...');
+                            
+                            // Method 2: Direct Supabase query
+                            const supabaseResponse = await fetch(
+                                `${SUPABASE_URL}/rest/v1/training_modules?order=created_at.desc`,
+                                {
+                                    headers: {
+                                        'apikey': SUPABASE_ANON_KEY,
+                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                        'Accept': 'application/json'
+                                    }
+                                }
+                            );
+                            
+                            if (supabaseResponse.ok) {
+                                const data = await supabaseResponse.json();
+                                setModules(data || []);
+                                console.log(`✅ Loaded ${data.length} modules via Supabase`);
+                            } else {
+                                const errorText = await supabaseResponse.text();
+                                console.error('Supabase query failed:', errorText);
+                                throw new Error('Failed to load modules from database');
+                            }
                         }
                     } catch (error) {
-                        console.error('Error loading training modules:', error);
-                        setModules([]);
+                        console.error('❌ Error loading modules:', error);
+                        console.log('Falling back to ModuleLoader if available...');
+                        
+                        // Final fallback: Try ModuleLoader
+                        if (window.ModuleLoader && window.ModuleLoader.getAllModules) {
+                            try {
+                                const allModules = await window.ModuleLoader.getAllModules();
+                                console.log('✅ Loaded modules via ModuleLoader:', allModules.length);
+                                setModules(allModules || []);
+                            } catch (loaderError) {
+                                console.error('ModuleLoader also failed:', loaderError);
+                                setModules([]);
+                            }
+                        } else {
+                            console.warn('ModuleLoader not available');
+                            setModules([]);
+                        }
                     } finally {
                         setLoadingModules(false);
                     }
