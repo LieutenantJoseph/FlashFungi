@@ -55,11 +55,15 @@ class EnhancedPipeline {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async fetchObservations(limit = 50) {
+  async fetchObservations(limit = 50, skip = 0) {
     console.log('🔍 Fetching Arizona mushroom observations (with taxonomic filtering)...');
     
     // Get the excluded taxon IDs as a comma-separated string
     const excludedTaxonIds = Object.values(EXCLUDED_TAXA).join(',');
+    
+    // Calculate the page number based on skip and limit
+    const page = Math.floor(skip / limit) + 1;
+    const offsetInPage = skip % limit;
     
     const params = new URLSearchParams({
       place_id: 40, // Arizona
@@ -67,18 +71,28 @@ class EnhancedPipeline {
       without_taxon_id: excludedTaxonIds, // Exclude lichens and other non-target taxa
       quality_grade: 'research',
       photos: 'true',
-      per_page: limit,
+      per_page: limit + offsetInPage, // Fetch extra to account for offset
+      page: page,
       order_by: 'created_at',
       order: 'desc'
     });
 
     console.log(`📊 Excluding taxa: ${Object.keys(EXCLUDED_TAXA).join(', ')}`);
+    if (skip > 0) {
+      console.log(`⏭️  Skipping first ${skip} observations (page ${page})`);
+    }
 
     const response = await fetch(`${INATURALIST_API}/observations?${params}`);
     const data = await response.json();
     
-    console.log(`📊 Found ${data.results.length} observations (after filtering)`);
-    return data.results;
+    // Remove the offset observations from the current page
+    const results = offsetInPage > 0 ? data.results.slice(offsetInPage) : data.results;
+    
+    // Trim to the requested limit
+    const finalResults = results.slice(0, limit);
+    
+    console.log(`📊 Found ${finalResults.length} observations (after filtering and skipping)`);
+    return finalResults;
   }
 
   async getObservationDetails(id) {
@@ -369,9 +383,13 @@ class EnhancedPipeline {
     
     try {
       const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
-      console.log(`\n📊 Processing limit: ${limit} observations`);
+      const skip = process.env.SKIP ? parseInt(process.env.SKIP) : 0;
       
-      const observations = await this.fetchObservations(limit);
+      console.log(`\n📊 Processing parameters:`);
+      console.log(`   - Limit: ${limit} observations`);
+      console.log(`   - Skip: ${skip} observations`);
+      
+      const observations = await this.fetchObservations(limit, skip);
       
       for (const obs of observations) {
         const result = await this.processObservation(obs);

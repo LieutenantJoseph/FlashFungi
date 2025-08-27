@@ -12,6 +12,10 @@ on:
         description: 'Number of observations to process'
         required: false
         default: '50'
+      skip:
+        description: 'Number of observations to skip from the beginning'
+        required: false
+        default: '0'
 
 jobs:
   run-pipeline:
@@ -34,12 +38,13 @@ jobs:
     - name: Run pipeline
       working-directory: ./data-pipeline
       env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         LIMIT: ${{ github.event.inputs.limit || '50' }}
+        SKIP: ${{ github.event.inputs.skip || '0' }}
       run: |
         echo "🚀 Starting monthly pipeline..."
         echo "📊 Processing up to $LIMIT observations"
+        echo "⏭️  Skipping first $SKIP observations"
         node pipeline-working.js
     
     - name: Check results (if check-results.js exists)
