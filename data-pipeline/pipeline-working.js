@@ -58,8 +58,8 @@ class EnhancedPipeline {
     this.processedCount = 0;
     this.savedCount = 0;
     this.dnaCount = 0;
-    this.hintsCreatedCount = 0;
-    this.hintsExistingCount = 0;
+    this.guidesCreatedCount = 0;
+    this.guidesExistingCount = 0;
     this.skippedNoFamily = 0;
   }
 
@@ -102,7 +102,7 @@ class EnhancedPipeline {
 
   async getTaxonDetails(taxonId) {
     // Fetch complete taxon information including full ancestry
-    await this.delay(500);
+    await this.delay(1000); // Respect 1 request per second limit
     const response = await fetch(`${INATURALIST_API}/taxa/${taxonId}`);
     const data = await response.json();
     return data.results[0];
@@ -247,9 +247,9 @@ class EnhancedPipeline {
     return Math.min(score, 1.0);
   }
 
-  async checkSpeciesHints(speciesName) {
+  async checkFieldGuide(speciesName) {
     try {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/species_hints?species_name=eq.${encodeURIComponent(speciesName)}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/field_guides?species_name=eq.${encodeURIComponent(speciesName)}`, {
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_KEY,
           'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`
@@ -257,30 +257,31 @@ class EnhancedPipeline {
       });
 
       if (response.ok) {
-        const hints = await response.json();
-        return hints.length > 0 ? hints[0] : null;
+        const guides = await response.json();
+        return guides.length > 0 ? guides[0] : null;
       }
     } catch (error) {
-      console.log(`⚠️  Error checking species hints: ${error.message}`);
+      console.log(`⚠️  Error checking field guide: ${error.message}`);
     }
     return null;
   }
 
-  async createSpeciesHints(specimen) {
+  async createFieldGuide(specimen) {
     try {
-      console.log(`   🤖 Creating species hints for ${specimen.species_name}...`);
+      console.log(`   🤖 Creating field guide with hints for ${specimen.species_name}...`);
       
-      // Generate basic hints using AI
+      // Generate hints using AI
       const prompt = `Create 4 educational identification hints for the mushroom species: ${specimen.species_name}
 
 The hints should help students learn to identify this species through observation and comparison. Create hints in this order:
 
-1. MORPHOLOGICAL: Physical features (cap, stem, gills/pores, spores, size)
-2. COMPARATIVE: How to distinguish from similar species or potential look-alikes
-3. ECOLOGICAL: Habitat, substrate, seasonal patterns, geographic range
-4. TAXONOMIC: Family and genus characteristics (use as last resort)
+1. MORPHOLOGICAL: Physical features (cap shape/color/texture, stem characteristics, gills/pores details, spore print color, size ranges)
+2. COMPARATIVE: How to distinguish from similar species or potential look-alikes - be specific about differences
+3. ECOLOGICAL: Habitat preferences, substrate (what it grows on), seasonal patterns, geographic range, mycorrhizal associations
+4. TAXONOMIC: Family (${specimen.family}) and genus characteristics that define this group (use as last resort hint)
 
-Each hint should be 1-3 sentences and focus on distinguishing characteristics that aid field identification.
+Each hint should be 1-3 sentences and focus on distinguishing characteristics that aid field identification. Do not reveal
+the species name or genus of the specimen in hints, with the exception of hint 4.
 
 Species: ${specimen.species_name}
 Family: ${specimen.family}
@@ -311,42 +312,45 @@ TAXONOMIC: [description]`;
       const content = response.choices[0].message.content;
       const hints = this.parseHintsFromAI(content);
 
-      // Save hints to database with correct field names
-      const hintsData = {
+      // Create field guide data with the structure expected by the field_guides table
+      const fieldGuideData = {
         species_name: specimen.species_name,
-        genus: specimen.genus,
-        family: specimen.family,
-        common_name: specimen.common_name,
+        description: specimen.description || '',
+        ecology: `Found in ${specimen.location}. ${specimen.description}`,
+        reference_photos: [], // Will be populated later from specimen photos
         hints: hints,
-        source_quality: 'ai-generated',
-        ai_confidence: 0.75,
-        admin_reviewed: false,
-        reference_url: null  // Using singular field name
-        // Note: created_at and updated_at are handled automatically by Supabase
+        diagnostic_features: {
+          cap: { shape: '', color: '', texture: '', size_range: '' },
+          gills_pores: { type: '', attachment: '', spacing: '', color: '' },
+          stem: { ring_presence: '', base_structure: '', texture: '' },
+          spore_print: { color: '', collection_method: '' },
+          chemical_reactions: { tests: [] }
+        },
+        comparison_species: [] // Can be populated later by admin
       };
 
-      const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
+      const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/field_guides`, {
         method: 'POST',
         headers: {
           'apikey': process.env.SUPABASE_SERVICE_KEY,
           'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(hintsData)
+        body: JSON.stringify(fieldGuideData)
       });
 
       if (saveResponse.ok) {
-        console.log(`   ✅ Species hints created for ${specimen.species_name}`);
-        this.hintsCreatedCount++;
+        console.log(`   ✅ Field guide created for ${specimen.species_name}`);
+        this.guidesCreatedCount++;
         return true;
       } else {
         const errorText = await saveResponse.text();
-        console.log(`   ⚠️  Failed to save hints for ${specimen.species_name}: ${errorText}`);
+        console.log(`   ⚠️  Failed to save field guide for ${specimen.species_name}: ${errorText}`);
         return false;
       }
 
     } catch (error) {
-      console.log(`   ❌ Error creating hints: ${error.message}`);
+      console.log(`   ❌ Error creating field guide: ${error.message}`);
       return false;
     }
   }
@@ -385,7 +389,7 @@ TAXONOMIC: [description]`;
         hints.push({
           type: types[index] || 'general',
           level: index + 1,
-          text: sentence.trim(),
+          text: sentence.trim() + '.',
           educational_value: index < 2 ? 'high' : 'medium'
         });
       });
@@ -420,15 +424,15 @@ TAXONOMIC: [description]`;
 
       console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
 
-      // Check if species hints already exist
-      const existingHints = await this.checkSpeciesHints(specimen.species_name);
+      // Check if field guide already exists
+      const existingGuide = await this.checkFieldGuide(specimen.species_name);
       
-      if (existingHints) {
-        console.log(`   📚 Species hints already exist for ${specimen.species_name}`);
-        this.hintsExistingCount++;
+      if (existingGuide) {
+        console.log(`   📚 Field guide already exists for ${specimen.species_name}`);
+        this.guidesExistingCount++;
       } else {
-        console.log(`   🆕 No hints found for ${specimen.species_name}, creating new ones...`);
-        await this.createSpeciesHints(specimen);
+        console.log(`   🆕 No field guide found for ${specimen.species_name}, creating new one...`);
+        await this.createFieldGuide(specimen);
       }
 
       return specimenId;
@@ -485,7 +489,7 @@ TAXONOMIC: [description]`;
         selected_photos: detailed.photos.map(p => p.id) // Default select all photos
       };
 
-      console.log('   💾 Saving to database and managing species hints...');
+      console.log('   💾 Saving to database and managing field guide...');
       console.log(`   📝 Family: ${specimen.family}`);
       await this.saveToDatabase(specimen, detailed.photos);
       
@@ -501,7 +505,7 @@ TAXONOMIC: [description]`;
   }
 
   async run() {
-    console.log('🚀 Starting enhanced pipeline with improved taxonomic handling...');
+    console.log('🚀 Starting enhanced pipeline with field guide generation...');
     console.log('📅 Current date:', new Date().toISOString());
     console.log('\n🚫 Excluded taxa (with correct IDs):');
     Object.entries(EXCLUDED_TAXA).forEach(([name, id]) => {
@@ -529,11 +533,11 @@ TAXONOMIC: [description]`;
       console.log(`💾 Saved: ${this.savedCount} specimens total`);
       console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
       console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
-      console.log(`\n🧠 Species Hints Management:`);
-      console.log(`   📚 Existing hints found: ${this.hintsExistingCount} species`);
-      console.log(`   🆕 New hints created: ${this.hintsCreatedCount} species`);
+      console.log(`\n📚 Field Guide Management:`);
+      console.log(`   📖 Existing guides found: ${this.guidesExistingCount} species`);
+      console.log(`   🆕 New guides created: ${this.guidesCreatedCount} species`);
       console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
-      console.log(`🔧 Admin can review and edit species hints in the enhanced admin portal`);
+      console.log(`🔧 Admin can review and edit field guides in the enhanced admin portal`);
       
     } catch (error) {
       console.log(`❌ Pipeline failed: ${error.message}`);
