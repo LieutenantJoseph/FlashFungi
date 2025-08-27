@@ -45,14 +45,14 @@ const INATURALIST_API = 'https://api.inaturalist.org/v1';
 // These IDs need to be looked up from iNaturalist
 const EXCLUDED_TAXA = {
   // Lichen classes
-  'Arthoniomycetes': 54743,        // Class Arthoniomycetes
-  'Lecanoromycetes': 54744,        // Class Lecanoromycetes (Common Lichens)
-  'Lichinomycetes': 130003,        // Class Lichinomycetes
+  'Arthoniomycetes': 152028,        // Class Arthoniomycetes
+  'Lecanoromycetes': 54743,        // Class Lecanoromycetes (Common Lichens)
+  'Lichinomycetes': 152030,        // Class Lichinomycetes
   
   // Other excluded groups
-  'Verrucariales': 175541,         // Order Verrucariales
-  'Phyllostictaceae': 970391,      // Family Phyllostictaceae
-  'Erysiphaceae': 53182            // Family Erysiphaceae (Powdery Mildews)
+  'Verrucariales': 117869,         // Order Verrucariales
+  'Phyllostictaceae': 791584,      // Family Phyllostictaceae
+  'Erysiphaceae': 55525            // Family Erysiphaceae (Powdery Mildews)
 };
 
 class EnhancedPipeline {
