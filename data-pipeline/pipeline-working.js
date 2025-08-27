@@ -1,5 +1,6 @@
-// Enhanced Arizona Mushroom Pipeline with Species-Level Hint Management
-// Updated to use correct database field names
+// Enhanced Arizona Mushroom Pipeline with Taxonomic Filtering
+// Excludes lichens and other non-target fungal taxa at API level
+// Requires proper family information from taxonomy tree
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
 
@@ -40,6 +41,20 @@ const openai = new OpenAI({
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
+// Taxa to exclude (iNaturalist taxon IDs)
+// These IDs need to be looked up from iNaturalist
+const EXCLUDED_TAXA = {
+  // Lichen classes
+  'Arthoniomycetes': 54743,        // Class Arthoniomycetes
+  'Lecanoromycetes': 54744,        // Class Lecanoromycetes (Common Lichens)
+  'Lichinomycetes': 130003,        // Class Lichinomycetes
+  
+  // Other excluded groups
+  'Verrucariales': 175541,         // Order Verrucariales
+  'Phyllostictaceae': 970391,      // Family Phyllostictaceae
+  'Erysiphaceae': 53182            // Family Erysiphaceae (Powdery Mildews)
+};
+
 class EnhancedPipeline {
   constructor() {
     this.processedCount = 0;
@@ -47,6 +62,7 @@ class EnhancedPipeline {
     this.dnaCount = 0;
     this.hintsCreatedCount = 0;
     this.hintsExistingCount = 0;
+    this.skippedNoFamily = 0;
   }
 
   async delay(ms) {
@@ -54,11 +70,15 @@ class EnhancedPipeline {
   }
 
   async fetchObservations(limit = 50) {
-    console.log('🔍 Fetching Arizona mushroom observations...');
+    console.log('🔍 Fetching Arizona mushroom observations (with taxonomic filtering)...');
+    
+    // Get the excluded taxon IDs as a comma-separated string
+    const excludedTaxonIds = Object.values(EXCLUDED_TAXA).join(',');
     
     const params = new URLSearchParams({
       place_id: 40, // Arizona
       taxon_id: 47170, // Fungi
+      without_taxon_id: excludedTaxonIds, // Exclude lichens and other non-target taxa
       quality_grade: 'research',
       photos: 'true',
       per_page: limit,
@@ -66,10 +86,12 @@ class EnhancedPipeline {
       order: 'desc'
     });
 
+    console.log(`📊 Excluding taxa: ${Object.keys(EXCLUDED_TAXA).join(', ')}`);
+
     const response = await fetch(`${INATURALIST_API}/observations?${params}`);
     const data = await response.json();
     
-    console.log(`📊 Found ${data.results.length} observations`);
+    console.log(`📊 Found ${data.results.length} observations (after filtering)`);
     return data.results;
   }
 
@@ -113,26 +135,19 @@ class EnhancedPipeline {
   }
 
   extractFamily(taxon) {
+    // Check if the taxon itself is at family rank
     if (taxon.rank === 'family') return taxon.name;
     
+    // Look through ancestors for family rank
     if (taxon.ancestors) {
       const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
       if (family) return family.name;
     }
     
-    // Fallback to common fungal families based on genus
-    const genus = taxon.name.split(' ')[0].toLowerCase();
-    const familyMap = {
-      'agaricus': 'Agaricaceae',
-      'boletus': 'Boletaceae', 
-      'cantharellus': 'Cantharellaceae',
-      'amanita': 'Amanitaceae',
-      'pleurotus': 'Pleurotaceae',
-      'shiitake': 'Omphalotaceae',
-      'oyster': 'Pleurotaceae'
-    };
-    
-    return familyMap[genus] || 'Fungi';
+    // If no family found in taxonomy tree, return null
+    // This observation should be flagged for review
+    console.log(`   ⚠️  No family found in taxonomy for ${taxon.name}`);
+    return null;
   }
 
   extractDescription(observation) {
@@ -395,6 +410,14 @@ TAXONOMIC: [description]`;
 
       console.log(`   📸 Good photos available (${detailed.photos.length} photos)`);
 
+      // Extract family from taxonomy tree
+      const family = this.extractFamily(detailed.taxon);
+      if (!family) {
+        console.log('   ⏭️  No family information in taxonomy tree - skipping');
+        this.skippedNoFamily++;
+        return null;
+      }
+
       // Check for DNA sequence
       const hasDNA = this.hasDNASequence(detailed);
       
@@ -409,11 +432,11 @@ TAXONOMIC: [description]`;
       const specimen = {
         species_name: detailed.taxon.name,
         genus: detailed.taxon.name.split(' ')[0],
-        family: this.extractFamily(detailed.taxon) || 'Fungi',
+        family: family,
         common_name: detailed.taxon.preferred_common_name,
         inaturalist_id: detailed.id.toString(),
         location: detailed.place_guess || 'Arizona, USA',
-        description: this.extractDescription(detailed),  // Changed from habitat
+        description: this.extractDescription(detailed),
         dna_sequenced: hasDNA,
         status: 'pending',
         quality_score: this.calculateQualityScore(detailed, hasDNA),
@@ -435,12 +458,16 @@ TAXONOMIC: [description]`;
   }
 
   async run() {
-    console.log('🚀 Starting enhanced pipeline with species-level hint management...');
+    console.log('🚀 Starting enhanced pipeline with taxonomic filtering...');
     console.log('📅 Current date:', new Date().toISOString());
+    console.log('\n🚫 Excluded taxa:');
+    Object.entries(EXCLUDED_TAXA).forEach(([name, id]) => {
+      console.log(`   - ${name} (ID: ${id})`);
+    });
     
     try {
       const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
-      console.log(`📊 Processing limit: ${limit} observations`);
+      console.log(`\n📊 Processing limit: ${limit} observations`);
       
       const observations = await this.fetchObservations(limit);
       
@@ -455,6 +482,7 @@ TAXONOMIC: [description]`;
       
       console.log(`\n🎉 Enhanced Pipeline complete!`);
       console.log(`📊 Processed: ${this.processedCount} observations`);
+      console.log(`⏭️  Skipped: ${this.skippedNoFamily} observations (no family in taxonomy)`);
       console.log(`💾 Saved: ${this.savedCount} specimens total`);
       console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
       console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);

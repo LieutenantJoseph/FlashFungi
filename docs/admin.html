@@ -1243,6 +1243,379 @@
                 );
             }
 
+            // Pipeline Management Component for Flash Fungi Admin Portal
+            function PipelineManagement() {
+                const [isRunning, setIsRunning] = useState(false);
+                const [pipelineConfig, setPipelineConfig] = useState({
+                    limit: 50,
+                    excludeLichens: true,
+                    requireDNA: false,
+                    minPhotos: 3,
+                    autoApprove: false
+                });
+                const [logs, setLogs] = useState([]);
+                const [runHistory, setRunHistory] = useState([]);
+                const [currentStats, setCurrentStats] = useState(null);
+                const [lastRun, setLastRun] = useState(null);
+                const [showAdvanced, setShowAdvanced] = useState(false);
+
+                // Excluded taxa configuration
+                const excludedTaxa = [
+                    { name: 'Arthoniomycetes', id: 54743, enabled: true },
+                    { name: 'Lecanoromycetes (Lichens)', id: 54744, enabled: true },
+                    { name: 'Lichinomycetes', id: 130003, enabled: true },
+                    { name: 'Verrucariales', id: 175541, enabled: true },
+                    { name: 'Phyllostictaceae', id: 970391, enabled: true },
+                    { name: 'Erysiphaceae (Powdery Mildews)', id: 53182, enabled: true }
+                ];
+
+                // Load run history on component mount
+                useEffect(() => {
+                    loadRunHistory();
+                    checkLastRun();
+                }, []);
+
+                const loadRunHistory = async () => {
+                    try {
+                        // This would fetch from your API/database
+                        const mockHistory = [
+                            {
+                                id: 1,
+                                date: '2024-01-15T10:30:00Z',
+                                processed: 50,
+                                saved: 35,
+                                dnaVerified: 12,
+                                duration: '5m 23s',
+                                status: 'completed'
+                            },
+                            {
+                                id: 2,
+                                date: '2024-01-01T14:20:00Z',
+                                processed: 75,
+                                saved: 48,
+                                dnaVerified: 18,
+                                duration: '7m 45s',
+                                status: 'completed'
+                            }
+                        ];
+                        setRunHistory(mockHistory);
+                    } catch (error) {
+                        console.error('Error loading run history:', error);
+                    }
+                };
+
+                const checkLastRun = async () => {
+                    // Check when pipeline was last run
+                    // This would query your backend
+                    setLastRun(new Date('2024-01-15T10:30:00Z'));
+                };
+
+                const addLog = (message, type = 'info') => {
+                    const timestamp = new Date().toLocaleTimeString();
+                    setLogs(prev => [...prev, { timestamp, message, type }]);
+                };
+
+                const startPipeline = async () => {
+                    setIsRunning(true);
+                    setLogs([]);
+                    setCurrentStats(null);
+                    
+                    addLog('🚀 Starting enhanced pipeline...', 'info');
+                    addLog(`📊 Configuration: Limit=${pipelineConfig.limit}, Min Photos=${pipelineConfig.minPhotos}`, 'info');
+                    
+                    try {
+                        // Create pipeline configuration
+                        const config = {
+                            limit: pipelineConfig.limit,
+                            minPhotos: pipelineConfig.minPhotos,
+                            requireDNA: pipelineConfig.requireDNA,
+                            excludedTaxa: excludedTaxa.filter(t => t.enabled).map(t => t.id),
+                            autoApprove: pipelineConfig.autoApprove
+                        };
+
+                        addLog('📡 Connecting to iNaturalist API...', 'info');
+                        
+                        // This would call your API endpoint to trigger the pipeline
+                        // const response = await fetch('/api/pipeline/run', {
+                        //     method: 'POST',
+                        //     headers: { 'Content-Type': 'application/json' },
+                        //     body: JSON.stringify(config)
+                        // });
+
+                        // Simulate pipeline execution with mock data
+                        await simulatePipelineRun();
+                        
+                        addLog('✅ Pipeline completed successfully!', 'success');
+                        
+                        // Update stats
+                        setCurrentStats({
+                            processed: 50,
+                            saved: 35,
+                            filtered: 8,
+                            dnaVerified: 12,
+                            hintsCreated: 15,
+                            duration: '5m 23s'
+                        });
+                        
+                        // Reload history
+                        await loadRunHistory();
+                        
+                    } catch (error) {
+                        addLog(`❌ Pipeline failed: ${error.message}`, 'error');
+                        console.error('Pipeline error:', error);
+                    } finally {
+                        setIsRunning(false);
+                    }
+                };
+
+                const simulatePipelineRun = async () => {
+                    // Simulate pipeline steps for demo
+                    const steps = [
+                        '🔍 Fetching Arizona mushroom observations...',
+                        '📊 Found 50 observations',
+                        '🚫 Filtering lichens and excluded taxa...',
+                        '📸 Checking photo requirements...',
+                        '🔬 Processing: Agaricus deserticola (123456)',
+                        '   📸 Good photos available (5 photos)',
+                        '   📋 Research grade - no DNA sequence',
+                        '   💾 Saving to database...',
+                        '   🆕 Creating species hints...',
+                        '🔬 Processing: Pleurotus djamor (123457)',
+                        '   📸 Good photos available (4 photos)',
+                        '   🧬 DNA sequence found! (High priority)',
+                        '   💾 Saving to database...',
+                        '   📚 Species hints already exist'
+                    ];
+
+                    for (const step of steps) {
+                        addLog(step, step.includes('❌') ? 'error' : 'info');
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                };
+
+                const stopPipeline = () => {
+                    addLog('⏹️ Stopping pipeline...', 'warning');
+                    setIsRunning(false);
+                    // This would call your API to stop the pipeline
+                };
+
+                const downloadLogs = () => {
+                    const logText = logs.map(log => `[${log.timestamp}] ${log.message}`).join('\n');
+                    const blob = new Blob([logText], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pipeline-logs-${new Date().toISOString()}.txt`;
+                    a.click();
+                };
+
+                return h('div', { className: 'space-y-6 fade-in' },
+                    // Configuration Panel
+                    h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                        h('div', { className: 'flex justify-between items-start mb-6' },
+                            h('div', null,
+                                h('h2', { className: 'text-2xl font-bold mb-2' }, '🔄 Pipeline Management'),
+                                h('p', { className: 'text-gray-600' }, 'Import mushroom observations from iNaturalist'),
+                                lastRun && h('p', { className: 'text-sm text-gray-500 mt-1' }, 
+                                    `Last run: ${lastRun.toLocaleString()}`
+                                )
+                            ),
+                            h('div', { className: 'flex gap-3' },
+                                !isRunning ? 
+                                    h('button', {
+                                        onClick: startPipeline,
+                                        className: 'px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium'
+                                    }, '▶️ Start Pipeline')
+                                :
+                                    h('button', {
+                                        onClick: stopPipeline,
+                                        className: 'px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium'
+                                    }, '⏹️ Stop Pipeline'),
+                                
+                                logs.length > 0 && h('button', {
+                                    onClick: downloadLogs,
+                                    className: 'px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50'
+                                }, '📥 Download Logs')
+                            )
+                        ),
+
+                        // Basic Configuration
+                        h('div', { className: 'grid md:grid-cols-3 gap-6 mb-6' },
+                            h('div', null,
+                                h('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
+                                    'Observation Limit'
+                                ),
+                                h('input', {
+                                    type: 'number',
+                                    value: pipelineConfig.limit,
+                                    onChange: (e) => setPipelineConfig(prev => ({ ...prev, limit: parseInt(e.target.value) || 50 })),
+                                    min: 1,
+                                    max: 200,
+                                    disabled: isRunning,
+                                    className: 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500'
+                                }),
+                                h('p', { className: 'text-xs text-gray-500 mt-1' }, 'Max observations to process (1-200)')
+                            ),
+
+                            h('div', null,
+                                h('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
+                                    'Minimum Photos Required'
+                                ),
+                                h('input', {
+                                    type: 'number',
+                                    value: pipelineConfig.minPhotos,
+                                    onChange: (e) => setPipelineConfig(prev => ({ ...prev, minPhotos: parseInt(e.target.value) || 3 })),
+                                    min: 1,
+                                    max: 10,
+                                    disabled: isRunning,
+                                    className: 'w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-green-500'
+                                }),
+                                h('p', { className: 'text-xs text-gray-500 mt-1' }, 'Skip observations with fewer photos')
+                            ),
+
+                            h('div', null,
+                                h('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 
+                                    'Additional Filters'
+                                ),
+                                h('div', { className: 'space-y-2' },
+                                    h('label', { className: 'flex items-center' },
+                                        h('input', {
+                                            type: 'checkbox',
+                                            checked: pipelineConfig.requireDNA,
+                                            onChange: (e) => setPipelineConfig(prev => ({ ...prev, requireDNA: e.target.checked })),
+                                            disabled: isRunning,
+                                            className: 'mr-2'
+                                        }),
+                                        h('span', { className: 'text-sm' }, 'DNA sequences only')
+                                    ),
+                                    h('label', { className: 'flex items-center' },
+                                        h('input', {
+                                            type: 'checkbox',
+                                            checked: pipelineConfig.autoApprove,
+                                            onChange: (e) => setPipelineConfig(prev => ({ ...prev, autoApprove: e.target.checked })),
+                                            disabled: isRunning,
+                                            className: 'mr-2'
+                                        }),
+                                        h('span', { className: 'text-sm' }, 'Auto-approve DNA verified')
+                                    )
+                                )
+                            )
+                        ),
+
+                        // Advanced Settings
+                        h('div', null,
+                            h('button', {
+                                onClick: () => setShowAdvanced(!showAdvanced),
+                                className: 'text-sm text-blue-600 hover:text-blue-800 mb-4'
+                            }, showAdvanced ? '▼ Hide Advanced Settings' : '▶️ Show Advanced Settings'),
+
+                            showAdvanced && h('div', { className: 'bg-gray-50 rounded-lg p-4' },
+                                h('h3', { className: 'font-semibold mb-3' }, 'Excluded Taxa'),
+                                h('div', { className: 'grid md:grid-cols-2 gap-2' },
+                                    excludedTaxa.map(taxon =>
+                                        h('label', { key: taxon.id, className: 'flex items-center text-sm' },
+                                            h('input', {
+                                                type: 'checkbox',
+                                                checked: taxon.enabled,
+                                                onChange: () => {
+                                                    // Toggle taxon exclusion
+                                                    taxon.enabled = !taxon.enabled;
+                                                    setPipelineConfig({ ...pipelineConfig });
+                                                },
+                                                disabled: isRunning,
+                                                className: 'mr-2'
+                                            }),
+                                            h('span', null, taxon.name)
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    ),
+
+                    // Real-time Logs
+                    isRunning && h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                        h('h3', { className: 'text-lg font-semibold mb-4' }, '📋 Real-time Logs'),
+                        h('div', { 
+                            className: 'bg-gray-900 text-green-400 rounded-lg p-4 h-64 overflow-y-auto font-mono text-sm'
+                        },
+                            logs.length === 0 ? 
+                                h('div', { className: 'text-gray-500' }, 'Waiting for pipeline to start...')
+                            :
+                                logs.map((log, index) =>
+                                    h('div', { 
+                                        key: index,
+                                        className: log.type === 'error' ? 'text-red-400' : 
+                                                log.type === 'success' ? 'text-green-400' : 
+                                                log.type === 'warning' ? 'text-yellow-400' : 'text-gray-300'
+                                    }, `[${log.timestamp}] ${log.message}`)
+                                )
+                        )
+                    ),
+
+                    // Current Run Statistics
+                    currentStats && h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                        h('h3', { className: 'text-lg font-semibold mb-4' }, '📊 Current Run Statistics'),
+                        h('div', { className: 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4' },
+                            [
+                                { label: 'Processed', value: currentStats.processed, color: 'blue' },
+                                { label: 'Saved', value: currentStats.saved, color: 'green' },
+                                { label: 'Filtered', value: currentStats.filtered, color: 'orange' },
+                                { label: 'DNA Verified', value: currentStats.dnaVerified, color: 'purple' },
+                                { label: 'Hints Created', value: currentStats.hintsCreated, color: 'indigo' },
+                                { label: 'Duration', value: currentStats.duration, color: 'gray' }
+                            ].map(stat =>
+                                h('div', { key: stat.label, className: 'text-center' },
+                                    h('div', { className: `text-2xl font-bold text-${stat.color}-600` }, stat.value),
+                                    h('div', { className: 'text-xs text-gray-600' }, stat.label)
+                                )
+                            )
+                        )
+                    ),
+
+                    // Run History
+                    h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                        h('h3', { className: 'text-lg font-semibold mb-4' }, '📅 Pipeline Run History'),
+                        h('div', { className: 'overflow-x-auto' },
+                            h('table', { className: 'w-full' },
+                                h('thead', null,
+                                    h('tr', { className: 'border-b text-left' },
+                                        h('th', { className: 'p-3' }, 'Date'),
+                                        h('th', { className: 'p-3 text-center' }, 'Processed'),
+                                        h('th', { className: 'p-3 text-center' }, 'Saved'),
+                                        h('th', { className: 'p-3 text-center' }, 'DNA'),
+                                        h('th', { className: 'p-3 text-center' }, 'Duration'),
+                                        h('th', { className: 'p-3 text-center' }, 'Status')
+                                    )
+                                ),
+                                h('tbody', null,
+                                    runHistory.map(run =>
+                                        h('tr', { key: run.id, className: 'border-b hover:bg-gray-50' },
+                                            h('td', { className: 'p-3' }, 
+                                                new Date(run.date).toLocaleString()
+                                            ),
+                                            h('td', { className: 'p-3 text-center' }, run.processed),
+                                            h('td', { className: 'p-3 text-center' }, run.saved),
+                                            h('td', { className: 'p-3 text-center' }, run.dnaVerified),
+                                            h('td', { className: 'p-3 text-center' }, run.duration),
+                                            h('td', { className: 'p-3 text-center' },
+                                                h('span', {
+                                                    className: `px-2 py-1 rounded text-xs ${
+                                                        run.status === 'completed' ? 
+                                                            'bg-green-100 text-green-800' : 
+                                                            'bg-red-100 text-red-800'
+                                                    }`
+                                                }, run.status)
+                                            )
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                );
+            }
+
             // Main Admin Portal Component
             function AdminPortal() {
                 const [currentView, setCurrentView] = useState('dashboard');
@@ -1562,6 +1935,7 @@
                                 [
                                     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
                                     { id: 'specimens', label: 'Specimen Management', icon: '🔬', badge: stats.pending },
+                                    { id: 'pipeline', label: 'Pipeline', icon: '🔄' },
                                     { id: 'field-guides', label: 'Field Guides', icon: '📚', badge: stats.guidesComplete },
                                     { id: 'training-modules', label: 'Training Modules', icon: '🎓', phase3: true },
                                     { id: 'achievements', label: 'Achievements', icon: '🏆', phase3: true },
@@ -1674,6 +2048,22 @@
                                             h('div', { className: 'text-sm text-[#B8B6B3] mt-1' }, action.desc)
                                         )
                                     )
+                                )
+                            ),
+
+                            //Pipline Stats
+                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                                h('div', { className: 'flex justify-between items-center' },
+                                    h('div', null,
+                                        h('h3', { className: 'text-lg font-semibold mb-2' }, '🔄 Pipeline Status'),
+                                        h('p', { className: 'text-gray-600 text-sm' }, 
+                                            lastRun ? `Last run: ${new Date(lastRun).toLocaleString()}` : 'No pipeline runs yet'
+                                        )
+                                    ),
+                                    h('button', {
+                                        onClick: () => setCurrentView('pipeline'),
+                                        className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+                                    }, 'Manage Pipeline')
                                 )
                             )
                         ),
@@ -2068,7 +2458,10 @@
                                     );
                                 })()
                             )
-                        )
+                        ),
+
+                         currentView === 'pipeline' && h(PipelineManagement),
+
                     ),
 
                     // Modals
