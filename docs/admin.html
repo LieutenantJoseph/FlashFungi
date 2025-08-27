@@ -2057,21 +2057,21 @@
                                 )
                             ),
 
-                            //Pipline Stats
-                            h('div', { className: 'bg-white rounded-xl shadow-sm p-6' },
+                            //Pipeline Stats
+                            h('div', { className: 'card-dark rounded-xl shadow-md p-6' },
                                 h('div', { className: 'flex justify-between items-center' },
                                     h('div', null,
-                                        h('h3', { className: 'text-lg font-semibold mb-2' }, '🔄 Pipeline Status'),
-                                        h('p', { className: 'text-gray-600 text-sm' }, 
-                                            lastRun ? `Last run: ${new Date(lastRun).toLocaleString()}` : 'No pipeline runs yet'
+                                        h('h3', { className: 'text-lg font-semibold mb-2 text-[#E8E6E3]' }, '🔄 Pipeline Status'),
+                                        h('p', { className: 'text-[#B8B6B3] text-sm' }, 
+                                            'Import observations from iNaturalist'
                                         )
                                     ),
                                     h('button', {
                                         onClick: () => setCurrentView('pipeline'),
-                                        className: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700'
+                                        className: 'px-4 py-2 forest-gradient text-[#E8E6E3] rounded-lg hover:opacity-90'
                                     }, 'Manage Pipeline')
                                 )
-                            )
+                            ),
                         ),
 
                         // Training Modules Management View
