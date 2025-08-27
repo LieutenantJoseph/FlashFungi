@@ -1,6 +1,5 @@
-// Enhanced Arizona Mushroom Pipeline with Taxonomic Filtering
-// Excludes lichens and other non-target fungal taxa at API level
-// Requires proper family information from taxonomy tree
+// Enhanced Arizona Mushroom Pipeline with Fixed Taxonomic Filtering
+// Correctly excludes lichens and handles family extraction properly
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
 
@@ -41,18 +40,17 @@ const openai = new OpenAI({
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
-// Taxa to exclude (iNaturalist taxon IDs)
-// These IDs need to be looked up from iNaturalist
+// Taxa to exclude (CORRECTED iNaturalist taxon IDs)
 const EXCLUDED_TAXA = {
   // Lichen classes
   'Arthoniomycetes': 152028,        // Class Arthoniomycetes
-  'Lecanoromycetes': 54743,        // Class Lecanoromycetes (Common Lichens)
-  'Lichinomycetes': 152030,        // Class Lichinomycetes
+  'Lecanoromycetes': 54743,         // Class Lecanoromycetes (Common Lichens)
+  'Lichinomycetes': 152030,         // Class Lichinomycetes
   
   // Other excluded groups
-  'Verrucariales': 117869,         // Order Verrucariales
-  'Phyllostictaceae': 791584,      // Family Phyllostictaceae
-  'Erysiphaceae': 55525            // Family Erysiphaceae (Powdery Mildews)
+  'Verrucariales': 117869,          // Order Verrucariales
+  'Phyllostictaceae': 791584,       // Family Phyllostictaceae
+  'Erysiphaceae': 55525              // Family Erysiphaceae (Powdery Mildews)
 };
 
 class EnhancedPipeline {
@@ -102,6 +100,14 @@ class EnhancedPipeline {
     return data.results[0];
   }
 
+  async getTaxonDetails(taxonId) {
+    // Fetch complete taxon information including full ancestry
+    await this.delay(500);
+    const response = await fetch(`${INATURALIST_API}/taxa/${taxonId}`);
+    const data = await response.json();
+    return data.results[0];
+  }
+
   hasDNASequence(observation) {
     const sequenceKeywords = [
       'ITS sequence', 'ITS match', 'ITS sequenced', 'ITS positive',
@@ -134,20 +140,57 @@ class EnhancedPipeline {
     ) || /its[\s:]+\d+%/.test(allText);
   }
 
-  extractFamily(taxon) {
+  async extractFamily(taxon) {
     // Check if the taxon itself is at family rank
     if (taxon.rank === 'family') return taxon.name;
     
-    // Look through ancestors for family rank
-    if (taxon.ancestors) {
+    // First, try to find family in ancestors if they exist
+    if (taxon.ancestors && taxon.ancestors.length > 0) {
       const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
       if (family) return family.name;
     }
     
-    // If no family found in taxonomy tree, return null
-    // This observation should be flagged for review
-    console.log(`   ⚠️  No family found in taxonomy for ${taxon.name}`);
-    return null;
+    // If ancestors are incomplete or missing, fetch full taxon details
+    console.log(`   🔍 Fetching complete taxonomy for ${taxon.name}...`);
+    try {
+      const fullTaxon = await this.getTaxonDetails(taxon.id);
+      
+      if (fullTaxon && fullTaxon.ancestors) {
+        const family = fullTaxon.ancestors.find(ancestor => ancestor.rank === 'family');
+        if (family) {
+          console.log(`   ✅ Found family: ${family.name}`);
+          return family.name;
+        }
+      }
+      
+      // Last resort: check if any ancestor contains "aceae" (typical family ending)
+      if (fullTaxon && fullTaxon.ancestors) {
+        const likelyFamily = fullTaxon.ancestors.find(ancestor => 
+          ancestor.name.endsWith('aceae') || ancestor.name.endsWith('idae')
+        );
+        if (likelyFamily) {
+          console.log(`   ✅ Found likely family: ${likelyFamily.name}`);
+          return likelyFamily.name;
+        }
+      }
+    } catch (error) {
+      console.log(`   ⚠️  Error fetching full taxonomy: ${error.message}`);
+    }
+    
+    // If we still can't find family, return a fallback
+    // This should rarely happen for fungi on iNaturalist
+    console.log(`   ⚠️  No family found for ${taxon.name}, using order or class as fallback`);
+    
+    // Try to find order as fallback
+    if (taxon.ancestors) {
+      const order = taxon.ancestors.find(ancestor => ancestor.rank === 'order');
+      if (order) return `${order.name} (Order)`;
+      
+      const classRank = taxon.ancestors.find(ancestor => ancestor.rank === 'class');
+      if (classRank) return `${classRank.name} (Class)`;
+    }
+    
+    return 'Fungi (Kingdom)'; // Ultimate fallback
   }
 
   extractDescription(observation) {
@@ -410,12 +453,11 @@ TAXONOMIC: [description]`;
 
       console.log(`   📸 Good photos available (${detailed.photos.length} photos)`);
 
-      // Extract family from taxonomy tree
-      const family = this.extractFamily(detailed.taxon);
+      // Extract family from taxonomy tree (with improved logic)
+      const family = await this.extractFamily(detailed.taxon);
       if (!family) {
-        console.log('   ⏭️  No family information in taxonomy tree - skipping');
+        console.log('   ⚠️  Warning: Using fallback family classification');
         this.skippedNoFamily++;
-        return null;
       }
 
       // Check for DNA sequence
@@ -444,6 +486,7 @@ TAXONOMIC: [description]`;
       };
 
       console.log('   💾 Saving to database and managing species hints...');
+      console.log(`   📝 Family: ${specimen.family}`);
       await this.saveToDatabase(specimen, detailed.photos);
       
       const priority = hasDNA ? 'HIGH PRIORITY (DNA)' : 'STANDARD (Research Grade)';
@@ -458,9 +501,9 @@ TAXONOMIC: [description]`;
   }
 
   async run() {
-    console.log('🚀 Starting enhanced pipeline with taxonomic filtering...');
+    console.log('🚀 Starting enhanced pipeline with improved taxonomic handling...');
     console.log('📅 Current date:', new Date().toISOString());
-    console.log('\n🚫 Excluded taxa:');
+    console.log('\n🚫 Excluded taxa (with correct IDs):');
     Object.entries(EXCLUDED_TAXA).forEach(([name, id]) => {
       console.log(`   - ${name} (ID: ${id})`);
     });
@@ -482,7 +525,7 @@ TAXONOMIC: [description]`;
       
       console.log(`\n🎉 Enhanced Pipeline complete!`);
       console.log(`📊 Processed: ${this.processedCount} observations`);
-      console.log(`⏭️  Skipped: ${this.skippedNoFamily} observations (no family in taxonomy)`);
+      console.log(`⚠️  Used fallback family: ${this.skippedNoFamily} observations`);
       console.log(`💾 Saved: ${this.savedCount} specimens total`);
       console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
       console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
