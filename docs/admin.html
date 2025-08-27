@@ -1245,6 +1245,11 @@
 
             // Pipeline Management Component for Flash Fungi Admin Portal
             function PipelineManagement() {
+                // Ensure React hooks are available
+                const { useState, useEffect } = React;
+                const h = React.createElement;
+                
+                // Component state
                 const [isRunning, setIsRunning] = useState(false);
                 const [pipelineConfig, setPipelineConfig] = useState({
                     limit: 50,
@@ -1260,14 +1265,14 @@
                 const [showAdvanced, setShowAdvanced] = useState(false);
 
                 // Excluded taxa configuration
-                const excludedTaxa = [
+                const [excludedTaxa, setExcludedTaxa] = useState([
                     { name: 'Arthoniomycetes', id: 54743, enabled: true },
                     { name: 'Lecanoromycetes (Lichens)', id: 54744, enabled: true },
                     { name: 'Lichinomycetes', id: 130003, enabled: true },
                     { name: 'Verrucariales', id: 175541, enabled: true },
                     { name: 'Phyllostictaceae', id: 970391, enabled: true },
                     { name: 'Erysiphaceae (Powdery Mildews)', id: 53182, enabled: true }
-                ];
+                ]);
 
                 // Load run history on component mount
                 useEffect(() => {
@@ -1512,15 +1517,16 @@
                             showAdvanced && h('div', { className: 'bg-gray-50 rounded-lg p-4' },
                                 h('h3', { className: 'font-semibold mb-3' }, 'Excluded Taxa'),
                                 h('div', { className: 'grid md:grid-cols-2 gap-2' },
-                                    excludedTaxa.map(taxon =>
+                                    excludedTaxa.map((taxon, index) =>
                                         h('label', { key: taxon.id, className: 'flex items-center text-sm' },
                                             h('input', {
                                                 type: 'checkbox',
                                                 checked: taxon.enabled,
                                                 onChange: () => {
                                                     // Toggle taxon exclusion
-                                                    taxon.enabled = !taxon.enabled;
-                                                    setPipelineConfig({ ...pipelineConfig });
+                                                    const newExcludedTaxa = [...excludedTaxa];
+                                                    newExcludedTaxa[index] = { ...taxon, enabled: !taxon.enabled };
+                                                    setExcludedTaxa(newExcludedTaxa);
                                                 },
                                                 disabled: isRunning,
                                                 className: 'mr-2'
