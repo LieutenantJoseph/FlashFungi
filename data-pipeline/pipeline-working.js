@@ -63,28 +63,37 @@ class EnhancedPipeline {
     const excludedTaxonIds = Object.values(EXCLUDED_TAXA).join(',');
     
     console.log(`📊 Excluding taxa: ${Object.keys(EXCLUDED_TAXA).join(', ')}`);
-    if (skip > 0) {
-      console.log(`⏭️  Skipping first ${skip} observations`);
-    }
+    console.log(`📊 Request: Limit=${limit}, Skip=${skip}`);
     
     // iNaturalist API has a max per_page of 200
     const MAX_PER_PAGE = 200;
     const allObservations = [];
-    let totalNeeded = limit + skip;
     
-    if (limit > MAX_PER_PAGE) {
-      console.log(`📚 Need to fetch ${Math.ceil(totalNeeded / MAX_PER_PAGE)} pages (API limit: ${MAX_PER_PAGE} per page)`);
-    }
+    // Calculate starting page and offset
+    const startPage = Math.floor(skip / MAX_PER_PAGE) + 1;
+    const skipWithinFirstPage = skip % MAX_PER_PAGE;
     
-    let currentPage = 1;
+    console.log(`📄 Starting from page ${startPage} (skipping ${skipWithinFirstPage} within that page)`);
     
-    while (allObservations.length < totalNeeded) {
-      const perPage = Math.min(MAX_PER_PAGE, totalNeeded - allObservations.length);
+    let currentPage = startPage;
+    let observationsNeeded = limit;
+    let isFirstPage = true;
+    
+    while (observationsNeeded > 0) {
+      // Calculate how many to fetch this page
+      let perPage = MAX_PER_PAGE;
+      
+      // On the first page, we might need extra to account for skip
+      if (isFirstPage && skipWithinFirstPage > 0) {
+        perPage = Math.min(MAX_PER_PAGE, skipWithinFirstPage + observationsNeeded);
+      } else {
+        perPage = Math.min(MAX_PER_PAGE, observationsNeeded);
+      }
       
       const params = new URLSearchParams({
         place_id: 40, // Arizona
         taxon_id: 47170, // Fungi
-        without_taxon_id: excludedTaxonIds, // Exclude lichens and other non-target taxa
+        without_taxon_id: excludedTaxonIds,
         quality_grade: 'research',
         photos: 'true',
         per_page: perPage,
@@ -93,35 +102,59 @@ class EnhancedPipeline {
         order: 'desc'
       });
       
-      console.log(`   📄 Fetching page ${currentPage} (${perPage} observations)...`);
-      const response = await fetch(`${INATURALIST_API}/observations?${params}`);
-      const data = await response.json();
+      console.log(`   📄 Fetching page ${currentPage} (requesting ${perPage} observations)...`);
       
-      if (!data.results || data.results.length === 0) {
-        console.log(`   ⚠️  No more observations available`);
+      try {
+        const response = await fetch(`${INATURALIST_API}/observations?${params}`);
+        
+        if (!response.ok) {
+          console.log(`   ❌ API error: ${response.status} ${response.statusText}`);
+          break;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.results || data.results.length === 0) {
+          console.log(`   ⚠️  No more observations available`);
+          break;
+        }
+        
+        // On first page, skip the observations we need to skip
+        let pageResults = data.results;
+        if (isFirstPage && skipWithinFirstPage > 0) {
+          pageResults = data.results.slice(skipWithinFirstPage);
+          isFirstPage = false;
+        }
+        
+        // Add only what we need
+        const toAdd = Math.min(pageResults.length, observationsNeeded);
+        allObservations.push(...pageResults.slice(0, toAdd));
+        observationsNeeded -= toAdd;
+        
+        console.log(`   ✅ Got ${toAdd} observations from page ${currentPage} (total so far: ${allObservations.length})`);
+        
+        // Check if we got less than requested (end of results)
+        if (data.results.length < perPage) {
+          console.log(`   ⚠️  Reached end of available observations`);
+          break;
+        }
+        
+        currentPage++;
+        isFirstPage = false;
+        
+        // Be nice to the API between pages
+        if (observationsNeeded > 0) {
+          await this.delay(1000);
+        }
+        
+      } catch (error) {
+        console.log(`   ❌ Fetch error: ${error.message}`);
         break;
-      }
-      
-      allObservations.push(...data.results);
-      
-      if (data.results.length < perPage) {
-        console.log(`   ⚠️  Reached end of available observations`);
-        break;
-      }
-      
-      currentPage++;
-      
-      // Be nice to the API between pages
-      if (allObservations.length < totalNeeded) {
-        await this.delay(1000);
       }
     }
     
-    // Apply skip and limit
-    const finalResults = allObservations.slice(skip, skip + limit);
-    
-    console.log(`📊 Fetched ${allObservations.length} total, returning ${finalResults.length} after skip/limit`);
-    return finalResults;
+    console.log(`📊 Retrieved ${allObservations.length} observations total`);
+    return allObservations;
   }
 
   async getObservationDetails(id) {
@@ -281,7 +314,7 @@ class EnhancedPipeline {
   async checkExistingSpecimen(inaturalistId) {
     try {
       const response = await fetch(
-        `${SUPABASE_URL}/rest/v1/specimens?inaturalist_id=eq.${inaturalistId}`,
+        `${SUPABASE_URL}/rest/v1/specimens?inaturalist_id=eq.${inaturalistId}&select=id`,
         {
           headers: {
             'apikey': process.env.SUPABASE_SERVICE_KEY,
@@ -294,10 +327,17 @@ class EnhancedPipeline {
         const specimens = await response.json();
         return specimens.length > 0;
       }
+      
+      // Log the error for debugging
+      const errorText = await response.text();
+      console.log(`   ⚠️  Error checking for duplicate: ${errorText}`);
+      return false;
+      
     } catch (error) {
-      console.log(`⚠️  Error checking existing specimen: ${error.message}`);
+      console.log(`   ⚠️  Error checking existing specimen: ${error.message}`);
+      // Return false so we don't skip observations due to API errors
+      return false;
     }
-    return false;
   }
 
   async checkFieldGuide(speciesName) {
@@ -451,6 +491,13 @@ class EnhancedPipeline {
       
       const observations = await this.fetchObservations(limit, skip);
       
+      if (observations.length === 0) {
+        console.log('\n⚠️  No observations to process');
+        return;
+      }
+      
+      console.log(`\n🔄 Beginning to process ${observations.length} observations...`);
+      
       for (const obs of observations) {
         const result = await this.processObservation(obs);
         this.processedCount++;
@@ -465,8 +512,10 @@ class EnhancedPipeline {
       console.log(`⏭️  Skipped: ${this.duplicateCount} duplicates (already in database)`);
       console.log(`⚠️  Used fallback family: ${this.skippedNoFamily} observations`);
       console.log(`💾 Saved: ${this.savedCount} new specimens`);
-      console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
-      console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
+      if (this.savedCount > 0) {
+        console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
+        console.log(`   📋 Research-grade only: ${this.savedCount - this.dnaCount} specimens`);
+      }
       
       if (this.guidesNeeded.size > 0) {
         console.log(`\n📝 Field Guides Needed for ${this.guidesNeeded.size} species:`);
@@ -474,14 +523,15 @@ class EnhancedPipeline {
           console.log(`   - ${species}`);
         });
         console.log(`\n💡 Create field guides manually in the admin portal for better quality`);
-      } else {
+      } else if (this.savedCount > 0) {
         console.log(`\n✅ All species have field guides`);
       }
       
-      console.log(`\n🔧 All specimens are in the admin review queue with status 'pending'`);
+      console.log(`\n🔧 All new specimens are in the admin review queue with status 'pending'`);
       
     } catch (error) {
-      console.log(`❌ Pipeline failed: ${error.message}`);
+      console.log(`\n❌ Pipeline failed: ${error.message}`);
+      console.error(error);
     }
   }
 }
