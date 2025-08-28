@@ -44,7 +44,7 @@
             
             return this.getCached(cacheKey, async () => {
                 try {
-                    const { status = 'approved', limit = 1000, sortBy = 'created_at', sortOrder = 'desc' } = filters;
+                    const { status = 'approved', limit = 10000, sortBy = 'created_at', sortOrder = 'desc' } = filters;
                     
                     let query = `select=*&order=${sortBy}.${sortOrder}`;
                     if (limit) query += `&limit=${limit}`;

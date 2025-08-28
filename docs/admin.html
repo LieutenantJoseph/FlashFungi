@@ -1261,7 +1261,7 @@
                 const [filterStatus, setFilterStatus] = useState('all');
 
                 useEffect(() => {
-                    loadData();
+                    loadAllSpecimens();
                 }, []);
 
                 // Load training modules when view changes
@@ -1271,42 +1271,56 @@
                     }
                 }, [currentView]);
 
-                const loadData = async () => {
+                const loadAllSpecimens = async () => {
+                    const allSpecimens = [];
+                    const pageSize = 1000;
+                    let offset = 0;
+                    let hasMore = true;
+                    
+                    setLoading(true);
+                    showToast('Loading specimens...', 'info');
+                    
                     try {
-                        // Load specimens
-                        const specimensResponse = await fetch(
-                            `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`,
-                            {
-                                headers: {
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                        while (hasMore) {
+                            const response = await fetch(
+                                `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc&limit=${pageSize}&offset=${offset}`,
+                                {
+                                    headers: {
+                                        'apikey': SUPABASE_ANON_KEY,
+                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                        'Prefer': 'count=exact'
+                                    }
                                 }
-                            }
-                        );
-                        
-                        if (specimensResponse.ok) {
-                            const data = await specimensResponse.json();
-                            setSpecimens(data || []);
-                        }
-
-                        // Load field guides
-                        const guidesResponse = await fetch(
-                            `${SUPABASE_URL}/rest/v1/field_guides?select=*`,
-                            {
-                                headers: {
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                            );
+                            
+                            if (!response.ok) throw new Error('Failed to load specimens');
+                            
+                            const data = await response.json();
+                            allSpecimens.push(...data);
+                            
+                            const contentRange = response.headers.get('Content-Range');
+                            if (contentRange) {
+                                const match = contentRange.match(/\d+-\d+\/(\d+)/);
+                                if (match) {
+                                    const totalCount = parseInt(match[1]);
+                                    offset += pageSize;
+                                    hasMore = offset < totalCount;
+                                    
+                                    // Update progress
+                                    showToast(`Loading: ${Math.min(offset, totalCount)}/${totalCount} specimens`, 'info');
                                 }
+                            } else {
+                                hasMore = data.length === pageSize;
+                                offset += pageSize;
                             }
-                        );
-                        
-                        if (guidesResponse.ok) {
-                            const guidesData = await guidesResponse.json();
-                            setFieldGuides(guidesData || []);
                         }
+                        
+                        setSpecimens(allSpecimens);
+                        showToast(`Loaded all ${allSpecimens.length} specimens`, 'success');
+                        
                     } catch (error) {
-                        console.error('Error loading data:', error);
-                        showToast('Error loading data', 'error');
+                        console.error('Error:', error);
+                        showToast('Failed to load all specimens', 'error');
                     } finally {
                         setLoading(false);
                     }
@@ -1399,7 +1413,7 @@
                         if (response.ok) {
                             showToast('Specimen approved successfully', 'success');
                             setSelectedSpecimen(null);
-                            loadData();
+                            loadAllSpecimens();
                         } else {
                             showToast('Failed to approve specimen', 'error');
                         }
@@ -1422,7 +1436,7 @@
                         if (response.ok) {
                             showToast('Specimen deleted successfully', 'success');
                             setSelectedSpecimen(null);
-                            loadData();
+                            loadAllSpecimens();
                         } else {
                             showToast('Failed to delete specimen', 'error');
                         }
@@ -1434,7 +1448,7 @@
 
                 const handleSaveFieldGuide = (fieldGuide) => {
                     showToast('Field guide saved successfully', 'success');
-                    loadData();
+                    loadAllSpecimens();
                 };
 
                 // Get all photos for a species
