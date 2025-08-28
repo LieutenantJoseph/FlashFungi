@@ -80,12 +80,6 @@
             backdrop-filter: blur(8px);
         }
         
-        /* Phase 3 indicator animation */
-        .phase3-indicator { 
-            background: linear-gradient(45deg, #8B4513, #D2691E); 
-            background-size: 200% 200%; 
-            animation: shimmer 2s ease-in-out infinite alternate;
-        }
         @keyframes shimmer { 
             0% { background-position: 0% 50%; } 
             100% { background-position: 100% 50%; } 
@@ -98,7 +92,7 @@
             <div class="text-center">
                 <div class="text-6xl mb-4">🍄</div>
                 <h1 class="text-2xl font-bold text-[#E8E6E3] mb-2">Admin Portal Loading...</h1>
-                <p class="text-[#B8B6B3]">Initializing Phase 3 ready management system...</p>
+                <p class="text-[#B8B6B3]">Initializing Flash Fungi management system...</p>
             </div>
         </div>
     </div>
@@ -369,16 +363,6 @@
                         onClick: onClose,
                         className: 'ml-2 hover:text-white transition-colors'
                     }, '×')
-                );
-            }
-
-            // Phase 3 Feature Badge Component
-            function Phase3Badge({ label }) {
-                return h('span', {
-                    className: 'inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-white phase3-indicator'
-                },
-                    h('span', null, '✨'),
-                    label || 'Phase 3 Ready'
                 );
             }
 
@@ -1815,7 +1799,7 @@
                 }
 
                 return h('div', { className: 'min-h-screen bg-[#1A1A19]' },
-                    // Enhanced Header with Phase 3 Indicator
+                    // Header
                     h('div', { className: 'earth-gradient text-[#E8E6E3] shadow-lg' },
                         h('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                             h('div', { className: 'flex justify-between items-center' },
@@ -1823,8 +1807,7 @@
                                     h('div', { className: 'text-4xl' }, '🍄'),
                                     h('div', null,
                                         h('div', { className: 'flex items-center gap-3' },
-                                            h('h1', { className: 'text-2xl font-bold' }, 'Flash Fungi Admin'),
-                                            h(Phase3Badge, { label: 'Phase 3 Ready' })
+                                            h('h1', { className: 'text-2xl font-bold' }, 'Flash Fungi Admin')
                                         ),
                                         h('p', { className: 'text-[#D4D2CF] text-sm' }, 'Enhanced Management System with Training & Analytics')
                                     )
@@ -1847,7 +1830,7 @@
                         )
                     ),
 
-                    // Enhanced Navigation with Phase 3 Features
+                    // Navigation Tabs
                     h('div', { className: 'card-dark border-b border-[#3A3836] shadow-sm sticky top-0 z-10' },
                         h('div', { className: 'max-w-7xl mx-auto px-4' },
                             h('div', { className: 'flex gap-6 overflow-x-auto' },
@@ -1886,26 +1869,11 @@
                         )
                     ),
 
-                    // Main Content with Phase 3 Features
+                    // Main Content
                     h('main', { className: 'max-w-7xl mx-auto px-4 py-8' },
                         // Dashboard View (Enhanced)
                         currentView === 'dashboard' && h('div', { className: 'space-y-6 fade-in' },
-                            // Phase 3 Features Overview
-                            h('div', { 
-                                className: 'moss-gradient text-[#E8E6E3] rounded-xl p-6 mb-6 shadow-lg'
-                            },
-                                h('div', { className: 'flex justify-between items-center' },
-                                    h('div', null,
-                                        h('h2', { className: 'text-2xl font-bold mb-2' }, '🚀 Phase 3 Enhancement Complete'),
-                                        h('p', { className: 'opacity-90' }, 'Training modules, achievements, and analytics are now available!')
-                                    ),
-                                    h('div', { className: 'text-right' },
-                                        h('div', { className: 'text-3xl font-bold' }, '3'),
-                                        h('div', { className: 'text-sm opacity-75' }, 'New Sections')
-                                    )
-                                )
-                            ),
-
+                            // Statistics Cards
                             h('div', { className: 'grid md:grid-cols-4 gap-6' },
                                 [
                                     { title: 'Total Specimens', value: stats.total, color: 'blue', icon: '🔬', desc: 'In database' },
@@ -2427,7 +2395,7 @@
             try {
                 const root = ReactDOM.createRoot(document.getElementById('admin-root'));
                 root.render(h(AdminPortal));
-                console.log('✅ Enhanced Admin portal with Phase 3 features and Living Mycology theme initialized successfully');
+                console.log('✅ Enhanced Admin portal with Phase 6 features and Living Mycology theme initialized successfully');
             } catch (error) {
                 console.error('❌ Error rendering admin portal:', error);
             }
