@@ -1234,6 +1234,58 @@
                     loadPhotos();
                 }, []);
 
+                useEffect(() => {
+                    // Preload next specimen's photos if one exists
+                    const preloadNextSpecimen = async () => {
+                        // Get filtered list using same logic as handleApproveSpecimen
+                        let filtered = [...specimens];
+                        
+                        if (searchTerm) {
+                            filtered = filtered.filter(s => 
+                                s.species_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                s.genus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                s.family?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                s.common_name?.toLowerCase().includes(searchTerm.toLowerCase())
+                            );
+                        }
+                        
+                        if (specimensFilters?.status !== 'all') {
+                            filtered = filtered.filter(s => s.status === specimensFilters.status);
+                        }
+                        
+                        // Find current and next pending
+                        const currentIndex = filtered.findIndex(s => s.id === specimen.id);
+                        let nextPending = null;
+                        
+                        for (let i = currentIndex + 1; i < filtered.length; i++) {
+                            if (filtered[i].status === 'pending') {
+                                nextPending = filtered[i];
+                                break;
+                            }
+                        }
+                        
+                        if (nextPending) {
+                            // Preload the next specimen's photos
+                            console.log('Preloading photos for next specimen:', nextPending.species_name);
+                            
+                            fetch(`https://api.inaturalist.org/v1/observations/${nextPending.inaturalist_id}`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.results && data.results[0] && data.results[0].photos) {
+                                        // Photos are now cached by the browser
+                                        console.log('Preloaded', data.results[0].photos.length, 'photos for', nextPending.species_name);
+                                    }
+                                })
+                                .catch(error => console.log('Preload failed:', error));
+                        }
+                    };
+                    
+                    // Only preload if this is a pending specimen (being reviewed)
+                    if (specimen.status === 'pending') {
+                        preloadNextSpecimen();
+                    }
+                }, [specimen.id]);
+
                 const loadPhotos = async () => {
                     try {
                         console.log('Loading photos for specimen:', specimen.inaturalist_id);
@@ -1652,7 +1704,7 @@
                             // Store the approved specimen ID
                             const approvedSpecimenId = selectedSpecimen.id;
                             
-                            // Update the local specimens array immediately (optimistic update)
+                            // Update the local specimens array immediately
                             const updatedSpecimens = specimens.map(s => 
                                 s.id === approvedSpecimenId 
                                     ? { ...s, status: 'approved', admin_notes: notes, selected_photos: selectedPhotos }
@@ -1660,40 +1712,83 @@
                             );
                             setSpecimens(updatedSpecimens);
                             
-                            // Find the next pending specimen from the updated list
-                            const currentIndex = updatedSpecimens.findIndex(s => s.id === approvedSpecimenId);
-                            let nextSpecimen = null;
+                            // Close the current modal first
+                            setSelectedSpecimen(null);
                             
-                            // Look for next pending specimen after current position
-                            for (let i = currentIndex + 1; i < updatedSpecimens.length; i++) {
-                                if (updatedSpecimens[i].status === 'pending') {
-                                    nextSpecimen = updatedSpecimens[i];
-                                    break;
+                            // Use setTimeout to allow the modal to close before opening the next
+                            setTimeout(() => {
+                                // Work with the currently filtered list (respects search and filters)
+                                // This uses the same filtering logic as the table display
+                                let filtered = [...updatedSpecimens];
+                                
+                                // Apply search term
+                                if (searchTerm) {
+                                    filtered = filtered.filter(s => 
+                                        s.species_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        s.genus?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        s.family?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        s.common_name?.toLowerCase().includes(searchTerm.toLowerCase())
+                                    );
                                 }
-                            }
-                            
-                            // If no pending specimen found after current, try from beginning
-                            if (!nextSpecimen) {
-                                for (let i = 0; i < currentIndex; i++) {
-                                    if (updatedSpecimens[i].status === 'pending') {
-                                        nextSpecimen = updatedSpecimens[i];
+                                
+                                // Apply status filter
+                                if (specimensFilters.status !== 'all') {
+                                    filtered = filtered.filter(s => s.status === specimensFilters.status);
+                                }
+                                
+                                // Apply DNA filter
+                                if (specimensFilters.dnaSequenced !== 'all') {
+                                    filtered = filtered.filter(s => s.dna_sequenced === (specimensFilters.dnaSequenced === 'yes'));
+                                }
+                                
+                                // Apply family filter
+                                if (specimensFilters.family !== 'all') {
+                                    filtered = filtered.filter(s => s.family === specimensFilters.family);
+                                }
+                                
+                                // Apply genus filter if it exists
+                                if (specimensFilters.genus && specimensFilters.genus !== 'all') {
+                                    filtered = filtered.filter(s => s.genus === specimensFilters.genus);
+                                }
+                                
+                                // Find the position of the approved specimen in the filtered list
+                                const currentIndexInFiltered = filtered.findIndex(s => s.id === approvedSpecimenId);
+                                
+                                // Find next pending specimen in the filtered list
+                                let nextSpecimen = null;
+                                
+                                // Look after current position first
+                                for (let i = currentIndexInFiltered + 1; i < filtered.length; i++) {
+                                    if (filtered[i].status === 'pending') {
+                                        nextSpecimen = filtered[i];
                                         break;
                                     }
                                 }
-                            }
-                            
-                            if (nextSpecimen) {
-                                // Auto-load the next specimen
-                                setSelectedSpecimen(nextSpecimen);
-                                showToast(`Next specimen: ${nextSpecimen.species_name}`, 'info');
-                            } else {
-                                // No more pending specimens
-                                setSelectedSpecimen(null);
-                                showToast('🎉 All specimens reviewed! Queue is empty.', 'success');
                                 
-                                // Optional: Refresh data from server to ensure consistency
-                                loadAllSpecimens();
-                            }
+                                // If not found after current, look from the beginning
+                                if (!nextSpecimen && currentIndexInFiltered > 0) {
+                                    for (let i = 0; i < currentIndexInFiltered; i++) {
+                                        if (filtered[i].status === 'pending') {
+                                            nextSpecimen = filtered[i];
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                if (nextSpecimen) {
+                                    // Open the next specimen modal
+                                    setSelectedSpecimen(nextSpecimen);
+                                    showToast(`Loading next: ${nextSpecimen.species_name}`, 'info');
+                                } else {
+                                    // No more pending specimens in the current filtered view
+                                    const totalPendingInFilter = filtered.filter(s => s.status === 'pending').length;
+                                    if (totalPendingInFilter === 0) {
+                                        showToast('🎉 All specimens in current view reviewed!', 'success');
+                                    } else {
+                                        showToast('No more pending specimens in sequence', 'info');
+                                    }
+                                }
+                            }, 200); // Small delay to allow modal close animation
                             
                         } else {
                             showToast('Failed to approve specimen', 'error');
