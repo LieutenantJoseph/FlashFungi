@@ -1648,8 +1648,41 @@
 
                         if (response.ok) {
                             showToast('Specimen approved successfully', 'success');
-                            setSelectedSpecimen(null);
-                            loadAllSpecimens();
+                            
+                            // Find the next pending specimen
+                            const currentIndex = specimens.findIndex(s => s.id === selectedSpecimen.id);
+                            const pendingSpecimens = specimens.filter(s => s.status === 'pending');
+                            const nextPendingIndex = specimens.findIndex((s, index) => 
+                                index > currentIndex && s.status === 'pending'
+                            );
+                            
+                            // If there's no specimen after the current one, try from the beginning
+                            let nextSpecimen = null;
+                            if (nextPendingIndex !== -1) {
+                                nextSpecimen = specimens[nextPendingIndex];
+                            } else {
+                                // Look for pending specimens from the start of the list
+                                const firstPending = specimens.find(s => s.status === 'pending' && s.id !== selectedSpecimen.id);
+                                if (firstPending) {
+                                    nextSpecimen = firstPending;
+                                }
+                            }
+                            
+                            // Reload data to update the list
+                            await loadData();
+                            
+                            // If there's a next pending specimen, select it automatically
+                            if (nextSpecimen) {
+                                // Small delay to ensure UI updates properly
+                                setTimeout(() => {
+                                    setSelectedSpecimen(nextSpecimen);
+                                    showToast(`Loaded next specimen: ${nextSpecimen.species_name}`, 'info');
+                                }, 300);
+                            } else {
+                                // No more pending specimens
+                                setSelectedSpecimen(null);
+                                showToast('🎉 All specimens reviewed! No more pending items.', 'success');
+                            }
                         } else {
                             showToast('Failed to approve specimen', 'error');
                         }
@@ -1658,6 +1691,7 @@
                         showToast('Error approving specimen', 'error');
                     }
                 };
+
 
                 const handleDeleteSpecimen = async () => {
                     if (!confirm(`Delete specimen "${selectedSpecimen.species_name}"?`)) return;
