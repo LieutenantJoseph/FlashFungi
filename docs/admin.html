@@ -1649,50 +1649,51 @@
                         if (response.ok) {
                             showToast('Specimen approved successfully', 'success');
                             
-                            // Store current specimen ID for comparison
+                            // Store the approved specimen ID
                             const approvedSpecimenId = selectedSpecimen.id;
                             
-                            // Reload data to get updated list
-                            await loadData();
+                            // Update the local specimens array immediately (optimistic update)
+                            const updatedSpecimens = specimens.map(s => 
+                                s.id === approvedSpecimenId 
+                                    ? { ...s, status: 'approved', admin_notes: notes, selected_photos: selectedPhotos }
+                                    : s
+                            );
+                            setSpecimens(updatedSpecimens);
                             
-                            // After data is reloaded, find next pending specimen
-                            // Use a small timeout to ensure state has updated
-                            setTimeout(() => {
-                                // Get the fresh specimens list after loadData
-                                const currentSpecimens = specimens;
-                                const currentIndex = currentSpecimens.findIndex(s => s.id === approvedSpecimenId);
-                                
-                                // Find next pending specimen after current position
-                                let nextSpecimen = null;
-                                
-                                // First, try to find the next pending specimen after current index
-                                for (let i = currentIndex + 1; i < currentSpecimens.length; i++) {
-                                    if (currentSpecimens[i].status === 'pending') {
-                                        nextSpecimen = currentSpecimens[i];
+                            // Find the next pending specimen from the updated list
+                            const currentIndex = updatedSpecimens.findIndex(s => s.id === approvedSpecimenId);
+                            let nextSpecimen = null;
+                            
+                            // Look for next pending specimen after current position
+                            for (let i = currentIndex + 1; i < updatedSpecimens.length; i++) {
+                                if (updatedSpecimens[i].status === 'pending') {
+                                    nextSpecimen = updatedSpecimens[i];
+                                    break;
+                                }
+                            }
+                            
+                            // If no pending specimen found after current, try from beginning
+                            if (!nextSpecimen) {
+                                for (let i = 0; i < currentIndex; i++) {
+                                    if (updatedSpecimens[i].status === 'pending') {
+                                        nextSpecimen = updatedSpecimens[i];
                                         break;
                                     }
                                 }
+                            }
+                            
+                            if (nextSpecimen) {
+                                // Auto-load the next specimen
+                                setSelectedSpecimen(nextSpecimen);
+                                showToast(`Next specimen: ${nextSpecimen.species_name}`, 'info');
+                            } else {
+                                // No more pending specimens
+                                setSelectedSpecimen(null);
+                                showToast('🎉 All specimens reviewed! Queue is empty.', 'success');
                                 
-                                // If no pending specimen found after current, try from beginning
-                                if (!nextSpecimen) {
-                                    for (let i = 0; i < currentIndex; i++) {
-                                        if (currentSpecimens[i].status === 'pending') {
-                                            nextSpecimen = currentSpecimens[i];
-                                            break;
-                                        }
-                                    }
-                                }
-                                
-                                if (nextSpecimen) {
-                                    // Auto-load the next specimen
-                                    setSelectedSpecimen(nextSpecimen);
-                                    showToast(`Next specimen: ${nextSpecimen.species_name}`, 'info');
-                                } else {
-                                    // No more pending specimens
-                                    setSelectedSpecimen(null);
-                                    showToast('🎉 All specimens reviewed! Queue is empty.', 'success');
-                                }
-                            }, 300);
+                                // Optional: Refresh data from server to ensure consistency
+                                loadAllSpecimens();
+                            }
                             
                         } else {
                             showToast('Failed to approve specimen', 'error');
@@ -1702,7 +1703,6 @@
                         showToast('Error approving specimen', 'error');
                     }
                 };
-
 
                 const handleDeleteSpecimen = async () => {
                     if (!confirm(`Delete specimen "${selectedSpecimen.species_name}"?`)) return;
