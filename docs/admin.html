@@ -9,38 +9,42 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="/components/training/ModuleLoader.js"></script>
     <style>
-        /* Living Mycology Dark Theme */
+        /* Deep Ocean Dark Theme */
         body {
-            background-color: #1A1A19;
+            background-color: #0F1419;
         }
         
         .fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         .skeleton { 
-            background: linear-gradient(90deg, #2A2826 25%, #3A3836 50%, #2A2826 75%); 
+            background: linear-gradient(90deg, #1A2332 25%, #263244 50%, #1A2332 75%); 
             background-size: 200% 100%; 
             animation: loading 1.5s infinite; 
         }
         @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
         
-        /* Living Mycology Gradients */
-        .earth-gradient { 
-            background: linear-gradient(135deg, #8B4513 0%, #654321 100%); 
+        /* Deep Ocean Blue Gradients */
+        .ocean-gradient { 
+            background: linear-gradient(135deg, #1E3A5F 0%, #0D2137 100%); 
         }
         
-        .forest-gradient {
-            background: linear-gradient(135deg, #2D4A2B 0%, #1A2F1A 100%);
+        .sky-gradient {
+            background: linear-gradient(135deg, #2563EB 0%, #1E40AF 100%);
         }
         
-        .moss-gradient {
-            background: linear-gradient(135deg, #4A5D3A 0%, #2F3E27 100%);
+        .teal-gradient {
+            background: linear-gradient(135deg, #0891B2 0%, #0E7490 100%);
+        }
+
+        .slate-gradient {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
         }
         
         /* Card styling */
         .card-dark {
-            background-color: #2A2826;
-            border: 1px solid #3A3836;
+            background-color: #1A2332;
+            border: 1px solid #263244;
         }
         
         /* Button transitions */
@@ -53,26 +57,27 @@
             width: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #1A1A19;
+            background: #0F1419;
         }
         ::-webkit-scrollbar-thumb {
-            background: #4A4846;
+            background: #334155;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #5A5856;
+            background: #475569;
         }
         
         /* Input styling for dark theme */
         input, textarea, select {
-            background-color: #1A1A19;
-            border: 1px solid #3A3836;
-            color: #E8E6E3;
+            background-color: #0F1419;
+            border: 1px solid #263244;
+            color: #E2E8F0;
         }
         
         input:focus, textarea:focus, select:focus {
-            border-color: #8B4513;
+            border-color: #2563EB;
             outline: none;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
         
         /* Modal backdrop blur */
@@ -88,11 +93,11 @@
 </head>
 <body>
     <div id="admin-root">
-        <div class="min-h-screen bg-[#1A1A19] flex items-center justify-center">
+        <div class="min-h-screen bg-[#0F1419] flex items-center justify-center">
             <div class="text-center">
                 <div class="text-6xl mb-4">🍄</div>
-                <h1 class="text-2xl font-bold text-[#E8E6E3] mb-2">Admin Portal Loading...</h1>
-                <p class="text-[#B8B6B3]">Initializing Flash Fungi management system...</p>
+                <h1 class="text-2xl font-bold text-[#E2E8F0] mb-2">Admin Portal Loading...</h1>
+                <p class="text-[#94A3B8]">Initializing Flash Fungi management system...</p>
             </div>
         </div>
     </div>
@@ -130,6 +135,13 @@
                     timeout = setTimeout(later, wait);
                 };
             };
+
+            // Phase 3 Badge Component
+            function Phase3Badge() {
+                return h('span', {
+                    className: 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-900 bg-opacity-30 text-blue-400 border border-blue-700'
+                }, 'Phase 3');
+            }
 
             // ============= ENHANCED PAGINATION COMPONENTS =============
             
@@ -173,14 +185,14 @@
                 const startItem = (currentPage - 1) * itemsPerPage + 1;
                 const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-                return h('div', { className: 'flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-[#1A1A19] rounded-lg border border-[#3A3836]' },
+                return h('div', { className: 'flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-[#0F1419] rounded-lg border border-[#263244]' },
                     // Items per page selector
                     h('div', { className: 'flex items-center gap-2' },
-                        h('label', { className: 'text-sm text-[#B8B6B3]' }, 'Show:'),
+                        h('label', { className: 'text-sm text-[#94A3B8]' }, 'Show:'),
                         h('select', {
                             value: itemsPerPage,
                             onChange: (e) => onItemsPerPageChange(Number(e.target.value)),
-                            className: 'px-3 py-1 rounded-md text-sm text-[#E8E6E3] bg-[#1A1A19] border border-[#3A3836] focus:border-[#8B4513]'
+                            className: 'px-3 py-1 rounded-md text-sm text-[#E2E8F0] bg-[#0F1419] border border-[#263244] focus:border-[#2563EB]'
                         },
                             [10, 25, 50, 100].map(num => 
                                 h('option', { key: num, value: num }, `${num} items`)
@@ -189,7 +201,7 @@
                     ),
 
                     // Page info
-                    h('div', { className: 'text-sm text-[#B8B6B3]' },
+                    h('div', { className: 'text-sm text-[#94A3B8]' },
                         `Showing ${startItem}-${endItem} of ${totalItems} items`
                     ),
 
@@ -201,22 +213,22 @@
                             disabled: currentPage === 1,
                             className: `px-3 py-1 rounded-md text-sm ${
                                 currentPage === 1 
-                                    ? 'bg-[#2A2826] text-[#4A4846] cursor-not-allowed' 
-                                    : 'bg-[#2A2826] text-[#B8B6B3] hover:bg-[#3A3836] border border-[#3A3836]'
+                                    ? 'bg-[#1A2332] text-[#475569] cursor-not-allowed' 
+                                    : 'bg-[#1A2332] text-[#94A3B8] hover:bg-[#263244] border border-[#263244]'
                             }`
                         }, '← Previous'),
 
                         // Page numbers
                         ...getPageRange().map((page, idx) => 
                             page === '...' 
-                                ? h('span', { key: `dots-${idx}`, className: 'px-2 text-[#4A4846]' }, '...')
+                                ? h('span', { key: `dots-${idx}`, className: 'px-2 text-[#475569]' }, '...')
                                 : h('button', {
                                     key: page,
                                     onClick: () => onPageChange(page),
                                     className: `px-3 py-1 rounded-md text-sm ${
                                         page === currentPage 
-                                            ? 'bg-[#8B4513] text-[#E8E6E3]' 
-                                            : 'bg-[#2A2826] text-[#B8B6B3] hover:bg-[#3A3836] border border-[#3A3836]'
+                                            ? 'bg-[#2563EB] text-[#E2E8F0]' 
+                                            : 'bg-[#1A2332] text-[#94A3B8] hover:bg-[#263244] border border-[#263244]'
                                     }`
                                 }, page)
                         ),
@@ -227,8 +239,8 @@
                             disabled: currentPage === totalPages,
                             className: `px-3 py-1 rounded-md text-sm ${
                                 currentPage === totalPages 
-                                    ? 'bg-[#2A2826] text-[#4A4846] cursor-not-allowed' 
-                                    : 'bg-[#2A2826] text-[#B8B6B3] hover:bg-[#3A3836] border border-[#3A3836]'
+                                    ? 'bg-[#1A2332] text-[#475569] cursor-not-allowed' 
+                                    : 'bg-[#1A2332] text-[#94A3B8] hover:bg-[#263244] border border-[#263244]'
                             }`
                         }, 'Next →')
                     )
@@ -270,10 +282,10 @@
                             value: localValue,
                             onChange: (e) => setLocalValue(e.target.value),
                             placeholder: placeholder || 'Search...',
-                            className: 'w-full px-4 py-2 pr-10 bg-[#1A1A19] border border-[#3A3836] text-[#E8E6E3] rounded-lg focus:border-[#8B4513]'
+                            className: 'w-full px-4 py-2 pr-10 bg-[#0F1419] border border-[#263244] text-[#E2E8F0] rounded-lg focus:border-[#2563EB]'
                         }),
                         h('svg', {
-                            className: 'absolute right-3 top-2.5 w-5 h-5 text-[#4A4846]',
+                            className: 'absolute right-3 top-2.5 w-5 h-5 text-[#475569]',
                             fill: 'none',
                             stroke: 'currentColor',
                             viewBox: '0 0 24 24'
@@ -287,14 +299,14 @@
                         ),
                         showAdvanced && h('button', {
                             onClick: () => setIsAdvancedOpen(!isAdvancedOpen),
-                            className: 'absolute right-12 top-2 text-sm text-[#D2691E] hover:text-[#8B4513]'
+                            className: 'absolute right-12 top-2 text-sm text-[#60A5FA] hover:text-[#2563EB]'
                         }, 'Advanced')
                     ),
                     isAdvancedOpen && h('div', {
-                        className: 'absolute top-full mt-2 w-full bg-[#2A2826] border border-[#3A3836] rounded-lg shadow-lg p-4 z-10'
+                        className: 'absolute top-full mt-2 w-full bg-[#1A2332] border border-[#263244] rounded-lg shadow-lg p-4 z-10'
                     },
-                        h('div', { className: 'text-sm text-[#B8B6B3] mb-2' }, 'Search tips:'),
-                        h('ul', { className: 'text-xs text-[#8A8886] space-y-1' },
+                        h('div', { className: 'text-sm text-[#94A3B8] mb-2' }, 'Search tips:'),
+                        h('ul', { className: 'text-xs text-[#64748B] space-y-1' },
                             h('li', null, '• Use quotes for exact phrases: "Agaricus bisporus"'),
                             h('li', null, '• Use OR for multiple terms: edible OR choice'),
                             h('li', null, '• Use - to exclude: mushroom -poisonous'),
@@ -312,11 +324,11 @@
                 return h('div', { className: 'card-dark rounded-lg' },
                     h('button', {
                         onClick: () => setIsOpen(!isOpen),
-                        className: 'w-full px-4 py-3 flex justify-between items-center hover:bg-[#3A3836]'
+                        className: 'w-full px-4 py-3 flex justify-between items-center hover:bg-[#263244]'
                     },
                         h('div', { className: 'flex items-center gap-2' },
                             h('svg', {
-                                className: `w-5 h-5 transform transition-transform text-[#B8B6B3] ${isOpen ? 'rotate-90' : ''}`,
+                                className: `w-5 h-5 transform transition-transform text-[#94A3B8] ${isOpen ? 'rotate-90' : ''}`,
                                 fill: 'none',
                                 stroke: 'currentColor',
                                 viewBox: '0 0 24 24'
@@ -328,16 +340,16 @@
                                     d: 'M9 5l7 7-7 7'
                                 })
                             ),
-                            h('span', { className: 'font-medium text-[#E8E6E3]' }, 'Filters'),
+                            h('span', { className: 'font-medium text-[#E2E8F0]' }, 'Filters'),
                             activeFilterCount > 0 && h('span', {
-                                className: 'px-2 py-0.5 bg-[#8B4513] bg-opacity-20 text-[#D2691E] text-xs rounded-full'
+                                className: 'px-2 py-0.5 bg-[#2563EB] bg-opacity-20 text-[#60A5FA] text-xs rounded-full'
                             }, activeFilterCount)
                         ),
-                        h('span', { className: 'text-sm text-[#B8B6B3]' }, 
+                        h('span', { className: 'text-sm text-[#94A3B8]' }, 
                             isOpen ? 'Click to collapse' : 'Click to expand'
                         )
                     ),
-                    isOpen && h('div', { className: 'p-4 border-t border-[#3A3836] space-y-4' }, children)
+                    isOpen && h('div', { className: 'p-4 border-t border-[#263244] space-y-4' }, children)
                 );
             };
 
@@ -349,14 +361,14 @@
                 }, [onClose]);
 
                 const bgColor = {
-                    success: 'forest-gradient',
+                    success: 'sky-gradient',
                     error: 'bg-red-900',
                     warning: 'bg-yellow-900',
-                    info: 'moss-gradient'
+                    info: 'teal-gradient'
                 }[type];
 
                 return h('div', {
-                    className: `fixed bottom-4 right-4 ${bgColor} text-[#E8E6E3] px-6 py-3 rounded-lg shadow-xl z-50 flex items-center gap-3 fade-in`
+                    className: `fixed bottom-4 right-4 ${bgColor} text-[#E2E8F0] px-6 py-3 rounded-lg shadow-xl z-50 flex items-center gap-3 fade-in`
                 },
                     h('span', null, message),
                     h('button', {
@@ -517,7 +529,7 @@
                     },
                         // Header
                         h('div', {
-                            className: 'earth-gradient text-[#E8E6E3] p-6 rounded-t-xl flex-shrink-0'
+                            className: 'ocean-gradient text-[#E2E8F0] p-6 rounded-t-xl flex-shrink-0'
                         },
                             h('div', { className: 'flex justify-between items-start' },
                                 h('div', null,
@@ -537,24 +549,24 @@
                         ),
                         
                         // Module Settings
-                        h('div', { className: 'p-6 bg-[#1A1A19] border-b border-[#3A3836] flex-shrink-0' },
+                        h('div', { className: 'p-6 bg-[#0F1419] border-b border-[#263244] flex-shrink-0' },
                             h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4' },
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Title'),
+                                    h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Title'),
                                     h('input', {
                                         type: 'text',
                                         value: moduleData.title,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, title: e.target.value })),
-                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]',
+                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]',
                                         placeholder: 'Module title...'
                                     })
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Category'),
+                                    h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Category'),
                                     h('select', {
                                         value: moduleData.category,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, category: e.target.value })),
-                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                     },
                                         h('option', { value: 'foundation' }, 'Foundation'),
                                         h('option', { value: 'genus' }, 'Genus-Specific'),
@@ -563,11 +575,11 @@
                                     )
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Difficulty'),
+                                    h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Difficulty'),
                                     h('select', {
                                         value: moduleData.difficulty_level,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, difficulty_level: e.target.value })),
-                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                     },
                                         h('option', { value: 'beginner' }, 'Beginner'),
                                         h('option', { value: 'intermediate' }, 'Intermediate'),
@@ -575,24 +587,24 @@
                                     )
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Duration (min)'),
+                                    h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Duration (min)'),
                                     h('input', {
                                         type: 'number',
                                         value: moduleData.duration_minutes,
                                         onChange: (e) => setModuleData(prev => ({ ...prev, duration_minutes: parseInt(e.target.value) })),
-                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]',
+                                        className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]',
                                         min: 5,
                                         max: 60
                                     })
                                 )
                             ),
                             h('div', { className: 'mt-4' },
-                                h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Description'),
+                                h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Description'),
                                 h('textarea', {
                                     value: moduleData.description,
                                     onChange: (e) => setModuleData(prev => ({ ...prev, description: e.target.value })),
                                     placeholder: 'Module description...',
-                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]',
+                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]',
                                     rows: 2
                                 })
                             ),
@@ -604,7 +616,7 @@
                                         onChange: (e) => setModuleData(prev => ({ ...prev, published: e.target.checked })),
                                         className: 'mr-2'
                                     }),
-                                    h('span', { className: 'text-sm font-medium text-[#B8B6B3]' }, 'Published (visible to users)')
+                                    h('span', { className: 'text-sm font-medium text-[#94A3B8]' }, 'Published (visible to users)')
                                 )
                             )
                         ),
@@ -620,7 +632,7 @@
 
                             // Introduction Section
                             h('div', { className: 'mb-8' },
-                                h('h3', { className: 'text-lg font-semibold mb-3 flex items-center text-[#E8E6E3]' }, 
+                                h('h3', { className: 'text-lg font-semibold mb-3 flex items-center text-[#E2E8F0]' }, 
                                     h('span', { className: 'mr-2' }, '📖'),
                                     'Introduction Pages'
                                 ),
@@ -628,10 +640,10 @@
                                     (content.introduction?.pages || []).map((page, idx) =>
                                         h('div', {
                                             key: idx,
-                                            className: 'bg-[#1A1A19] border border-[#3A3836] rounded-lg p-4'
+                                            className: 'bg-[#0F1419] border border-[#263244] rounded-lg p-4'
                                         },
                                             h('div', { className: 'flex justify-between items-start mb-3' },
-                                                h('span', { className: 'text-sm font-medium text-[#B8B6B3]' }, 
+                                                h('span', { className: 'text-sm font-medium text-[#94A3B8]' }, 
                                                     `Page ${idx + 1}`
                                                 ),
                                                 h('button', {
@@ -644,13 +656,13 @@
                                                 value: page.title || '',
                                                 onChange: (e) => handleUpdatePage('introduction', idx, 'title', e.target.value),
                                                 placeholder: 'Page title...',
-                                                className: 'w-full px-3 py-2 rounded text-sm mb-2 text-[#E8E6E3]'
+                                                className: 'w-full px-3 py-2 rounded text-sm mb-2 text-[#E2E8F0]'
                                             }),
                                             h('textarea', {
                                                 value: page.content || '',
                                                 onChange: (e) => handleUpdatePage('introduction', idx, 'content', e.target.value),
                                                 placeholder: 'Page content...',
-                                                className: 'w-full px-3 py-2 rounded text-sm text-[#E8E6E3]',
+                                                className: 'w-full px-3 py-2 rounded text-sm text-[#E2E8F0]',
                                                 rows: 4
                                             }),
                                             h('input', {
@@ -658,20 +670,20 @@
                                                 value: page.image || '',
                                                 onChange: (e) => handleUpdatePage('introduction', idx, 'image', e.target.value),
                                                 placeholder: 'Image URL (optional)...',
-                                                className: 'w-full px-3 py-2 rounded text-sm mt-2 text-[#E8E6E3]'
+                                                className: 'w-full px-3 py-2 rounded text-sm mt-2 text-[#E2E8F0]'
                                             })
                                         )
                                     ),
                                     h('button', {
                                         onClick: () => handleAddPage('introduction'),
-                                        className: 'w-full py-2 border-2 border-dashed border-[#3A3836] rounded-lg text-[#B8B6B3] hover:border-[#8B4513] hover:text-[#D2691E] transition-all'
+                                        className: 'w-full py-2 border-2 border-dashed border-[#263244] rounded-lg text-[#94A3B8] hover:border-[#2563EB] hover:text-[#60A5FA] transition-all'
                                     }, '+ Add Page')
                                 )
                             ),
 
                             // Quiz Section
                             h('div', { className: 'mb-8' },
-                                h('h3', { className: 'text-lg font-semibold mb-3 flex items-center text-[#E8E6E3]' }, 
+                                h('h3', { className: 'text-lg font-semibold mb-3 flex items-center text-[#E2E8F0]' }, 
                                     h('span', { className: 'mr-2' }, '❓'),
                                     'Quiz Questions'
                                 ),
@@ -679,10 +691,10 @@
                                     (content.quiz?.questions || []).map((question, idx) =>
                                         h('div', {
                                             key: idx,
-                                            className: 'bg-[#1A1A19] border border-[#3A3836] rounded-lg p-4'
+                                            className: 'bg-[#0F1419] border border-[#263244] rounded-lg p-4'
                                         },
                                             h('div', { className: 'flex justify-between items-start mb-3' },
-                                                h('span', { className: 'text-sm font-medium text-[#B8B6B3]' }, 
+                                                h('span', { className: 'text-sm font-medium text-[#94A3B8]' }, 
                                                     `Question ${idx + 1}`
                                                 ),
                                                 h('button', {
@@ -695,7 +707,7 @@
                                                 value: question.question || '',
                                                 onChange: (e) => handleUpdateQuestion('quiz', idx, 'question', e.target.value),
                                                 placeholder: 'Question text...',
-                                                className: 'w-full px-3 py-2 rounded-lg text-sm mb-3 text-[#E8E6E3]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-sm mb-3 text-[#E2E8F0]'
                                             }),
                                             h('div', { className: 'space-y-2' },
                                                 (question.options || ['', '', '', '']).map((option, optIdx) =>
@@ -716,7 +728,7 @@
                                                                 handleUpdateQuestion('quiz', idx, 'options', newOptions);
                                                             },
                                                             placeholder: `Option ${optIdx + 1}...`,
-                                                            className: 'flex-1 px-3 py-1 rounded text-sm text-[#E8E6E3]'
+                                                            className: 'flex-1 px-3 py-1 rounded text-sm text-[#E2E8F0]'
                                                         })
                                                     )
                                                 )
@@ -725,14 +737,14 @@
                                                 value: question.explanation || '',
                                                 onChange: (e) => handleUpdateQuestion('quiz', idx, 'explanation', e.target.value),
                                                 placeholder: 'Explanation (shown after answer)...',
-                                                className: 'w-full px-3 py-2 rounded-lg text-sm mt-3 text-[#E8E6E3]',
+                                                className: 'w-full px-3 py-2 rounded-lg text-sm mt-3 text-[#E2E8F0]',
                                                 rows: 2
                                             })
                                         )
                                     ),
                                     h('button', {
                                         onClick: () => handleAddQuestion('quiz'),
-                                        className: 'w-full py-2 border-2 border-dashed border-[#3A3836] rounded-lg text-[#B8B6B3] hover:border-[#8B4513] hover:text-[#D2691E] transition-all'
+                                        className: 'w-full py-2 border-2 border-dashed border-[#263244] rounded-lg text-[#94A3B8] hover:border-[#2563EB] hover:text-[#60A5FA] transition-all'
                                     }, '+ Add Question')
                                 )
                             )
@@ -740,16 +752,16 @@
                         
                         // Footer
                         h('div', {
-                            className: 'p-6 bg-[#1A1A19] border-t border-[#3A3836] flex justify-between items-center flex-shrink-0'
+                            className: 'p-6 bg-[#0F1419] border-t border-[#263244] flex justify-between items-center flex-shrink-0'
                         },
                             h('button', {
                                 onClick: onClose,
-                                className: 'px-6 py-2 border border-[#3A3836] text-[#B8B6B3] rounded-lg hover:bg-[#3A3836] transition-all'
+                                className: 'px-6 py-2 border border-[#263244] text-[#94A3B8] rounded-lg hover:bg-[#263244] transition-all'
                             }, 'Cancel'),
                             h('button', {
                                 onClick: handleSave,
                                 disabled: saving || !moduleData.title,
-                                className: `px-6 py-2 forest-gradient text-[#E8E6E3] rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
+                                className: `px-6 py-2 sky-gradient text-[#E2E8F0] rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all ${
                                     saving ? 'cursor-wait' : ''
                                 }`
                             }, saving ? 'Saving...' : 'Save Module')
@@ -887,7 +899,7 @@
                 return h('div', { className: 'fixed inset-0 bg-black bg-opacity-75 modal-backdrop flex items-center justify-center p-4 z-50' },
                     h('div', { className: 'card-dark rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl' },
                         // Header
-                        h('div', { className: 'forest-gradient text-[#E8E6E3] p-6' },
+                        h('div', { className: 'sky-gradient text-[#E2E8F0] p-6' },
                             h('div', { className: 'flex justify-between items-start' },
                                 h('div', null,
                                     h('h2', { className: 'text-2xl font-bold mb-2' }, 
@@ -907,7 +919,7 @@
                         ),
 
                         // Tabs
-                        h('div', { className: 'border-b border-[#3A3836] bg-[#1A1A19]' },
+                        h('div', { className: 'border-b border-[#263244] bg-[#0F1419]' },
                             h('div', { className: 'flex gap-4 px-6' },
                                 ['overview', 'photos', 'diagnostic', 'hints', 'comparison'].map(tab =>
                                     h('button', {
@@ -915,8 +927,8 @@
                                         onClick: () => setActiveTab(tab),
                                         className: `py-3 px-4 border-b-2 transition-colors capitalize ${
                                             activeTab === tab 
-                                                ? 'border-[#8B4513] text-[#D2691E] font-medium' 
-                                                : 'border-transparent text-[#B8B6B3] hover:text-[#E8E6E3]'
+                                                ? 'border-[#2563EB] text-[#60A5FA] font-medium' 
+                                                : 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0]'
                                         }`
                                     }, tab === 'photos' ? '📸 Photos' : tab)
                                 )
@@ -924,26 +936,26 @@
                         ),
 
                         // Content
-                        h('div', { className: 'flex-1 overflow-y-auto p-6 bg-[#2A2826]' },
+                        h('div', { className: 'flex-1 overflow-y-auto p-6 bg-[#1A2332]' },
                             // Overview Tab
                             activeTab === 'overview' && h('div', { className: 'space-y-6' },
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium mb-2 text-[#B8B6B3]' }, 'Description'),
+                                    h('label', { className: 'block text-sm font-medium mb-2 text-[#94A3B8]' }, 'Description'),
                                     h('textarea', {
                                         value: fieldGuide.description,
                                         onChange: (e) => setFieldGuide(prev => ({ ...prev, description: e.target.value })),
                                         placeholder: 'Comprehensive species description...',
-                                        className: 'w-full p-3 rounded-lg text-[#E8E6E3]',
+                                        className: 'w-full p-3 rounded-lg text-[#E2E8F0]',
                                         rows: 6
                                     })
                                 ),
                                 h('div', null,
-                                    h('label', { className: 'block text-sm font-medium mb-2 text-[#B8B6B3]' }, 'Ecology & Habitat'),
+                                    h('label', { className: 'block text-sm font-medium mb-2 text-[#94A3B8]' }, 'Ecology & Habitat'),
                                     h('textarea', {
                                         value: fieldGuide.ecology,
                                         onChange: (e) => setFieldGuide(prev => ({ ...prev, ecology: e.target.value })),
                                         placeholder: 'Habitat, substrate, seasonal patterns, geographic distribution...',
-                                        className: 'w-full p-3 rounded-lg text-[#E8E6E3]',
+                                        className: 'w-full p-3 rounded-lg text-[#E2E8F0]',
                                         rows: 4
                                     })
                                 )
@@ -952,13 +964,13 @@
                             // Photos Tab
                             activeTab === 'photos' && h('div', { className: 'space-y-6' },
                                 h('div', { className: 'flex justify-between items-center mb-4' },
-                                    h('h3', { className: 'text-lg font-semibold text-[#E8E6E3]' }, 
+                                    h('h3', { className: 'text-lg font-semibold text-[#E2E8F0]' }, 
                                         `Reference Photos (${fieldGuide.reference_photos.length}/6)`
                                     ),
                                     h('button', {
                                         onClick: () => setPhotoSelector(!photoSelector),
                                         disabled: fieldGuide.reference_photos.length >= 6,
-                                        className: `px-4 py-2 moss-gradient text-[#E8E6E3] rounded-lg hover:opacity-90 disabled:opacity-50 transition-all ${
+                                        className: `px-4 py-2 teal-gradient text-[#E2E8F0] rounded-lg hover:opacity-90 disabled:opacity-50 transition-all ${
                                             fieldGuide.reference_photos.length >= 6 ? 'cursor-not-allowed' : ''
                                         }`
                                     }, '+ Add Photo')
@@ -968,7 +980,7 @@
                                 fieldGuide.reference_photos.length > 0 ?
                                     h('div', { className: 'grid grid-cols-3 gap-4' },
                                         fieldGuide.reference_photos.map((photo, idx) =>
-                                            h('div', { key: idx, className: 'relative border border-[#3A3836] rounded-lg overflow-hidden' },
+                                            h('div', { key: idx, className: 'relative border border-[#263244] rounded-lg overflow-hidden' },
                                                 h('img', {
                                                     src: photo.url,
                                                     alt: `Reference ${idx + 1}`,
@@ -980,46 +992,46 @@
                                                         className: 'bg-red-500 text-white rounded-full p-1 hover:bg-red-600'
                                                     }, '×')
                                                 ),
-                                                h('div', { className: 'p-2 bg-[#1A1A19]' },
-                                                    h('p', { className: 'text-xs text-[#B8B6B3]' }, photo.source),
+                                                h('div', { className: 'p-2 bg-[#0F1419]' },
+                                                    h('p', { className: 'text-xs text-[#94A3B8]' }, photo.source),
                                                     photo.inaturalist_id && h('a', {
                                                         href: `https://www.inaturalist.org/observations/${photo.inaturalist_id}`,
                                                         target: '_blank',
-                                                        className: 'text-xs text-[#D2691E] hover:underline'
+                                                        className: 'text-xs text-[#60A5FA] hover:underline'
                                                     }, 'View on iNaturalist →')
                                                 )
                                             )
                                         )
                                     ) :
-                                    h('div', { className: 'text-center py-8 bg-[#1A1A19] rounded-lg' },
-                                        h('p', { className: 'text-[#B8B6B3]' }, 'No reference photos selected')
+                                    h('div', { className: 'text-center py-8 bg-[#0F1419] rounded-lg' },
+                                        h('p', { className: 'text-[#94A3B8]' }, 'No reference photos selected')
                                     ),
 
                                 // Photo Selector
-                                photoSelector && h('div', { className: 'border-t border-[#3A3836] pt-4 mt-4' },
-                                    h('h4', { className: 'font-medium mb-3 text-[#E8E6E3]' }, 'Add Reference Photo'),
+                                photoSelector && h('div', { className: 'border-t border-[#263244] pt-4 mt-4' },
+                                    h('h4', { className: 'font-medium mb-3 text-[#E2E8F0]' }, 'Add Reference Photo'),
                                     
                                     // Custom URL Input
                                     h('div', { className: 'mb-4' },
-                                        h('label', { className: 'block text-sm font-medium mb-2 text-[#B8B6B3]' }, 'External URL'),
+                                        h('label', { className: 'block text-sm font-medium mb-2 text-[#94A3B8]' }, 'External URL'),
                                         h('div', { className: 'flex gap-2' },
                                             h('input', {
                                                 type: 'url',
                                                 value: customUrl,
                                                 onChange: (e) => setCustomUrl(e.target.value),
                                                 placeholder: 'https://example.com/mushroom.jpg',
-                                                className: 'flex-1 px-3 py-2 rounded-lg text-[#E8E6E3]'
+                                                className: 'flex-1 px-3 py-2 rounded-lg text-[#E2E8F0]'
                                             }),
                                             h('button', {
                                                 onClick: handleAddCustomUrl,
-                                                className: 'px-4 py-2 forest-gradient text-[#E8E6E3] rounded-lg hover:opacity-90 transition-all'
+                                                className: 'px-4 py-2 sky-gradient text-[#E2E8F0] rounded-lg hover:opacity-90 transition-all'
                                             }, 'Add URL')
                                         )
                                     ),
 
                                     // Specimen Photos
                                     h('div', null,
-                                        h('label', { className: 'block text-sm font-medium mb-2 text-[#B8B6B3]' }, 
+                                        h('label', { className: 'block text-sm font-medium mb-2 text-[#94A3B8]' }, 
                                             'Or select from specimen photos'
                                         ),
                                         h('div', { className: 'grid grid-cols-4 gap-2 max-h-64 overflow-y-auto' },
@@ -1031,7 +1043,7 @@
                                                     h('div', {
                                                         key: idx,
                                                         onClick: () => handleAddPhoto(photo),
-                                                        className: 'cursor-pointer border-2 border-transparent hover:border-[#8B4513] rounded transition-all'
+                                                        className: 'cursor-pointer border-2 border-transparent hover:border-[#2563EB] rounded transition-all'
                                                     },
                                                         h('img', {
                                                             src: photo.url,
@@ -1047,22 +1059,22 @@
 
                             // Diagnostic Features Tab
                             activeTab === 'diagnostic' && h('div', { className: 'space-y-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E8E6E3]' }, 'Diagnostic Features'),
+                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E2E8F0]' }, 'Diagnostic Features'),
                                 
                                 // Cap Features
-                                h('div', { className: 'bg-[#1A1A19] rounded-lg p-4' },
-                                    h('h4', { className: 'font-medium mb-3 text-[#E8E6E3]' }, '🍄 Cap Features'),
+                                h('div', { className: 'bg-[#0F1419] rounded-lg p-4' },
+                                    h('h4', { className: 'font-medium mb-3 text-[#E2E8F0]' }, '🍄 Cap Features'),
                                     h('div', { className: 'grid grid-cols-2 gap-3' },
                                         ['shape', 'color', 'texture', 'size_range'].map(field =>
                                             h('div', { key: field },
-                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#B8B6B3]' }, 
+                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#94A3B8]' }, 
                                                     field.replace('_', ' ')
                                                 ),
                                                 h('input', {
                                                     type: 'text',
                                                     value: fieldGuide.diagnostic_features.cap[field],
                                                     onChange: (e) => updateDiagnostic('cap', field, e.target.value),
-                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                                 })
                                             )
                                         )
@@ -1070,18 +1082,18 @@
                                 ),
 
                                 // Gills/Pores Features
-                                h('div', { className: 'bg-[#1A1A19] rounded-lg p-4' },
-                                    h('h4', { className: 'font-medium mb-3 text-[#E8E6E3]' }, '📊 Gills/Pores Features'),
+                                h('div', { className: 'bg-[#0F1419] rounded-lg p-4' },
+                                    h('h4', { className: 'font-medium mb-3 text-[#E2E8F0]' }, '📊 Gills/Pores Features'),
                                     h('div', { className: 'grid grid-cols-2 gap-3' },
                                         ['type', 'attachment', 'spacing', 'color'].map(field =>
                                             h('div', { key: field },
-                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#B8B6B3]' }, field),
+                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#94A3B8]' }, field),
                                                 h('input', {
                                                     type: 'text',
                                                     value: fieldGuide.diagnostic_features.gills_pores[field],
                                                     onChange: (e) => updateDiagnostic('gills_pores', field, e.target.value),
                                                     placeholder: field === 'type' ? 'gills/pores/teeth' : '',
-                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                                 })
                                             )
                                         )
@@ -1089,19 +1101,19 @@
                                 ),
 
                                 // Stem Features
-                                h('div', { className: 'bg-[#1A1A19] rounded-lg p-4' },
-                                    h('h4', { className: 'font-medium mb-3 text-[#E8E6E3]' }, '🦴 Stem Features'),
+                                h('div', { className: 'bg-[#0F1419] rounded-lg p-4' },
+                                    h('h4', { className: 'font-medium mb-3 text-[#E2E8F0]' }, '🦴 Stem Features'),
                                     h('div', { className: 'grid grid-cols-3 gap-3' },
                                         ['ring_presence', 'base_structure', 'texture'].map(field =>
                                             h('div', { key: field },
-                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#B8B6B3]' }, 
+                                                h('label', { className: 'block text-sm font-medium mb-1 capitalize text-[#94A3B8]' }, 
                                                     field.replace('_', ' ')
                                                 ),
                                                 h('input', {
                                                     type: 'text',
                                                     value: fieldGuide.diagnostic_features.stem[field],
                                                     onChange: (e) => updateDiagnostic('stem', field, e.target.value),
-                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                                    className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                                 })
                                             )
                                         )
@@ -1109,25 +1121,25 @@
                                 ),
 
                                 // Spore Print
-                                h('div', { className: 'bg-[#1A1A19] rounded-lg p-4' },
-                                    h('h4', { className: 'font-medium mb-3 text-[#E8E6E3]' }, '🎨 Spore Print'),
+                                h('div', { className: 'bg-[#0F1419] rounded-lg p-4' },
+                                    h('h4', { className: 'font-medium mb-3 text-[#E2E8F0]' }, '🎨 Spore Print'),
                                     h('div', { className: 'grid grid-cols-2 gap-3' },
                                         h('div', null,
-                                            h('label', { className: 'block text-sm font-medium mb-1 text-[#B8B6B3]' }, 'Color'),
+                                            h('label', { className: 'block text-sm font-medium mb-1 text-[#94A3B8]' }, 'Color'),
                                             h('input', {
                                                 type: 'text',
                                                 value: fieldGuide.diagnostic_features.spore_print.color,
                                                 onChange: (e) => updateDiagnostic('spore_print', 'color', e.target.value),
-                                                className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                             })
                                         ),
                                         h('div', null,
-                                            h('label', { className: 'block text-sm font-medium mb-1 text-[#B8B6B3]' }, 'Collection Method'),
+                                            h('label', { className: 'block text-sm font-medium mb-1 text-[#94A3B8]' }, 'Collection Method'),
                                             h('input', {
                                                 type: 'text',
                                                 value: fieldGuide.diagnostic_features.spore_print.collection_method,
                                                 onChange: (e) => updateDiagnostic('spore_print', 'collection_method', e.target.value),
-                                                className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]'
                                             })
                                         )
                                     )
@@ -1136,8 +1148,8 @@
 
                             // Hints Tab
                             activeTab === 'hints' && h('div', { className: 'space-y-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E8E6E3]' }, 'Progressive Hints'),
-                                h('p', { className: 'text-sm text-[#B8B6B3] mb-4' }, 
+                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E2E8F0]' }, 'Progressive Hints'),
+                                h('p', { className: 'text-sm text-[#94A3B8] mb-4' }, 
                                     'These hints are revealed progressively when students answer incorrectly.'
                                 ),
                                 
@@ -1152,17 +1164,17 @@
                                     
                                     return h('div', { 
                                         key: idx, 
-                                        className: `border border-[#3A3836] rounded-lg p-4 bg-[#1A1A19]`
+                                        className: `border border-[#263244] rounded-lg p-4 bg-[#0F1419]`
                                     },
                                         h('div', { className: 'flex items-center gap-2 mb-2' },
                                             h('span', { className: 'text-2xl' }, type.icon),
-                                            h('span', { className: 'font-medium text-[#E8E6E3]' }, `Level ${hint.level}: ${type.label}`)
+                                            h('span', { className: 'font-medium text-[#E2E8F0]' }, `Level ${hint.level}: ${type.label}`)
                                         ),
                                         h('textarea', {
                                             value: hint.text,
                                             onChange: (e) => updateHint(idx, e.target.value),
                                             placeholder: `Enter ${hint.type} hint...`,
-                                            className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E8E6E3]',
+                                            className: 'w-full px-3 py-2 rounded-lg text-sm text-[#E2E8F0]',
                                             rows: 3
                                         })
                                     );
@@ -1171,8 +1183,8 @@
 
                             // Comparison Tab
                             activeTab === 'comparison' && h('div', { className: 'space-y-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E8E6E3]' }, 'Similar Species & Look-Alikes'),
-                                h('p', { className: 'text-sm text-[#B8B6B3] mb-4' }, 
+                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E2E8F0]' }, 'Similar Species & Look-Alikes'),
+                                h('p', { className: 'text-sm text-[#94A3B8] mb-4' }, 
                                     'Add species that are commonly confused with this one.'
                                 ),
                                 h('div', { className: 'bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded-lg p-4' },
@@ -1184,9 +1196,9 @@
                         ),
 
                         // Footer
-                        h('div', { className: 'border-t border-[#3A3836] p-6 bg-[#1A1A19]' },
+                        h('div', { className: 'border-t border-[#263244] p-6 bg-[#0F1419]' },
                             h('div', { className: 'flex justify-between items-center' },
-                                h('div', { className: 'text-sm text-[#B8B6B3]' },
+                                h('div', { className: 'text-sm text-[#94A3B8]' },
                                     h('span', null, 
                                         `${fieldGuide.hints.filter(h => h.text).length}/4 hints configured • ` +
                                         `${fieldGuide.reference_photos.length}/6 photos`
@@ -1195,12 +1207,12 @@
                                 h('div', { className: 'flex gap-3' },
                                     h('button', {
                                         onClick: onClose,
-                                        className: 'px-6 py-2 border border-[#3A3836] text-[#B8B6B3] rounded-lg hover:bg-[#3A3836] transition-all'
+                                        className: 'px-6 py-2 border border-[#263244] text-[#94A3B8] rounded-lg hover:bg-[#263244] transition-all'
                                     }, 'Cancel'),
                                     h('button', {
                                         onClick: handleSave,
                                         disabled: saving,
-                                        className: 'px-6 py-2 forest-gradient text-[#E8E6E3] rounded-lg hover:opacity-90 disabled:opacity-50 transition-all'
+                                        className: 'px-6 py-2 sky-gradient text-[#E2E8F0] rounded-lg hover:opacity-90 disabled:opacity-50 transition-all'
                                     }, saving ? 'Saving...' : '💾 Save Field Guide')
                                 )
                             )
@@ -1290,9 +1302,9 @@
                             // Header
                             h('div', { className: 'flex justify-between items-start mb-4' },
                                 h('div', null,
-                                    h('h2', { className: 'text-2xl font-bold text-[#E8E6E3]' }, specimen.species_name),
-                                    specimen.common_name && h('p', { className: 'text-[#B8B6B3]' }, specimen.common_name),
-                                    h('div', { className: 'flex gap-4 mt-2 text-sm text-[#8A8886]' },
+                                    h('h2', { className: 'text-2xl font-bold text-[#E2E8F0]' }, specimen.species_name),
+                                    specimen.common_name && h('p', { className: 'text-[#94A3B8]' }, specimen.common_name),
+                                    h('div', { className: 'flex gap-4 mt-2 text-sm text-[#64748B]' },
                                         h('span', null, `📍 ${specimen.location}`),
                                         specimen.dna_sequenced && h('span', { className: 'text-purple-400 font-medium' }, '🧬 DNA Verified'),
                                         h('span', null, `ID: ${specimen.inaturalist_id}`)
@@ -1300,17 +1312,17 @@
                                 ),
                                 h('button', {
                                     onClick: onClose,
-                                    className: 'text-[#B8B6B3] hover:text-[#E8E6E3] transition-colors'
+                                    className: 'text-[#94A3B8] hover:text-[#E2E8F0] transition-colors'
                                 }, '✕')
                             ),
                             
                             // Photos Section
                             h('div', { className: 'mb-6' },
-                                h('h3', { className: 'font-semibold mb-3 text-[#E8E6E3]' }, 'Photos (Click to expand, check to select for field guide)'),
+                                h('h3', { className: 'font-semibold mb-3 text-[#E2E8F0]' }, 'Photos (Click to expand, check to select for field guide)'),
                                 
                                 loadingPhotos ? 
                                     h('div', { className: 'text-center py-8' },
-                                        h('div', { className: 'text-[#B8B6B3]' }, 'Loading photos from iNaturalist...')
+                                        h('div', { className: 'text-[#94A3B8]' }, 'Loading photos from iNaturalist...')
                                     ) :
                                 photos.length > 0 ? 
                                     h('div', { className: 'grid grid-cols-4 gap-3' },
@@ -1341,7 +1353,7 @@
                                             )
                                         )
                                     ) :
-                                    h('p', { className: 'text-[#B8B6B3] text-center py-8' }, 
+                                    h('p', { className: 'text-[#94A3B8] text-center py-8' }, 
                                         'No photos available for this specimen. Check iNaturalist ID: ' + specimen.inaturalist_id
                                     )
                             ),
@@ -1349,34 +1361,34 @@
                             // Details Section
                             h('div', { className: 'grid grid-cols-2 gap-4 mb-6' },
                                 h('div', null,
-                                    h('h3', { className: 'font-semibold mb-2 text-[#E8E6E3]' }, 'Taxonomic Info'),
-                                    h('div', { className: 'space-y-1 text-sm text-[#B8B6B3]' },
+                                    h('h3', { className: 'font-semibold mb-2 text-[#E2E8F0]' }, 'Taxonomic Info'),
+                                    h('div', { className: 'space-y-1 text-sm text-[#94A3B8]' },
                                         h('p', null, `Genus: ${specimen.genus || 'Unknown'}`),
                                         h('p', null, `Family: ${specimen.family || 'Unknown'}`),
                                         h('p', null, `Quality Score: ${specimen.quality_score ? (specimen.quality_score * 100).toFixed(0) + '%' : 'N/A'}`)
                                     )
                                 ),
                                 h('div', null,
-                                    h('h3', { className: 'font-semibold mb-2 text-[#E8E6E3]' }, 'Description'),
-                                    h('p', { className: 'text-sm text-[#B8B6B3]' }, specimen.description || 'No description available')
+                                    h('h3', { className: 'font-semibold mb-2 text-[#E2E8F0]' }, 'Description'),
+                                    h('p', { className: 'text-sm text-[#94A3B8]' }, specimen.description || 'No description available')
                                 )
                             ),
                             
                             // Admin Notes
                             h('div', { className: 'mb-6' },
-                                h('label', { className: 'block font-semibold mb-2 text-[#E8E6E3]' }, 'Admin Notes'),
+                                h('label', { className: 'block font-semibold mb-2 text-[#E2E8F0]' }, 'Admin Notes'),
                                 h('textarea', {
                                     value: notes,
                                     onChange: (e) => setNotes(e.target.value),
-                                    className: 'w-full p-3 rounded-lg text-[#E8E6E3]',
+                                    className: 'w-full p-3 rounded-lg text-[#E2E8F0]',
                                     rows: 3,
                                     placeholder: 'Add notes about this specimen...'
                                 })
                             ),
                             
                             // Actions
-                            h('div', { className: 'flex justify-between items-center pt-4 border-t border-[#3A3836]' },
-                                h('div', { className: 'text-sm text-[#8A8886]' },
+                            h('div', { className: 'flex justify-between items-center pt-4 border-t border-[#263244]' },
+                                h('div', { className: 'text-sm text-[#64748B]' },
                                     loadingPhotos ? 'Loading photos...' :
                                     `Status: ${specimen.status} | ${selectedPhotos.length} of ${photos.length} photos selected`
                                 ),
@@ -1385,7 +1397,7 @@
                                         h('button', {
                                             key: 'delete',
                                             onClick: () => onDelete(),
-                                            className: 'px-6 py-2 bg-red-900 text-[#E8E6E3] rounded-lg hover:bg-red-800 transition-all'
+                                            className: 'px-6 py-2 bg-red-900 text-[#E2E8F0] rounded-lg hover:bg-red-800 transition-all'
                                         }, '🗑️ Delete'),
                                         h('button', {
                                             key: 'approve',
@@ -1394,13 +1406,13 @@
                                             className: `px-6 py-2 rounded-lg transition-all ${
                                                 loadingPhotos || selectedPhotos.length === 0 
                                                     ? 'bg-gray-700 cursor-not-allowed text-gray-500' 
-                                                    : 'forest-gradient text-[#E8E6E3] hover:opacity-90'
+                                                    : 'sky-gradient text-[#E2E8F0] hover:opacity-90'
                                             }`
                                         }, '✅ Approve')
                                     ],
                                     h('button', {
                                         onClick: onClose,
-                                        className: 'px-6 py-2 border border-[#3A3836] text-[#B8B6B3] rounded-lg hover:bg-[#3A3836] transition-all'
+                                        className: 'px-6 py-2 border border-[#263244] text-[#94A3B8] rounded-lg hover:bg-[#263244] transition-all'
                                     }, 'Close')
                                 )
                             )
@@ -1789,18 +1801,18 @@
                     );
 
                 if (loading) {
-                    return h('div', { className: 'min-h-screen bg-[#1A1A19] flex items-center justify-center' },
+                    return h('div', { className: 'min-h-screen bg-[#0F1419] flex items-center justify-center' },
                         h('div', { className: 'text-center' },
                             h('div', { className: 'text-6xl mb-4 animate-pulse' }, '🍄'),
-                            h('h1', { className: 'text-2xl font-bold text-[#E8E6E3] mb-2' }, 'Loading Admin Portal'),
-                            h('p', { className: 'text-[#B8B6B3]' }, 'Fetching specimens and field guides...')
+                            h('h1', { className: 'text-2xl font-bold text-[#E2E8F0] mb-2' }, 'Loading Admin Portal'),
+                            h('p', { className: 'text-[#94A3B8]' }, 'Fetching specimens and field guides...')
                         )
                     );
                 }
 
-                return h('div', { className: 'min-h-screen bg-[#1A1A19]' },
+                return h('div', { className: 'min-h-screen bg-[#0F1419]' },
                     // Header
-                    h('div', { className: 'earth-gradient text-[#E8E6E3] shadow-lg' },
+                    h('div', { className: 'ocean-gradient text-[#E2E8F0] shadow-lg' },
                         h('div', { className: 'max-w-7xl mx-auto px-4 py-6' },
                             h('div', { className: 'flex justify-between items-center' },
                                 h('div', { className: 'flex items-center gap-4' },
@@ -1809,21 +1821,21 @@
                                         h('div', { className: 'flex items-center gap-3' },
                                             h('h1', { className: 'text-2xl font-bold' }, 'Flash Fungi Admin')
                                         ),
-                                        h('p', { className: 'text-[#D4D2CF] text-sm' }, 'Enhanced Management System with Training & Analytics')
+                                        h('p', { className: 'text-[#B8DAF3] text-sm' }, 'Enhanced Management System with Training & Analytics')
                                     )
                                 ),
                                 h('div', { className: 'grid grid-cols-3 gap-6 text-center' },
                                     h('div', null,
                                         h('div', { className: 'text-3xl font-bold text-green-400' }, stats.approved),
-                                        h('div', { className: 'text-xs text-[#D4D2CF]' }, 'Approved')
+                                        h('div', { className: 'text-xs text-[#B8DAF3]' }, 'Approved')
                                     ),
                                     h('div', null,
                                         h('div', { className: 'text-3xl font-bold text-orange-400' }, stats.pending),
-                                        h('div', { className: 'text-xs text-[#D4D2CF]' }, 'Pending')
+                                        h('div', { className: 'text-xs text-[#B8DAF3]' }, 'Pending')
                                     ),
                                     h('div', null,
                                         h('div', { className: 'text-3xl font-bold text-blue-400' }, stats.guidesComplete),
-                                        h('div', { className: 'text-xs text-[#D4D2CF]' }, 'Field Guides')
+                                        h('div', { className: 'text-xs text-[#B8DAF3]' }, 'Field Guides')
                                     )
                                 )
                             )
@@ -1831,7 +1843,7 @@
                     ),
 
                     // Navigation Tabs
-                    h('div', { className: 'card-dark border-b border-[#3A3836] shadow-sm sticky top-0 z-10' },
+                    h('div', { className: 'card-dark border-b border-[#263244] shadow-sm sticky top-0 z-10' },
                         h('div', { className: 'max-w-7xl mx-auto px-4' },
                             h('div', { className: 'flex gap-6 overflow-x-auto' },
                                 [
@@ -1847,20 +1859,20 @@
                                         onClick: () => setCurrentView(item.id),
                                         className: `flex items-center gap-2 px-4 py-4 border-b-2 transition-all whitespace-nowrap ${
                                             currentView === item.id 
-                                                ? 'border-[#8B4513] text-[#D2691E] bg-[#8B4513] bg-opacity-10' 
-                                                : 'border-transparent text-[#B8B6B3] hover:text-[#E8E6E3] hover:bg-[#3A3836]'
+                                                ? 'border-[#2563EB] text-[#60A5FA] bg-[#2563EB] bg-opacity-10' 
+                                                : 'border-transparent text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#263244]'
                                         }`
                                     },
                                         h('span', null, item.icon),
                                         item.label,
                                         item.phase3 && h('span', {
-                                            className: 'ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[#8B4513] bg-opacity-20 text-[#D2691E]'
+                                            className: 'ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[#2563EB] bg-opacity-20 text-[#60A5FA]'
                                         }, 'NEW'),
                                         item.badge !== undefined && item.badge > 0 && h('span', {
                                             className: `ml-2 px-2 py-1 text-xs rounded-full ${
                                                 currentView === item.id
-                                                    ? 'bg-[#8B4513] text-[#E8E6E3]'
-                                                    : 'bg-[#3A3836] text-[#B8B6B3]'
+                                                    ? 'bg-[#2563EB] text-[#E2E8F0]'
+                                                    : 'bg-[#263244] text-[#94A3B8]'
                                             }`
                                         }, item.badge)
                                     )
@@ -1887,9 +1899,9 @@
                                     },
                                         h('div', { className: 'flex justify-between items-start' },
                                             h('div', null,
-                                                h('p', { className: 'text-sm text-[#B8B6B3]' }, stat.title),
-                                                h('p', { className: `text-3xl font-bold text-[#E8E6E3] mt-2` }, stat.value),
-                                                h('p', { className: 'text-xs text-[#8A8886] mt-1' }, stat.desc)
+                                                h('p', { className: 'text-sm text-[#94A3B8]' }, stat.title),
+                                                h('p', { className: `text-3xl font-bold text-[#E2E8F0] mt-2` }, stat.value),
+                                                h('p', { className: 'text-xs text-[#64748B] mt-1' }, stat.desc)
                                             ),
                                             h('div', { className: 'text-3xl opacity-20' }, stat.icon)
                                         )
@@ -1899,18 +1911,18 @@
 
                             // Recent Activity
                             h('div', { className: 'card-dark rounded-xl p-6 shadow-md' },
-                                h('h3', { className: 'text-xl font-bold text-[#E8E6E3] mb-4' }, '📈 Recent Activity'),
+                                h('h3', { className: 'text-xl font-bold text-[#E2E8F0] mb-4' }, '📈 Recent Activity'),
                                 h('div', { className: 'space-y-3' },
-                                    h('div', { className: 'flex justify-between items-center py-2 border-b border-[#3A3836]' },
-                                        h('span', { className: 'text-[#B8B6B3]' }, 'Specimens Approved Today'),
-                                        h('span', { className: 'font-bold text-[#E8E6E3]' }, '0')
+                                    h('div', { className: 'flex justify-between items-center py-2 border-b border-[#263244]' },
+                                        h('span', { className: 'text-[#94A3B8]' }, 'Specimens Approved Today'),
+                                        h('span', { className: 'font-bold text-[#E2E8F0]' }, '0')
                                     ),
-                                    h('div', { className: 'flex justify-between items-center py-2 border-b border-[#3A3836]' },
-                                        h('span', { className: 'text-[#B8B6B3]' }, 'Modules Completed'),
-                                        h('span', { className: 'font-bold text-[#E8E6E3]' }, modules.length)
+                                    h('div', { className: 'flex justify-between items-center py-2 border-b border-[#263244]' },
+                                        h('span', { className: 'text-[#94A3B8]' }, 'Modules Completed'),
+                                        h('span', { className: 'font-bold text-[#E2E8F0]' }, modules.length)
                                     ),
                                     h('div', { className: 'flex justify-between items-center py-2' },
-                                        h('span', { className: 'text-[#B8B6B3]' }, 'Active Users'),
+                                        h('span', { className: 'text-[#94A3B8]' }, 'Active Users'),
                                         h('span', { className: 'font-bold text-green-400' }, 'Growing')
                                     )
                                 )
@@ -1918,7 +1930,7 @@
 
                             // Quick Actions
                             h('div', { className: 'card-dark rounded-xl shadow-md p-6' },
-                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E8E6E3]' }, '⚡ Quick Actions'),
+                                h('h3', { className: 'text-lg font-semibold mb-4 text-[#E2E8F0]' }, '⚡ Quick Actions'),
                                 h('div', { className: 'grid md:grid-cols-3 gap-4' },
                                     [
                                         { action: 'Manage Training Content', desc: 'Edit modules and lessons', view: 'training-modules', color: 'purple' },
@@ -1928,10 +1940,10 @@
                                         h('button', {
                                             key: idx,
                                             onClick: () => setCurrentView(action.view),
-                                            className: `text-left p-4 border border-[#3A3836] rounded-lg hover:shadow-md transition-all hover:bg-[#3A3836]`
+                                            className: `text-left p-4 border border-[#263244] rounded-lg hover:shadow-md transition-all hover:bg-[#263244]`
                                         },
-                                            h('div', { className: `font-medium text-[#D2691E]` }, action.action),
-                                            h('div', { className: 'text-sm text-[#B8B6B3] mt-1' }, action.desc)
+                                            h('div', { className: `font-medium text-[#60A5FA]` }, action.action),
+                                            h('div', { className: 'text-sm text-[#94A3B8] mt-1' }, action.desc)
                                         )
                                     )
                                 )
@@ -1941,7 +1953,7 @@
                         // Training Modules Management View (COMPLETE)
                         currentView === 'training-modules' && h('div', null,
                             h('div', { className: 'mb-6' },
-                                h('h2', { className: 'text-2xl font-bold mb-4 text-[#E8E6E3]' }, '🎓 Training Modules Management'),
+                                h('h2', { className: 'text-2xl font-bold mb-4 text-[#E2E8F0]' }, '🎓 Training Modules Management'),
                                 
                                 // Category Filter Buttons
                                 h('div', { className: 'flex gap-2 mb-6 flex-wrap' },
@@ -1951,8 +1963,8 @@
                                             onClick: () => setFilterCategory(cat),
                                             className: `px-4 py-2 rounded-lg font-medium transition-all ${
                                                 filterCategory === cat 
-                                                    ? 'earth-gradient text-[#E8E6E3]' 
-                                                    : 'bg-[#3A3836] text-[#B8B6B3] hover:bg-[#4A4846]'
+                                                    ? 'ocean-gradient text-[#E2E8F0]' 
+                                                    : 'bg-[#263244] text-[#94A3B8] hover:bg-[#334155]'
                                             }`
                                         }, cat.charAt(0).toUpperCase() + cat.slice(1))
                                     )
@@ -1975,13 +1987,13 @@
                                         };
                                         setSelectedModule(newModule);
                                     },
-                                    className: 'px-4 py-2 forest-gradient text-[#E8E6E3] rounded-lg hover:opacity-90 transition-all mb-4'
+                                    className: 'px-4 py-2 sky-gradient text-[#E2E8F0] rounded-lg hover:opacity-90 transition-all mb-4'
                                 }, '+ Create New Module')
                             ),
                             
                             // Loading State
                             loadingModules && h('div', { className: 'text-center py-8' },
-                                h('div', { className: 'text-[#B8B6B3]' }, 'Loading modules...')
+                                h('div', { className: 'text-[#94A3B8]' }, 'Loading modules...')
                             ),
                             
                             // Modules Grid
@@ -2000,16 +2012,16 @@
                                             onClick: () => setSelectedModule(module)
                                         },
                                             h('div', { className: 'flex justify-between items-start mb-2' },
-                                                h('h3', { className: 'font-bold text-lg text-[#E8E6E3]' }, module.title),
+                                                h('h3', { className: 'font-bold text-lg text-[#E2E8F0]' }, module.title),
                                                 h('span', {
                                                     className: `text-xs px-2 py-1 rounded ${
                                                         module.published 
                                                             ? 'bg-green-900 bg-opacity-50 text-green-400'
-                                                            : 'bg-[#3A3836] text-[#B8B6B3]'
+                                                            : 'bg-[#263244] text-[#94A3B8]'
                                                     }`
                                                 }, module.published ? 'Published' : 'Draft')
                                             ),
-                                            h('div', { className: 'space-y-1 text-sm text-[#B8B6B3]' },
+                                            h('div', { className: 'space-y-1 text-sm text-[#94A3B8]' },
                                                 h('p', null, module.description || 'No description'),
                                                 h('p', null, `Category: ${module.category}`),
                                                 h('p', null, `Difficulty: ${module.difficulty_level}`),
@@ -2026,7 +2038,7 @@
                                                         e.stopPropagation();
                                                         setSelectedModule(module);
                                                     },
-                                                    className: 'text-xs px-3 py-1 bg-[#8B4513] bg-opacity-20 text-[#D2691E] rounded hover:bg-opacity-30 transition-all'
+                                                    className: 'text-xs px-3 py-1 bg-[#2563EB] bg-opacity-20 text-[#60A5FA] rounded hover:bg-opacity-30 transition-all'
                                                 }, 'Edit'),
                                                 h('button', {
                                                     onClick: async (e) => {
@@ -2077,7 +2089,7 @@
                             // Show message if no modules found
                             !loadingModules && modules.filter(m => filterCategory === 'All' || m.category === filterCategory).length === 0 && 
                                 h('div', { className: 'text-center py-8 card-dark rounded-lg' },
-                                    h('p', { className: 'text-[#B8B6B3]' }, 
+                                    h('p', { className: 'text-[#94A3B8]' }, 
                                         filterCategory === 'All' 
                                             ? 'No training modules found. Create your first module!'
                                             : `No ${filterCategory} modules found.`
@@ -2091,18 +2103,18 @@
                                 h('div', { className: 'flex justify-between items-center mb-6' },
                                     h('div', null,
                                         h('div', { className: 'flex items-center gap-3 mb-2' },
-                                            h('h2', { className: 'text-2xl font-bold text-[#E8E6E3]' }, 'Achievement System'),
+                                            h('h2', { className: 'text-2xl font-bold text-[#E2E8F0]' }, 'Achievement System'),
                                             h(Phase3Badge)
                                         ),
-                                        h('p', { className: 'text-[#B8B6B3]' }, 
+                                        h('p', { className: 'text-[#94A3B8]' }, 
                                             'Manage badges, milestones, and user recognition'
                                         )
                                     )
                                 ),
                                 h('div', { className: 'text-center py-12' },
                                     h('div', { className: 'text-6xl mb-4' }, '🏆'),
-                                    h('h3', { className: 'text-xl font-semibold mb-2 text-[#E8E6E3]' }, 'Achievement System Coming Soon'),
-                                    h('p', { className: 'text-[#B8B6B3]' }, 'This feature will be available in the next update')
+                                    h('h3', { className: 'text-xl font-semibold mb-2 text-[#E2E8F0]' }, 'Achievement System Coming Soon'),
+                                    h('p', { className: 'text-[#94A3B8]' }, 'This feature will be available in the next update')
                                 )
                             )
                         ),
@@ -2113,29 +2125,29 @@
                                 h('div', { className: 'flex justify-between items-center mb-6' },
                                     h('div', null,
                                         h('div', { className: 'flex items-center gap-3 mb-2' },
-                                            h('h2', { className: 'text-2xl font-bold text-[#E8E6E3]' }, 'User Analytics Dashboard'),
+                                            h('h2', { className: 'text-2xl font-bold text-[#E2E8F0]' }, 'User Analytics Dashboard'),
                                             h(Phase3Badge)
                                         ),
-                                        h('p', { className: 'text-[#B8B6B3]' }, 
+                                        h('p', { className: 'text-[#94A3B8]' }, 
                                             'Learning progress and platform engagement insights'
                                         )
                                     )
                                 ),
                                 h('div', { className: 'text-center py-12' },
                                     h('div', { className: 'text-6xl mb-4' }, '📈'),
-                                    h('h3', { className: 'text-xl font-semibold mb-2 text-[#E8E6E3]' }, 'Analytics Dashboard Coming Soon'),
-                                    h('p', { className: 'text-[#B8B6B3]' }, 'This feature will be available in the next update')
+                                    h('h3', { className: 'text-xl font-semibold mb-2 text-[#E2E8F0]' }, 'Analytics Dashboard Coming Soon'),
+                                    h('p', { className: 'text-[#94A3B8]' }, 'This feature will be available in the next update')
                                 )
                             )
                         ),
 
-                        // Field Guide Pages View with Pagination
+                        // Field Guide Pages View with Enhanced Blue Theme
                         currentView === 'field-guides' && h('div', { className: 'space-y-6 fade-in' },
                             h('div', { className: 'card-dark rounded-xl shadow-md p-6' },
                                 h('div', { className: 'flex justify-between items-center mb-6' },
                                     h('div', null,
-                                        h('h2', { className: 'text-2xl font-bold text-[#E8E6E3]' }, 'Field Guide Pages'),
-                                        h('p', { className: 'text-[#B8B6B3]' }, 
+                                        h('h2', { className: 'text-2xl font-bold text-[#E2E8F0]' }, 'Field Guide Pages'),
+                                        h('p', { className: 'text-[#94A3B8]' }, 
                                             `${stats.guidesComplete} of ${stats.uniqueSpecies} species have field guides`
                                         )
                                     ),
@@ -2154,19 +2166,23 @@
                                         
                                         return h('div', {
                                             key: species.species_name,
-                                            className: `border rounded-lg p-4 ${hasGuide ? 'border-[#3A3836] bg-[#1A1A19]' : 'border-orange-700 bg-orange-900 bg-opacity-20'}`
+                                            className: `border rounded-lg p-4 transition-all ${
+                                                hasGuide 
+                                                    ? 'border-[#263244] bg-[#0F1419] hover:bg-[#1A2332]' 
+                                                    : 'border-[#263244] bg-[#1A2332] bg-opacity-50'
+                                            }`
                                         },
                                             h('div', { className: 'flex justify-between items-start' },
                                                 h('div', { className: 'flex-1' },
-                                                    h('h3', { className: 'text-lg font-semibold text-[#E8E6E3]' }, species.species_name),
-                                                    h('p', { className: 'text-[#B8B6B3]' }, 
+                                                    h('h3', { className: 'text-lg font-semibold text-[#E2E8F0]' }, species.species_name),
+                                                    h('p', { className: 'text-[#94A3B8]' }, 
                                                         species.common_name || `Family: ${species.family}`
                                                     ),
                                                     h('div', { className: 'flex items-center gap-4 mt-2' },
-                                                        h('span', { className: 'text-sm text-[#8A8886]' }, 
+                                                        h('span', { className: 'text-sm text-[#64748B]' }, 
                                                             `${specimenCount} specimen${specimenCount !== 1 ? 's' : ''}`
                                                         ),
-                                                        photoCount > 0 && h('span', { className: 'text-sm text-blue-400' }, 
+                                                        photoCount > 0 && h('span', { className: 'text-sm text-[#60A5FA]' }, 
                                                             `📸 ${photoCount} photos`
                                                         ),
                                                         hasGuide && h('span', { 
@@ -2176,10 +2192,10 @@
                                                 ),
                                                 h('button', {
                                                     onClick: () => setSelectedSpecies(species),
-                                                    className: `px-4 py-2 rounded-lg text-[#E8E6E3] transition-all ${
+                                                    className: `px-4 py-2 rounded-lg text-[#E2E8F0] transition-all ${
                                                         hasGuide 
-                                                            ? 'moss-gradient hover:opacity-90' 
-                                                            : 'forest-gradient hover:opacity-90'
+                                                            ? 'teal-gradient hover:opacity-90' 
+                                                            : 'sky-gradient hover:opacity-90'
                                                     }`
                                                 }, hasGuide ? 'Edit Guide' : 'Create Guide')
                                             )
@@ -2210,8 +2226,8 @@
                             h('div', { className: 'card-dark rounded-xl shadow-md p-6' },
                                 // Header with title
                                 h('div', { className: 'mb-6' },
-                                    h('h2', { className: 'text-2xl font-bold mb-2 text-[#E8E6E3]' }, '🔬 Specimen Management'),
-                                    h('p', { className: 'text-[#B8B6B3]' }, 
+                                    h('h2', { className: 'text-2xl font-bold mb-2 text-[#E2E8F0]' }, '🔬 Specimen Management'),
+                                    h('p', { className: 'text-[#94A3B8]' }, 
                                         `Total: ${stats.total} specimens | ${stats.pending} pending review | ${stats.approved} approved`
                                     )
                                 ),
@@ -2233,11 +2249,11 @@
                                 },
                                     h('div', { className: 'grid md:grid-cols-4 gap-4' },
                                         h('div', null,
-                                            h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Status'),
+                                            h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Status'),
                                             h('select', {
                                                 value: specimensFilters.status,
                                                 onChange: (e) => setSpecimensFilters(prev => ({ ...prev, status: e.target.value })),
-                                                className: 'w-full px-3 py-2 rounded-lg text-[#E8E6E3] bg-[#1A1A19] border border-[#3A3836]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-[#E2E8F0] bg-[#0F1419] border border-[#263244]'
                                             },
                                                 h('option', { value: 'all' }, 'All Status'),
                                                 h('option', { value: 'pending' }, 'Pending'),
@@ -2245,11 +2261,11 @@
                                             )
                                         ),
                                         h('div', null,
-                                            h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'DNA'),
+                                            h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'DNA'),
                                             h('select', {
                                                 value: specimensFilters.dnaSequenced,
                                                 onChange: (e) => setSpecimensFilters(prev => ({ ...prev, dnaSequenced: e.target.value })),
-                                                className: 'w-full px-3 py-2 rounded-lg text-[#E8E6E3] bg-[#1A1A19] border border-[#3A3836]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-[#E2E8F0] bg-[#0F1419] border border-[#263244]'
                                             },
                                                 h('option', { value: 'all' }, 'All'),
                                                 h('option', { value: 'yes' }, 'Yes'),
@@ -2257,11 +2273,11 @@
                                             )
                                         ),
                                         h('div', null,
-                                            h('label', { className: 'block text-sm font-medium text-[#B8B6B3] mb-1' }, 'Family'),
+                                            h('label', { className: 'block text-sm font-medium text-[#94A3B8] mb-1' }, 'Family'),
                                             h('select', {
                                                 value: specimensFilters.family,
                                                 onChange: (e) => setSpecimensFilters(prev => ({ ...prev, family: e.target.value })),
-                                                className: 'w-full px-3 py-2 rounded-lg text-[#E8E6E3] bg-[#1A1A19] border border-[#3A3836]'
+                                                className: 'w-full px-3 py-2 rounded-lg text-[#E2E8F0] bg-[#0F1419] border border-[#263244]'
                                             },
                                                 h('option', { value: 'all' }, 'All Families'),
                                                 ...filterOptions.families.slice(0, 20).map(family =>
@@ -2273,9 +2289,10 @@
                                             onClick: () => setSpecimensFilters({
                                                 status: 'all',
                                                 dnaSequenced: 'all',
+                                                family: 'all',
                                                 genus: 'all'
                                             }),
-                                            className: 'mt-6 text-sm text-[#D2691E] hover:text-[#8B4513]'
+                                            className: 'mt-6 text-sm text-[#60A5FA] hover:text-[#2563EB]'
                                         }, 'Clear filters')
                                     )
                                 ),
@@ -2283,40 +2300,37 @@
                                 // Results table
                                 h('div', { className: 'overflow-x-auto mt-6' },
                                     h('table', { className: 'w-full' },
-                                        h('thead', { className: 'bg-[#1A1A19]' },
+                                        h('thead', { className: 'bg-[#0F1419]' },
                                             h('tr', null,
-                                                h('th', { className: 'p-3 text-left text-[#B8B6B3]' }, 'Species'),
-                                                h('th', { className: 'p-3 text-left text-[#B8B6B3]' }, 'Family/Genus'),
-                                                h('th', { className: 'p-3 text-left text-[#B8B6B3]' }, 'Location'),
-                                                h('th', { className: 'p-3 text-center text-[#B8B6B3]' }, 'DNA'),
-                                                h('th', { className: 'p-3 text-center text-[#B8B6B3]' }, 'Photos'),
-                                                h('th', { className: 'p-3 text-center text-[#B8B6B3]' }, 'Status'),
-                                                h('th', { className: 'p-3 text-center text-[#B8B6B3]' }, 'Actions')
+                                                h('th', { className: 'p-3 text-center text-[#94A3B8]' }, 'DNA'),
+                                                h('th', { className: 'p-3 text-center text-[#94A3B8]' }, 'Photos'),
+                                                h('th', { className: 'p-3 text-center text-[#94A3B8]' }, 'Status'),
+                                                h('th', { className: 'p-3 text-center text-[#94A3B8]' }, 'Actions')
                                             )
                                         ),
                                         h('tbody', null,
                                             paginatedSpecimens.map(specimen =>
                                                 h('tr', { 
                                                     key: specimen.id,
-                                                    className: 'border-t border-[#3A3836] hover:bg-[#1A1A19]'
+                                                    className: 'border-t border-[#263244] hover:bg-[#0F1419]'
                                                 },
                                                     h('td', { className: 'p-3' },
                                                         h('div', null,
-                                                            h('div', { className: 'font-medium text-[#E8E6E3]' }, specimen.species_name || 'Unknown'),
-                                                            specimen.common_name && h('div', { className: 'text-sm text-[#8A8886]' }, specimen.common_name)
+                                                            h('div', { className: 'font-medium text-[#E2E8F0]' }, specimen.species_name || 'Unknown'),
+                                                            specimen.common_name && h('div', { className: 'text-sm text-[#64748B]' }, specimen.common_name)
                                                         )
                                                     ),
-                                                    h('td', { className: 'p-3 text-[#B8B6B3] text-sm' },
+                                                    h('td', { className: 'p-3 text-[#94A3B8] text-sm' },
                                                         h('div', null,
                                                             h('div', null, specimen.family),
-                                                            h('div', { className: 'text-xs text-[#8A8886]' }, specimen.genus)
+                                                            h('div', { className: 'text-xs text-[#64748B]' }, specimen.genus)
                                                         )
                                                     ),
-                                                    h('td', { className: 'p-3 text-sm text-[#B8B6B3]' }, specimen.location),
+                                                    h('td', { className: 'p-3 text-sm text-[#94A3B8]' }, specimen.location),
                                                     h('td', { className: 'p-3 text-center' },
                                                         specimen.dna_sequenced && h('span', { className: 'text-purple-400' }, '🧬')
                                                     ),
-                                                    h('td', { className: 'p-3 text-center text-[#B8B6B3]' },
+                                                    h('td', { className: 'p-3 text-center text-[#94A3B8]' },
                                                         specimen.selected_photos?.length || 0
                                                     ),
                                                     h('td', { className: 'p-3 text-center' },
@@ -2324,14 +2338,14 @@
                                                             className: `px-2 py-1 rounded text-xs font-medium ${
                                                                 specimen.status === 'approved' 
                                                                     ? 'bg-green-900 bg-opacity-50 text-green-400' 
-                                                                    : 'bg-orange-900 bg-opacity-50 text-orange-400'
+                                                                    : 'bg-yellow-900 bg-opacity-50 text-yellow-400'
                                                             }`
                                                         }, specimen.status || 'pending')
                                                     ),
                                                     h('td', { className: 'p-3 text-center' },
                                                         h('button', {
                                                             onClick: () => setSelectedSpecimen(specimen),
-                                                            className: 'text-[#D2691E] hover:text-[#8B4513] font-medium'
+                                                            className: 'text-[#60A5FA] hover:text-[#2563EB] font-medium'
                                                         }, specimen.status === 'pending' ? 'Review' : 'View')
                                                     )
                                                 )
@@ -2395,11 +2409,11 @@
             try {
                 const root = ReactDOM.createRoot(document.getElementById('admin-root'));
                 root.render(h(AdminPortal));
-                console.log('✅ Enhanced Admin portal with Phase 6 features and Living Mycology theme initialized successfully');
+                console.log('✅ Enhanced Admin portal with Blue Ocean theme initialized successfully');
             } catch (error) {
                 console.error('❌ Error rendering admin portal:', error);
             }
         }
     </script>
 </body>
-</html>'
+</html>
