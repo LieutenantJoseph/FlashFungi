@@ -78,7 +78,6 @@
         async loadSpeciesHints() {
             return this.getCached('species_hints', async () => {
                 try {
-                    // Load from field_guides table instead of species_hints
                     const response = await fetch(
                         `${window.SUPABASE_URL}/rest/v1/field_guides?select=*`,
                         {
@@ -91,31 +90,37 @@
                     
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('✅ Field guides with hints loaded:', data.length);
+                        console.log('✅ Field guides loaded:', data.length);
                         
-                        // Convert field_guides to the expected hints format
+                        // Only include field guides that have been manually created with hints
                         const hintsMap = {};
                         data.forEach(guide => {
-                            if (guide.species_name && guide.hints) {
-                                hintsMap[guide.species_name] = {
-                                    species_name: guide.species_name,
-                                    hints: guide.hints,
-                                    description: guide.description,
-                                    ecology: guide.ecology
-                                };
+                            // Only include if hints exist and are non-empty
+                            if (guide.species_name && guide.hints && guide.hints.length > 0) {
+                                // Check if hints have actual content (not just placeholder text)
+                                const hasRealContent = guide.hints.some(hint => 
+                                    hint.text && hint.text.trim().length > 0
+                                );
+                                
+                                if (hasRealContent) {
+                                    hintsMap[guide.species_name] = {
+                                        species_name: guide.species_name,
+                                        hints: guide.hints,
+                                        description: guide.description,
+                                        ecology: guide.ecology
+                                    };
+                                }
                             }
                         });
                         
-                        console.log('📚 Species with hints:', Object.keys(hintsMap).length);
+                        console.log('📚 Species with valid hints:', Object.keys(hintsMap).length);
                         return hintsMap;
                     } else {
-                        // Return empty object if fetch fails (non-blocking)
-                        console.warn('⚠️ Could not load field guides, using empty hints');
+                        console.warn('⚠️ Could not load field guides');
                         return {};
                     }
                 } catch (error) {
-                    console.error('❌ Error loading field guides for hints:', error);
-                    // Return empty object instead of throwing to prevent app crash
+                    console.error('❌ Error loading field guides:', error);
                     return {};
                 }
             });

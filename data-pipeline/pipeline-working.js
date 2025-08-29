@@ -363,45 +363,35 @@ class EnhancedPipeline {
     console.log('💾 Saving to database...');
     
     try {
-      // Insert specimen
-      const specimenResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens`, {
-        method: 'POST',
-        headers: {
-          'apikey': process.env.SUPABASE_SERVICE_KEY,
-          'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        },
-        body: JSON.stringify(specimen)
-      });
+        // Insert specimen to database
+        const specimenResponse = await fetch(`${SUPABASE_URL}/rest/v1/specimens`, {
+            method: 'POST',
+            headers: {
+                'apikey': process.env.SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(specimen)
+        });
 
-      if (!specimenResponse.ok) {
-        const errorText = await specimenResponse.text();
-        throw new Error(`Specimen save failed: ${specimenResponse.status} - ${errorText}`);
-      }
+        if (!specimenResponse.ok) {
+            const errorText = await specimenResponse.text();
+            throw new Error(`Specimen save failed: ${specimenResponse.status} - ${errorText}`);
+        }
 
-      const savedSpecimen = await specimenResponse.json();
-      const specimenId = savedSpecimen[0].id;
+        const savedSpecimen = await specimenResponse.json();
+        const specimenId = savedSpecimen[0].id;
 
-      console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
-
-      // Check if field guide exists (just for tracking)
-      const hasGuide = await this.checkFieldGuide(specimen.species_name);
-      
-      if (hasGuide) {
-        console.log(`   📚 Field guide already exists for ${specimen.species_name}`);
-      } else {
-        console.log(`   📝 Field guide needed for ${specimen.species_name} (will be created manually)`);
-        this.guidesNeeded.add(specimen.species_name);
-      }
-
-      return specimenId;
+        console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
+        
+        return specimenId;
 
     } catch (error) {
-      console.log(`❌ Database save error: ${error.message}`);
-      throw error;
+        console.log(`❌ Database save error: ${error.message}`);
+        throw error;
     }
-  }
+}
 
   async processObservation(obs) {
     console.log(`\n🔬 Processing: ${obs.taxon.name} (${obs.id})`);
@@ -473,66 +463,36 @@ class EnhancedPipeline {
     }
   }
 
-  async run() {
-    console.log('🚀 Starting pipeline with improved taxonomic handling...');
-    console.log('📅 Current date:', new Date().toISOString());
-    console.log('\n🚫 Excluded taxa (with correct IDs):');
-    Object.entries(EXCLUDED_TAXA).forEach(([name, id]) => {
-      console.log(`   - ${name} (ID: ${id})`);
-    });
-    
-    try {
-      const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
-      const skip = process.env.SKIP ? parseInt(process.env.SKIP) : 0;
+    async run() {
+      console.log('🚀 Starting pipeline...');
+      console.log('📅 Current date:', new Date().toISOString());
       
-      console.log(`\n📊 Processing parameters:`);
-      console.log(`   - Limit: ${limit} observations`);
-      console.log(`   - Skip: ${skip} observations`);
-      
-      const observations = await this.fetchObservations(limit, skip);
-      
-      if (observations.length === 0) {
-        console.log('\n⚠️  No observations to process');
-        return;
+      try {
+          const limit = process.env.LIMIT ? parseInt(process.env.LIMIT) : 50;
+          console.log(`📊 Processing limit: ${limit} observations`);
+          
+          const observations = await this.fetchObservations(limit);
+          
+          for (const obs of observations) {
+              const result = await this.processObservation(obs);
+              this.processedCount++;
+              
+              if (result) {
+                  this.savedCount++;
+              }
+          }
+          
+          console.log(`\n🎉 Pipeline complete!`);
+          console.log(`📊 Processed: ${this.processedCount} observations`);
+          console.log(`💾 Saved: ${this.savedCount} specimens total`);
+          console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
+          console.log(`   📋 Research-grade: ${this.savedCount - this.dnaCount} specimens`);
+          console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
+          console.log(`📝 Admins can create field guides manually in the admin portal`);
+          
+      } catch (error) {
+          console.log(`❌ Pipeline failed: ${error.message}`);
       }
-      
-      console.log(`\n🔄 Beginning to process ${observations.length} observations...`);
-      
-      for (const obs of observations) {
-        const result = await this.processObservation(obs);
-        this.processedCount++;
-        
-        if (result) {
-          this.savedCount++;
-        }
-      }
-      
-      console.log(`\n🎉 Pipeline complete!`);
-      console.log(`📊 Processed: ${this.processedCount} observations`);
-      console.log(`⏭️  Skipped: ${this.duplicateCount} duplicates (already in database)`);
-      console.log(`⚠️  Used fallback family: ${this.skippedNoFamily} observations`);
-      console.log(`💾 Saved: ${this.savedCount} new specimens`);
-      if (this.savedCount > 0) {
-        console.log(`   🧬 DNA-verified: ${this.dnaCount} specimens`);
-        console.log(`   📋 Research-grade only: ${this.savedCount - this.dnaCount} specimens`);
-      }
-      
-      if (this.guidesNeeded.size > 0) {
-        console.log(`\n📝 Field Guides Needed for ${this.guidesNeeded.size} species:`);
-        Array.from(this.guidesNeeded).sort().forEach(species => {
-          console.log(`   - ${species}`);
-        });
-        console.log(`\n💡 Create field guides manually in the admin portal for better quality`);
-      } else if (this.savedCount > 0) {
-        console.log(`\n✅ All species have field guides`);
-      }
-      
-      console.log(`\n🔧 All new specimens are in the admin review queue with status 'pending'`);
-      
-    } catch (error) {
-      console.log(`\n❌ Pipeline failed: ${error.message}`);
-      console.error(error);
-    }
   }
 }
 
