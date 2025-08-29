@@ -78,8 +78,9 @@
         async loadSpeciesHints() {
             return this.getCached('species_hints', async () => {
                 try {
+                    // Load from field_guides table instead of species_hints
                     const response = await fetch(
-                        `${window.SUPABASE_URL}/rest/v1/species_hints?select=*`,
+                        `${window.SUPABASE_URL}/rest/v1/field_guides?select=*`,
                         {
                             headers: {
                                 'apikey': window.SUPABASE_ANON_KEY,
@@ -90,20 +91,32 @@
                     
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('✅ Species hints loaded:', data.length);
+                        console.log('✅ Field guides with hints loaded:', data.length);
                         
-                        // Convert to map for easier lookup
+                        // Convert field_guides to the expected hints format
                         const hintsMap = {};
-                        data.forEach(hint => {
-                            hintsMap[hint.species_name] = hint;
+                        data.forEach(guide => {
+                            if (guide.species_name && guide.hints) {
+                                hintsMap[guide.species_name] = {
+                                    species_name: guide.species_name,
+                                    hints: guide.hints,
+                                    description: guide.description,
+                                    ecology: guide.ecology
+                                };
+                            }
                         });
+                        
+                        console.log('📚 Species with hints:', Object.keys(hintsMap).length);
                         return hintsMap;
                     } else {
-                        throw new Error(`Failed to load species hints: ${response.status}`);
+                        // Return empty object if fetch fails (non-blocking)
+                        console.warn('⚠️ Could not load field guides, using empty hints');
+                        return {};
                     }
                 } catch (error) {
-                    console.error('❌ Error loading species hints:', error);
-                    throw error;
+                    console.error('❌ Error loading field guides for hints:', error);
+                    // Return empty object instead of throwing to prevent app crash
+                    return {};
                 }
             });
         },
