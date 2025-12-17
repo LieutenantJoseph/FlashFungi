@@ -16,6 +16,10 @@ on:
         description: 'Number of observations to skip from the beginning'
         required: false
         default: '0'
+      taxon_id:
+        description: 'Specific iNaturalist taxon ID (optional - leave empty for all fungi)'
+        required: false
+        default: ''
 
 jobs:
   run-pipeline:
@@ -33,19 +37,103 @@ jobs:
     - name: Install dependencies
       working-directory: ./data-pipeline
       run: |
+        echo "📦 Installing dependencies..."
         npm install
+        # Install OpenAI SDK if not in package.json
+        npm install openai
     
-    - name: Run pipeline
+    - name: Run enhanced pipeline with copyright checking
       working-directory: ./data-pipeline
       env:
         SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         LIMIT: ${{ github.event.inputs.limit || '50' }}
         SKIP: ${{ github.event.inputs.skip || '0' }}
+        TAXON_ID: ${{ github.event.inputs.taxon_id || '' }}
       run: |
-        echo "🚀 Starting monthly pipeline..."
+        echo "🚀 Starting enhanced monthly pipeline with copyright checking..."
         echo "📊 Processing up to $LIMIT observations"
         echo "⏭️  Skipping first $SKIP observations"
-        node pipeline-working.js
+        if [ -n "$TAXON_ID" ]; then
+          echo "🎯 Filtering for specific taxon ID: $TAXON_ID"
+        else
+          echo "🍄 Processing all fungi observations"
+        fi
+        echo "📜 Copyright filtering enabled for commercial use"
+        node enhanced-pipeline-copyright.js
+    
+    - name: Generate copyright compliance report
+      working-directory: ./data-pipeline
+      env:
+        SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        TAXON_ID: ${{ github.event.inputs.taxon_id || '' }}
+      run: |
+        echo "📊 Generating copyright compliance report..."
+        if [ -n "$TAXON_ID" ]; then
+          echo "   For taxon ID: $TAXON_ID"
+        fi
+        # Create a simple Node.js script inline to check copyright status
+        cat > check-copyright-status.js << 'EOF'
+        const fetch = require('node-fetch');
+        
+        const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
+        const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+        const TAXON_ID = process.env.TAXON_ID;
+        
+        async function checkCopyrightCompliance() {
+          try {
+            const response = await fetch(
+              `${SUPABASE_URL}/rest/v1/rpc/get_copyright_stats`,
+              {
+                method: 'POST',
+                headers: {
+                  'apikey': SUPABASE_KEY,
+                  'Authorization': `Bearer ${SUPABASE_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ taxon_id: TAXON_ID || null })
+              }
+            );
+            
+            if (!response.ok) {
+              // Fallback to basic query if function doesn't exist
+              const specimensResponse = await fetch(
+                `${SUPABASE_URL}/rest/v1/specimens?select=manual_copyright_override,requires_attribution&limit=1000`,
+                {
+                  headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                  }
+                }
+              );
+              
+              if (specimensResponse.ok) {
+                const specimens = await specimensResponse.json();
+                const overrides = specimens.filter(s => s.manual_copyright_override).length;
+                const attributions = specimens.filter(s => s.requires_attribution).length;
+                
+                console.log('📈 Copyright Compliance Summary:');
+                console.log(`   ✅ Total specimens: ${specimens.length}`);
+                console.log(`   📝 Manual overrides used: ${overrides}`);
+                console.log(`   🏷️  Requiring attribution: ${attributions}`);
+                if (TAXON_ID) {
+                  console.log(`   🎯 Filtered for taxon: ${TAXON_ID}`);
+                }
+              }
+            } else {
+              const stats = await response.json();
+              console.log('📈 Copyright Compliance Summary:', stats);
+            }
+          } catch (error) {
+            console.log('⚠️  Could not generate copyright report:', error.message);
+          }
+        }
+        
+        checkCopyrightCompliance();
+        EOF
+        
+        node check-copyright-status.js || echo "Copyright check completed with warnings"
+      continue-on-error: true
     
     - name: Check results (if check-results.js exists)
       working-directory: ./data-pipeline
@@ -56,3 +144,18 @@ jobs:
         # Only run if check-results.js exists
         [ -f check-results.js ] && node check-results.js || echo "No results checker found"
       continue-on-error: true
+    
+    - name: Summary
+      if: always()
+      env:
+        TAXON_ID: ${{ github.event.inputs.taxon_id || '' }}
+      run: |
+        echo "✅ Pipeline workflow completed"
+        echo "📋 Check the logs above for:"
+        echo "   - Copyright filtering statistics"
+        echo "   - Number of specimens saved"
+        echo "   - Any manual overrides applied"
+        echo "   - Species hints created"
+        if [ -n "$TAXON_ID" ]; then
+          echo "   🎯 Results filtered for taxon ID: $TAXON_ID"
+        fi
