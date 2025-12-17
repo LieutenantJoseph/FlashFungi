@@ -60,7 +60,7 @@ jobs:
           echo "🍄 Processing all fungi observations"
         fi
         echo "📜 Copyright filtering enabled for commercial use"
-        node enhanced-pipeline-copyright.js
+        node enhanced-pipeline-with-taxon.js
     
     - name: Generate copyright compliance report
       working-directory: ./data-pipeline
