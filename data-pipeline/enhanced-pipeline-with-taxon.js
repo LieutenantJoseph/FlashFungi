@@ -47,6 +47,8 @@ const ACCEPTABLE_LICENSES = [
   'cc0',           // Public Domain - No rights reserved
   'cc-by',         // Attribution only
   'cc-by-sa',      // Attribution + Share-alike (acceptable for our use case)
+  'cc-by-nc',      // Attribution + Non-Commercial (temporary allowance)
+  'cc-by-nc-sa'    // Attribution + Non-Commercial + Share-alike (temporary allowance)
 ];
 
 // Taxa to exclude (iNaturalist taxon IDs)
