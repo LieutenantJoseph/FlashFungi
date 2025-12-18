@@ -1,6 +1,6 @@
 // Enhanced Arizona Mushroom Pipeline with Copyright Checking and Taxon Filtering
-// Ensures only observations with free-to-use photos are included
-// Allows filtering by specific taxon ID and manual override for specific observations
+// Fixed family extraction and added section rank support
+// Temporarily includes NC licenses for testing
 
 import OpenAI from 'openai';
 import { readFileSync } from 'fs';
@@ -42,13 +42,13 @@ const openai = new OpenAI({
 const SUPABASE_URL = 'https://oxgedcncrettasrbmwsl.supabase.co';
 const INATURALIST_API = 'https://api.inaturalist.org/v1';
 
-// Acceptable licenses for monetized app
+// Acceptable licenses for app (including NC for testing phase)
 const ACCEPTABLE_LICENSES = [
   'cc0',           // Public Domain - No rights reserved
   'cc-by',         // Attribution only
-  'cc-by-sa',      // Attribution + Share-alike (acceptable for our use case)
-  'cc-by-nc',      // Attribution + Non-Commercial (temporary allowance)
-  'cc-by-nc-sa'    // Attribution + Non-Commercial + Share-alike (temporary allowance)
+  'cc-by-sa',      // Attribution + Share-alike
+  'cc-by-nc',      // Attribution + Non-commercial (TESTING ONLY)
+  'cc-by-nc-sa',   // Attribution + Non-commercial + Share-alike (TESTING ONLY)
 ];
 
 // Taxa to exclude (iNaturalist taxon IDs)
@@ -146,11 +146,12 @@ class EnhancedPipelineWithCopyright {
         results.rejectedPhotos.push({
           id: photo.id,
           license: license,
-          reason: `License '${license}' not acceptable for commercial use`
+          reason: `License '${license}' not acceptable`
         });
       }
 
-      if (license === 'cc-by' || license === 'cc-by-sa') {
+      // Check if attribution is required
+      if (license.includes('by')) {
         results.requiresAttribution = true;
       }
     }
@@ -241,14 +242,82 @@ class EnhancedPipelineWithCopyright {
   }
 
   extractFamily(taxon) {
-    if (taxon.rank === 'family') return taxon.name;
+    // Debug logging
+    console.log(`   🔍 Extracting family for ${taxon.name} (rank: ${taxon.rank})`);
     
-    if (taxon.ancestors) {
-      const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
-      if (family) return family.name;
+    // Check if the taxon itself is at family rank
+    if (taxon.rank === 'family') {
+      console.log(`   ✓ Taxon itself is family: ${taxon.name}`);
+      return taxon.name;
     }
     
-    console.log(`   ⚠️  No family found in taxonomy for ${taxon.name}`);
+    // For subspecies and varieties, we need the full ancestor chain
+    // iNaturalist API sometimes doesn't include all ancestors in the basic response
+    // Let's check if ancestors array exists and has content
+    if (taxon.ancestors && Array.isArray(taxon.ancestors) && taxon.ancestors.length > 0) {
+      console.log(`   🔍 Checking ${taxon.ancestors.length} ancestors...`);
+      
+      // Log all ancestors for debugging
+      taxon.ancestors.forEach(ancestor => {
+        console.log(`      - ${ancestor.rank}: ${ancestor.name}`);
+      });
+      
+      // Look for family in ancestors
+      const family = taxon.ancestors.find(ancestor => ancestor.rank === 'family');
+      if (family) {
+        console.log(`   ✓ Found family in ancestors: ${family.name}`);
+        return family.name;
+      }
+    } else {
+      console.log(`   ⚠️  No ancestors array or empty ancestors for ${taxon.name}`);
+    }
+    
+    // Try to fetch complete taxon data if we don't have family yet
+    // This is needed for subspecies which might not have complete ancestor chain
+    console.log(`   ⚠️  No family found in initial data for ${taxon.name}`);
+    return null;
+  }
+
+  async fetchCompleteAncestors(taxonId) {
+    try {
+      console.log(`   🔄 Fetching complete ancestor data for taxon ID: ${taxonId}`);
+      await this.delay(500); // Rate limiting
+      
+      const response = await fetch(`${INATURALIST_API}/taxa/${taxonId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const fullTaxon = data.results[0];
+        
+        if (fullTaxon && fullTaxon.ancestors) {
+          console.log(`   📊 Retrieved ${fullTaxon.ancestors.length} ancestors`);
+          const family = fullTaxon.ancestors.find(a => a.rank === 'family');
+          if (family) {
+            console.log(`   ✓ Found family via API call: ${family.name}`);
+            return family.name;
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`   ❌ Error fetching complete ancestors: ${error.message}`);
+    }
+    return null;
+  }
+
+  extractSection(taxon) {
+    // Extract section information if available
+    if (taxon.ancestors && Array.isArray(taxon.ancestors)) {
+      const section = taxon.ancestors.find(ancestor => ancestor.rank === 'section');
+      if (section) {
+        console.log(`   📑 Found section: ${section.name}`);
+        return section.name;
+      }
+    }
+    
+    // Check if the taxon itself is a section
+    if (taxon.rank === 'section') {
+      return taxon.name;
+    }
+    
     return null;
   }
 
@@ -325,6 +394,9 @@ class EnhancedPipelineWithCopyright {
     try {
       console.log(`   🤖 Creating species hints for ${specimen.species_name}...`);
       
+      // Include section information if available
+      const sectionInfo = specimen.section ? `\nSection: ${specimen.section}` : '';
+      
       const prompt = `Create 4 educational identification hints for the mushroom species: ${specimen.species_name}
 
 The hints should help students learn to identify this species through observation and comparison. Create hints in this order:
@@ -337,7 +409,7 @@ The hints should help students learn to identify this species through observatio
 Each hint should be 1-3 sentences and focus on distinguishing characteristics that aid field identification.
 
 Species: ${specimen.species_name}
-Family: ${specimen.family}
+Family: ${specimen.family}${sectionInfo}
 Observer Description: ${specimen.description}
 
 Format your response exactly as:
@@ -359,7 +431,8 @@ TAXONOMIC: [description]`;
       if (hints.length > 0) {
         const hintsData = {
           species_name: specimen.species_name,
-          hints: hints
+          hints: hints,
+          section: specimen.section // Store section with hints
         };
 
         const saveResponse = await fetch(`${SUPABASE_URL}/rest/v1/species_hints`, {
@@ -445,6 +518,9 @@ TAXONOMIC: [description]`;
       const specimenId = savedSpecimen[0].id;
 
       console.log(`✅ Saved specimen ${specimenId}: ${specimen.species_name}`);
+      if (specimen.section) {
+        console.log(`   📑 Section: ${specimen.section}`);
+      }
 
       const existingHints = await this.checkSpeciesHints(specimen.species_name);
       
@@ -474,7 +550,7 @@ TAXONOMIC: [description]`;
       const licenseCheck = this.checkPhotoLicenses(detailed.photos);
       
       if (!licenseCheck.isAcceptable && !hasManualOverride) {
-        console.log(`   ⛔ COPYRIGHT: Photos not usable for commercial purposes`);
+        console.log(`   ⛔ COPYRIGHT: Photos not usable`);
         console.log(`      Rejected: ${licenseCheck.rejectedPhotos.map(p => p.reason).join(', ')}`);
         console.log(`      To override: Add observation ID ${obs.id} to manual overrides`);
         this.skippedCopyright++;
@@ -484,9 +560,13 @@ TAXONOMIC: [description]`;
       if (hasManualOverride) {
         console.log(`   ✅ COPYRIGHT: Manual override applied for observation ${obs.id}`);
       } else {
-        console.log(`   ✅ COPYRIGHT: All photos have acceptable licenses`);
+        console.log(`   ✅ COPYRIGHT: Photos have acceptable licenses`);
         if (licenseCheck.requiresAttribution) {
-          console.log(`      Note: Attribution required (CC-BY or CC-BY-SA)`);
+          console.log(`      Note: Attribution required`);
+        }
+        // Note if using NC licenses
+        if (licenseCheck.licenses.some(l => l.includes('nc'))) {
+          console.log(`      ⚠️  Using NC license (testing phase only)`);
         }
       }
       
@@ -497,12 +577,23 @@ TAXONOMIC: [description]`;
 
       console.log(`   📸 Good photos available (${detailed.photos.length} photos)`);
 
-      const family = this.extractFamily(detailed.taxon);
+      // Try to extract family
+      let family = this.extractFamily(detailed.taxon);
+      
+      // If no family found, try fetching complete ancestor data
+      if (!family && detailed.taxon.id) {
+        family = await this.fetchCompleteAncestors(detailed.taxon.id);
+      }
+      
       if (!family) {
-        console.log('   ⏭️  No family information in taxonomy tree - skipping');
+        console.log('   ⏭️  No family information found - skipping');
+        console.log('   💡 Tip: This might be a subspecies or variety without complete ancestor data');
         this.skippedNoFamily++;
         return null;
       }
+
+      // Extract section information
+      const section = this.extractSection(detailed.taxon);
 
       const hasDNA = this.hasDNASequence(detailed);
       
@@ -517,6 +608,7 @@ TAXONOMIC: [description]`;
         species_name: detailed.taxon.name,
         genus: detailed.taxon.name.split(' ')[0],
         family: family,
+        section: section, // Add section field
         common_name: detailed.taxon.preferred_common_name,
         inaturalist_id: detailed.id.toString(),
         location: detailed.place_guess || 'Arizona, USA',
@@ -562,9 +654,10 @@ TAXONOMIC: [description]`;
       }
     }
     
-    console.log('\n📜 Acceptable licenses for commercial use:');
+    console.log('\n📜 Acceptable licenses (including NC for testing):');
     ACCEPTABLE_LICENSES.forEach(license => {
-      console.log(`   ✅ ${license.toUpperCase()}`);
+      const isTestOnly = license.includes('nc') ? ' ⚠️ (TESTING ONLY)' : '';
+      console.log(`   ✅ ${license.toUpperCase()}${isTestOnly}`);
     });
     
     if (!this.specificTaxonId) {
@@ -620,6 +713,10 @@ TAXONOMIC: [description]`;
       console.log(`   🆕 New hints created: ${this.hintsCreatedCount} species`);
       console.log(`\n💡 All specimens are in the admin review queue with status 'pending'`);
       console.log(`🔧 Admin can review and edit species hints in the enhanced admin portal`);
+      
+      if (ACCEPTABLE_LICENSES.some(l => l.includes('nc'))) {
+        console.log('\n⚠️  WARNING: NC licenses are enabled for testing. Remove for production!');
+      }
       
     } catch (error) {
       console.log(`❌ Pipeline failed: ${error.message}`);
