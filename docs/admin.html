@@ -1533,18 +1533,9 @@
                 });
 
                 useEffect(() => {
-                    // Only load once on mount
-                    if (!window.adminDataLoaded) {
-                        window.adminDataLoaded = true;
-                        loadAllSpecimens();
-                    }
-                    
-                    // Cleanup on unmount
-                    return () => {
-                        window.adminDataLoaded = false;
-                        window.loadingSpecimens = false;
-                    };
-                }, []); // Empty array - only run once
+                    console.log('🚀 Admin Portal mounted, loading data...');
+                    loadAllSpecimens();
+                }, []); // Empty dependency array
 
                 // Load training modules when view changes
                 useEffect(() => {
@@ -1554,93 +1545,161 @@
                 }, [currentView]);
 
                 const loadAllSpecimens = async () => {
-                    // Prevent multiple simultaneous fetches
-                    if (window.loadingSpecimens) {
-                        console.log('Already loading specimens, skipping...');
-                        return;
-                    }
-                    
-                    window.loadingSpecimens = true;
+                    console.log('🔄 Starting to load specimens...');
                     setLoading(true);
-                    
+
                     try {
-                        // Use smaller page size to avoid issues
-                        const PAGE_SIZE = 50;
-                        const allSpecimens = [];
-                        let offset = 0;
-                        let hasMore = true;
-                        let page = 0;
-                        
-                        // Limit to 10 pages (500 specimens) to prevent infinite loops
-                        while (hasMore && page < 10) {
-                            const response = await fetch(
-                                `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc&limit=${PAGE_SIZE}&offset=${offset}`,
-                                {
-                                    headers: {
-                                        'apikey': SUPABASE_ANON_KEY,
-                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                                    }
-                                }
-                            );
-                            
-                            if (!response.ok) {
-                                console.error(`Failed to load page ${page}:`, response.status);
-                                break;
-                            }
-                            
-                            const data = await response.json();
-                            
-                            // Normalize the data to handle new columns
-                            const normalizedData = data.map(specimen => ({
-                                ...specimen,
-                                section: specimen.section || null,
-                                photo_licenses: specimen.photo_licenses || [],
-                                requires_attribution: specimen.requires_attribution || false,
-                                manual_copyright_override: specimen.manual_copyright_override || false,
-                                pipeline_taxon_filter: specimen.pipeline_taxon_filter || null
-                            }));
-                            
-                            allSpecimens.push(...normalizedData);
-                            
-                            // Check if we should continue
-                            if (data.length < PAGE_SIZE) {
-                                hasMore = false;
-                            } else {
-                                offset += PAGE_SIZE;
-                                page++;
-                                // Small delay between requests
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                            }
-                        }
-                        
-                        console.log(`✅ Loaded ${allSpecimens.length} specimens`);
-                        setSpecimens(allSpecimens);
-                        showToast(`Loaded ${allSpecimens.length} specimens`, 'success');
-                        
-                        // Load field guides separately
-                        const guidesResponse = await fetch(
-                            `${SUPABASE_URL}/rest/v1/field_guides?select=*`,
-                            {
-                                headers: {
-                                    'apikey': SUPABASE_ANON_KEY,
-                                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                                }
-                            }
-                        );
-                        
-                        if (guidesResponse.ok) {
-                            const guidesData = await guidesResponse.json();
-                            setFieldGuides(guidesData);
-                        }
-                        
-                    } catch (error) {
-                        console.error('Error loading specimens:', error);
-                        showToast('Failed to load specimens', 'error');
-                        setSpecimens([]);
-                    } finally {
-                        setLoading(false);
-                        window.loadingSpecimens = false;
-                    }
+                        // First, let's try a simple single request to see if it works
+                10        const testResponse = await fetch(
+                11            `${SUPABASE_URL}/rest/v1/specimens?select=*&limit=1`,
+                12            {
+                13                headers: {
+                14                    'apikey': SUPABASE_ANON_KEY,
+                15                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                16                }
+                17            }
+                18        );
+                19        
+                20        if (!testResponse.ok) {
+                21            console.error('❌ Cannot connect to Supabase:', testResponse.status);
+                22            showToast('Cannot connect to database', 'error');
+                23            setLoading(false);
+                24            return;
+                25        }
+                26        
+                27        console.log('✅ Connection test successful, loading all specimens...');
+                28        
+                29        // Now load all specimens with pagination
+                30        const allSpecimens = [];
+                31        const PAGE_SIZE = 100; // Reasonable page size
+                32        let page = 0;
+                33        let hasMore = true;
+                34        
+                35        while (hasMore) {
+                36            const rangeStart = page * PAGE_SIZE;
+                37            const rangeEnd = rangeStart + PAGE_SIZE - 1;
+                38            
+                39            console.log(`📦 Loading specimens ${rangeStart}-${rangeEnd}...`);
+                40            
+                41            const response = await fetch(
+                42                `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc`,
+                43                {
+                44                    headers: {
+                45                        'apikey': SUPABASE_ANON_KEY,
+                46                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                47                        'Range': `${rangeStart}-${rangeEnd}`,
+                48                        'Prefer': 'count=exact'
+                49                    }
+                50                }
+                51            );
+                52            
+                53            if (!response.ok) {
+                54                console.error(`❌ Failed to load page ${page}:`, response.status);
+                55                hasMore = false;
+                56                break;
+                57            }
+                58            
+                59            const data = await response.json();
+                60            console.log(`📊 Retrieved ${data.length} specimens from page ${page}`);
+                61            
+                62            // Normalize data to handle new columns
+                63            const normalizedData = data.map(specimen => ({
+                64                id: specimen.id,
+                65                species_name: specimen.species_name || '',
+                66                genus: specimen.genus || '',
+                67                family: specimen.family || '',
+                68                section: specimen.section || null,
+                69                common_name: specimen.common_name || '',
+                70                inaturalist_id: specimen.inaturalist_id || '',
+                71                location: specimen.location || '',
+                72                description: specimen.description || '',
+                73                dna_sequenced: specimen.dna_sequenced || false,
+                74                status: specimen.status || 'pending',
+                75                quality_score: specimen.quality_score || 0,
+                76                selected_photos: specimen.selected_photos || [],
+                77                photo_licenses: specimen.photo_licenses || [],
+                78                requires_attribution: specimen.requires_attribution || false,
+                79                manual_copyright_override: specimen.manual_copyright_override || false,
+                80                pipeline_taxon_filter: specimen.pipeline_taxon_filter || null,
+                81                created_at: specimen.created_at,
+                82                updated_at: specimen.updated_at
+                83            }));
+                84            
+                85            allSpecimens.push(...normalizedData);
+                86            
+                87            // Check Content-Range header to see if there are more
+                88            const contentRange = response.headers.get('Content-Range');
+                89            if (contentRange) {
+                90                const match = contentRange.match(/\d+-\d+\/(\d+|\*)/);
+                91                if (match) {
+                92                    if (match[1] === '*') {
+                93                        // Total count unknown, check if we got a full page
+                94                        hasMore = data.length === PAGE_SIZE;
+                95                    } else {
+                96                        const total = parseInt(match[1]);
+                97                        hasMore = (rangeEnd + 1) < total;
+                98                        console.log(`📈 Progress: ${Math.min(rangeEnd + 1, total)}/${total} specimens`);
+                99                    }
+                100                }
+                101            } else {
+                102                // No Content-Range header, check if we got a full page
+                103                hasMore = data.length === PAGE_SIZE;
+                104            }
+                105            
+                106            if (!hasMore) {
+                107                console.log('✅ No more specimens to load');
+                108            }
+                109            
+                110            page++;
+                111            
+                112            // Prevent infinite loops - max 50 pages (5000 specimens)
+                113            if (page >= 50) {
+                114                console.warn('⚠️ Reached maximum page limit');
+                115                hasMore = false;
+                116            }
+                117        }
+                118        
+                119        console.log(`🎉 Successfully loaded ${allSpecimens.length} specimens`);
+                120        setSpecimens(allSpecimens);
+                121        showToast(`Loaded ${allSpecimens.length} specimens`, 'success');
+                122        
+                123        // Now load field guides
+                124        console.log('📚 Loading field guides...');
+                125        const guidesResponse = await fetch(
+                126            `${SUPABASE_URL}/rest/v1/field_guides?select=*`,
+                127            {
+                128                headers: {
+                129                    'apikey': SUPABASE_ANON_KEY,
+                130                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                131                }
+                132            }
+                133        );
+                134        
+                135        if (guidesResponse.ok) {
+                136            const guidesData = await guidesResponse.json();
+                137            const normalizedGuides = guidesData.map(guide => ({
+                138                ...guide,
+                139                section: guide.section || null,
+                140                hints: Array.isArray(guide.hints) ? guide.hints : [],
+                141                diagnostic_features: guide.diagnostic_features || {},
+                142                comparison_species: Array.isArray(guide.comparison_species) ? guide.comparison_species : []
+                143            }));
+                144            setFieldGuides(normalizedGuides);
+                145            console.log(`📚 Loaded ${normalizedGuides.length} field guides`);
+                146        } else {
+                147            console.error('❌ Failed to load field guides');
+                148            setFieldGuides([]);
+                149        }
+                150        
+                151    } catch (error) {
+                152        console.error('❌ Error in loadAllSpecimens:', error);
+                153        showToast(`Error: ${error.message}`, 'error');
+                154        setSpecimens([]);
+                155        setFieldGuides([]);
+                156    } finally {
+                157        setLoading(false);
+                158        console.log('✅ Loading process complete');
+                159    };
                 };
 
                 const loadTrainingModules = async () => {
