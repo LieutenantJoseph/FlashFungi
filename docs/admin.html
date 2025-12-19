@@ -1533,8 +1533,18 @@
                 });
 
                 useEffect(() => {
-                    loadAllSpecimens();
-                }, []);
+                    // Only load once on mount
+                    if (!window.adminDataLoaded) {
+                        window.adminDataLoaded = true;
+                        loadAllSpecimens();
+                    }
+                    
+                    // Cleanup on unmount
+                    return () => {
+                        window.adminDataLoaded = false;
+                        window.loadingSpecimens = false;
+                    };
+                }, []); // Empty array - only run once
 
                 // Load training modules when view changes
                 useEffect(() => {
@@ -1544,53 +1554,70 @@
                 }, [currentView]);
 
                 const loadAllSpecimens = async () => {
-                    const allSpecimens = [];
-                    const pageSize = 1000;
-                    let offset = 0;
-                    let hasMore = true;
+                    // Prevent multiple simultaneous fetches
+                    if (window.loadingSpecimens) {
+                        console.log('Already loading specimens, skipping...');
+                        return;
+                    }
                     
+                    window.loadingSpecimens = true;
                     setLoading(true);
-                    showToast('Loading specimens...', 'info');
                     
                     try {
-                        while (hasMore) {
+                        // Use smaller page size to avoid issues
+                        const PAGE_SIZE = 50;
+                        const allSpecimens = [];
+                        let offset = 0;
+                        let hasMore = true;
+                        let page = 0;
+                        
+                        // Limit to 10 pages (500 specimens) to prevent infinite loops
+                        while (hasMore && page < 10) {
                             const response = await fetch(
-                                `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc&limit=${pageSize}&offset=${offset}`,
+                                `${SUPABASE_URL}/rest/v1/specimens?select=*&order=created_at.desc&limit=${PAGE_SIZE}&offset=${offset}`,
                                 {
                                     headers: {
                                         'apikey': SUPABASE_ANON_KEY,
-                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                                        'Prefer': 'count=exact'
+                                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                                     }
                                 }
                             );
                             
-                            if (!response.ok) throw new Error('Failed to load specimens');
+                            if (!response.ok) {
+                                console.error(`Failed to load page ${page}:`, response.status);
+                                break;
+                            }
                             
                             const data = await response.json();
-                            allSpecimens.push(...data);
                             
-                            const contentRange = response.headers.get('Content-Range');
-                            if (contentRange) {
-                                const match = contentRange.match(/\d+-\d+\/(\d+)/);
-                                if (match) {
-                                    const totalCount = parseInt(match[1]);
-                                    offset += pageSize;
-                                    hasMore = offset < totalCount;
-                                    
-                                    // Update progress
-                                    showToast(`Loading: ${Math.min(offset, totalCount)}/${totalCount} specimens`, 'info');
-                                }
+                            // Normalize the data to handle new columns
+                            const normalizedData = data.map(specimen => ({
+                                ...specimen,
+                                section: specimen.section || null,
+                                photo_licenses: specimen.photo_licenses || [],
+                                requires_attribution: specimen.requires_attribution || false,
+                                manual_copyright_override: specimen.manual_copyright_override || false,
+                                pipeline_taxon_filter: specimen.pipeline_taxon_filter || null
+                            }));
+                            
+                            allSpecimens.push(...normalizedData);
+                            
+                            // Check if we should continue
+                            if (data.length < PAGE_SIZE) {
+                                hasMore = false;
                             } else {
-                                hasMore = data.length === pageSize;
-                                offset += pageSize;
+                                offset += PAGE_SIZE;
+                                page++;
+                                // Small delay between requests
+                                await new Promise(resolve => setTimeout(resolve, 100));
                             }
                         }
                         
+                        console.log(`✅ Loaded ${allSpecimens.length} specimens`);
                         setSpecimens(allSpecimens);
-                        showToast(`Loaded all ${allSpecimens.length} specimens`, 'success');
+                        showToast(`Loaded ${allSpecimens.length} specimens`, 'success');
                         
-                        // Load field guides
+                        // Load field guides separately
                         const guidesResponse = await fetch(
                             `${SUPABASE_URL}/rest/v1/field_guides?select=*`,
                             {
@@ -1607,10 +1634,12 @@
                         }
                         
                     } catch (error) {
-                        console.error('Error:', error);
-                        showToast('Failed to load all specimens', 'error');
+                        console.error('Error loading specimens:', error);
+                        showToast('Failed to load specimens', 'error');
+                        setSpecimens([]);
                     } finally {
                         setLoading(false);
+                        window.loadingSpecimens = false;
                     }
                 };
 
